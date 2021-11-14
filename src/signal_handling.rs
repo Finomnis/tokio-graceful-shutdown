@@ -2,7 +2,7 @@ use crate::initiate_shutdown;
 
 /// Waits for a signal that requests a graceful shutdown, like SIGTERM or SIGINT.
 #[cfg(unix)]
-fn wait_for_signal() {
+async fn wait_for_signal() {
     use tokio::signal::unix::{signal, SignalKind};
 
     let mut signal_terminate = signal(SignalKind::terminate()).unwrap();
