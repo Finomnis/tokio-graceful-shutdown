@@ -12,6 +12,10 @@ categories = ["asynchronous"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+exclude = [
+    "/.github/"
+]
+
 [dependencies]
 # Result propagation. TODO remove?
 anyhow = "1.0"
