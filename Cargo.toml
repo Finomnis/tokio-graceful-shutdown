@@ -1,0 +1,28 @@
+[package]
+name = "tokio-graceful-shutdown"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# Result propagation. TODO remove?
+anyhow = "1.0"
+
+# For holding the shutdown token
+lazy_static = "1.4"
+
+# For providing the shutdown token
+tokio = { version = "1", default-features = false, features = ["signal", "rt"] }
+tokio-util = { version = "0.6", default-features = false }
+
+# For logging
+log = "0.4"
+
+
+[dev-dependencies]
+# Logging
+env_logger = "0.9"
+
+# Tokio
+tokio = { version = "1", default-features = false, features = ["macros", "rt-multi-thread"] }
