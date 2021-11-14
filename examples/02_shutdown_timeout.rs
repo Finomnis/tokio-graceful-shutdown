@@ -10,7 +10,7 @@ async fn dummy_task() -> Result<()> {
     log::info!("dummy_task started.");
     wait_until_shutdown().await;
     log::info!("Shutting down dummy_task ...");
-    sleep(Duration::from_millis(500)).await;
+    sleep(Duration::from_millis(1000)).await;
     log::info!("dummy_task stopped.");
     Ok(())
 }
@@ -31,5 +31,5 @@ async fn main() -> Result<()> {
     wait_until_shutdown().await;
 
     // Wait until all submodules have shut down
-    wait_for_submodule_shutdown!(Duration::from_millis(1000), dummy_task_handle)
+    wait_for_submodule_shutdown!(Duration::from_millis(500), dummy_task_handle)
 }

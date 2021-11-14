@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use env_logger::{Builder, Env};
 use log;
 use tokio::time::{sleep, Duration};
@@ -8,11 +8,11 @@ use tokio_graceful_shutdown::{
 
 async fn dummy_task() -> Result<()> {
     log::info!("dummy_task started.");
-    wait_until_shutdown().await;
-    log::info!("Shutting down dummy_task ...");
     sleep(Duration::from_millis(500)).await;
     log::info!("dummy_task stopped.");
-    Ok(())
+
+    // Task ends with an error. This should cause the main program to shutdown.
+    Err(anyhow!("dummy_task threw an error."))
 }
 
 #[tokio::main]

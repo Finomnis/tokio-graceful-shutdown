@@ -8,10 +8,10 @@ use tokio_graceful_shutdown::{
 
 async fn dummy_task() -> Result<()> {
     log::info!("dummy_task started.");
-    wait_until_shutdown().await;
-    log::info!("Shutting down dummy_task ...");
     sleep(Duration::from_millis(500)).await;
     log::info!("dummy_task stopped.");
+
+    // Task ends without an error. This should not cause the main program to shutdown.
     Ok(())
 }
 

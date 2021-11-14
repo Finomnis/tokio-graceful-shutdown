@@ -9,8 +9,8 @@ fn wait_for_signal() {
     let mut signal_interrupt = signal(SignalKind::interrupt()).unwrap();
 
     tokio::select!(
-        e = signal_terminate.recv() => {log::info!("Received SIGTERM."); e},
-        e = signal_interrupt.recv() => {log::info!("Received SIGINT."); e},
+        e = signal_terminate.recv() => {log::debug!("Received SIGTERM."); e},
+        e = signal_interrupt.recv() => {log::debug!("Received SIGINT."); e},
     );
 
     initiate_shutdown();
@@ -22,7 +22,7 @@ async fn wait_for_signal() {
     use tokio::signal::ctrl_c;
 
     ctrl_c().await.unwrap();
-    log::info!("Received SIGINT.");
+    log::debug!("Received SIGINT.");
 
     initiate_shutdown();
 }
