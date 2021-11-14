@@ -1,4 +1,5 @@
 use crate::initiate_shutdown;
+use tokio;
 
 /// Waits for a signal that requests a graceful shutdown, like SIGTERM or SIGINT.
 #[cfg(unix)]
@@ -8,10 +9,10 @@ fn wait_for_signal() {
     let mut signal_terminate = signal(SignalKind::terminate()).unwrap();
     let mut signal_interrupt = signal(SignalKind::interrupt()).unwrap();
 
-    tokio::select!(
-        e = signal_terminate.recv() => {log::debug!("Received SIGTERM."); e},
-        e = signal_interrupt.recv() => {log::debug!("Received SIGINT."); e},
-    );
+    tokio::select! {
+        _ = signal_terminate.recv() => log::debug!("Received SIGTERM."),
+        _ = signal_interrupt.recv() => log::debug!("Received SIGINT."),
+    };
 
     initiate_shutdown();
 }
