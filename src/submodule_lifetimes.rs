@@ -44,7 +44,7 @@ macro_rules! wait_for_submodule_shutdown {
 
         let result = tokio::select! {
             e = task_joiner => e,
-            _ = tokio::time::sleep($duration) => Err(anyhow::anyhow!("Subsystem shutdown took too long!"))
+            _ = tokio::time::sleep($duration) => Err(anyhow::anyhow!("Submodule shutdown took too long!"))
         };
 
         match result {
@@ -53,7 +53,7 @@ macro_rules! wait_for_submodule_shutdown {
                 Err(anyhow!("Submodule failure."))
             }
             Ok(()) => {
-                log::info!("Subsystems shut down successfully.");
+                log::info!("Submodules shut down successfully.");
                 Ok(())
             }
         }

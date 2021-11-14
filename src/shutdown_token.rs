@@ -7,7 +7,7 @@ lazy_static! {
 }
 
 /// Waits asynchronously until a program shutdown was initiated
-pub async fn wait_until_shutdown() {
+pub async fn wait_until_shutdown_started() {
     SHUTDOWN_TOKEN.cancelled().await;
 }
 

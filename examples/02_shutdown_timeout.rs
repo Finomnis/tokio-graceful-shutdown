@@ -3,12 +3,13 @@ use env_logger::{Builder, Env};
 use log;
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{
-    register_signal_handlers, start_submodule, wait_for_submodule_shutdown, wait_until_shutdown,
+    register_signal_handlers, start_submodule, wait_for_submodule_shutdown,
+    wait_until_shutdown_started,
 };
 
 async fn dummy_task() -> Result<()> {
     log::info!("dummy_task started.");
-    wait_until_shutdown().await;
+    wait_until_shutdown_started().await;
     log::info!("Shutting down dummy_task ...");
     sleep(Duration::from_millis(1000)).await;
     log::info!("dummy_task stopped.");
@@ -28,7 +29,7 @@ async fn main() -> Result<()> {
     let dummy_task_handle = start_submodule(dummy_task());
 
     // Wait for program shutdown initiation
-    wait_until_shutdown().await;
+    wait_until_shutdown_started().await;
 
     // Wait until all submodules have shut down
     wait_for_submodule_shutdown!(Duration::from_millis(500), dummy_task_handle)
