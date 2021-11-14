@@ -1,7 +1,6 @@
 use crate::initiate_shutdown;
 use anyhow::Result;
 use std::future::Future;
-use tokio;
 
 /// Executes an async submodule.
 ///

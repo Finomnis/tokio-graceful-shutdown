@@ -20,7 +20,7 @@ anyhow = "1.0"
 lazy_static = "1.4"
 
 # For providing the shutdown token
-tokio = { version = "1", default-features = false, features = ["signal", "rt"] }
+tokio = { version = "1", default-features = false, features = ["signal", "rt", "macros"] }
 tokio-util = { version = "0.6", default-features = false }
 
 # For logging

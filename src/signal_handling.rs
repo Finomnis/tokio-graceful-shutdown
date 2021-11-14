@@ -1,5 +1,4 @@
 use crate::initiate_shutdown;
-use tokio;
 
 /// Waits for a signal that requests a graceful shutdown, like SIGTERM or SIGINT.
 #[cfg(unix)]
