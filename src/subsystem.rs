@@ -3,6 +3,7 @@ use std::{collections::HashMap, pin::Pin};
 
 use anyhow::Result;
 use async_trait::async_trait;
+use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 
 use crate::shutdown_token::ShutdownToken;
@@ -40,6 +41,37 @@ impl SubsystemHandle {
             shutdown_token: data.shutdown_token.clone(),
             data,
         }
+    }
+
+    pub fn start<S: AsyncSubsystem + 'static + Send>(
+        &mut self,
+        name: &'static str,
+        subsystem: S,
+    ) -> &mut Self {
+        let boxed_subsys = Box::new(subsystem);
+        let shutdown_token = self.shutdown_token.clone();
+
+        // Spawn new task
+        let (tx, rx) = oneshot::channel();
+        let join_handle = tokio::spawn(async move {
+            // Retreive subsystem handle. Needs to be passed through a
+            // oneshot channel to circumvent a bootstrapping problem
+            let subsystem_handle = rx.await.unwrap();
+            subsystem.run(subsystem_handle);
+        });
+
+        // Create subsystem data structure
+        let new_subsystem = Rc::new(SubsystemData::new(name, shutdown_token, join_handle));
+
+        // Pass handle to data structure to spawned task.
+        // This solves the bootstrapping problem that the task
+        // depends on its own join handle
+        tx.send(SubsystemHandle::new(new_subsystem.clone()));
+
+        // Store subsystem data
+        self.data.subsystems.push(new_subsystem);
+
+        self
     }
 }
 
