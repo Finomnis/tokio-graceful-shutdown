@@ -1,25 +1,25 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use std::panic;
 use std::time::Duration;
+use std::{panic, rc::Rc};
 
-use crate::{
-    shutdown_token::ShutdownToken, signal_handling::wait_for_signal, AsyncSubsystem,
-    SubsystemHandle,
-};
+use crate::SubsystemHandle;
+use crate::{shutdown_token::ShutdownToken, signal_handling::wait_for_signal, AsyncSubsystem};
+
+use super::subsystem::SubsystemData;
 
 pub struct Toplevel {
-    toplevel_subsys: SubsystemHandle,
+    subsys_data: Rc<SubsystemData>,
 }
 
-struct DummySubsystem {}
+// struct ToplevelSubsystem {}
 
-#[async_trait(?Send)]
-impl AsyncSubsystem for DummySubsystem {
-    async fn run(&mut self, _: &mut SubsystemHandle) -> Result<()> {
-        std::unreachable!("Top level subsystem should never be executed. It's just a dummy!");
-    }
-}
+// #[async_trait(?Send)]
+// impl AsyncSubsystem for DummySubsystem {
+//     async fn run(&mut self, _: &mut SubsystemHandle) -> Result<()> {
+//         std::unreachable!("Top level subsystem should never be executed. It's just a dummy!");
+//     }
+// }
 
 impl Toplevel {
     pub fn new() -> Self {
@@ -33,31 +33,38 @@ impl Toplevel {
         }));
 
         Self {
-            toplevel_subsys: SubsystemHandle::new(Box::new(DummySubsystem {}), shutdown_token),
+            subsys_data: Rc::new(SubsystemData::new(
+                "",
+                shutdown_token,
+                tokio::spawn(async {}),
+            )),
         }
     }
 
-    pub fn start<S: AsyncSubsystem + 'static>(
+    pub fn start<S: AsyncSubsystem + 'static + Send>(
         &mut self,
         name: &'static str,
         subsystem: S,
     ) -> &mut Self {
-        self.toplevel_subsys.start(name, subsystem);
+        //self.subsys_data.start(name, subsystem);
+        SubsystemHandle::new(self.subsys_data.clone()).start(name, subsystem);
 
         self
     }
 
     pub fn catch_signals(&mut self) -> &mut Self {
-        let shutdown_token = self.toplevel_subsys.shutdown_token();
-        tokio::spawn(async move {
-            wait_for_signal().await;
-            shutdown_token.shutdown();
-        });
+        // let shutdown_token = self.subsys_data.shutdown_token();
+
+        // tokio::spawn(async move {
+        //     wait_for_signal().await;
+        //     shutdown_token.shutdown();
+        // });
+
         self
     }
 
     pub async fn wait_for_shutdown(&mut self, shutdown_timeout: Duration) -> Result<()> {
-        self.toplevel_subsys.on_shutdown_request().await;
+        // self.subsys_data.on_shutdown_request().await;
 
         Ok(())
     }

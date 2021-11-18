@@ -1,0 +1,28 @@
+- Toplevel -> Subsystem -> Subsystem
+
+Toplevel -> SubsystemData -> SubsystemData
+
+- SubsystemData:
+    - name
+    - subsystems
+    - shutdown_token
+    - joinhandle
+
+    - join_subsystems()
+
+
+- SubsystemHandle:
+    - shutdown_token
+    - RC<SubsystemData>
+
+    - Clone
+
+    - start()
+    - on_shutdown_requested()
+    - request_shutdown()
+
+
+
+- Subsystem:
+    - run(SubsystemHandle)
+    -
