@@ -30,6 +30,8 @@ tokio-util = { version = "0.6", default-features = false }
 # For logging
 log = "0.4"
 
+# For async traits
+async-trait = "0.1"
 
 [dev-dependencies]
 # Logging

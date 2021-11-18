@@ -1,3 +1,7 @@
+use crate::initiate_shutdown;
+
+use std::panic;
+
 /// Waits for a signal that requests a graceful shutdown, like SIGTERM or SIGINT.
 #[cfg(unix)]
 async fn wait_for_signal_impl() {
@@ -24,6 +28,6 @@ async fn wait_for_signal_impl() {
 /// Registers Ctrl+C and SIGTERM handlers to cause a program shutdown.
 /// Further, registers a custom panic handler to also initiate a shutdown.
 /// Otherwise, a multi-threaded system would deadlock on panik.
-pub async fn wait_for_signal() {
+pub async  fn wait_for_signal() {
     wait_for_signal_impl().await
 }

@@ -2,10 +2,7 @@ use anyhow::Result;
 use env_logger::{Builder, Env};
 use log;
 use tokio::time::{sleep, Duration};
-use tokio_graceful_shutdown::{
-    register_signal_handlers, start_submodule, wait_for_submodule_shutdown,
-    wait_until_shutdown_started,
-};
+
 
 async fn dummy_task() -> Result<()> {
     log::info!("dummy_task started.");
