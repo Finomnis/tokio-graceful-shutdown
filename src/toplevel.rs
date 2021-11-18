@@ -17,7 +17,7 @@ struct DummySubsystem {}
 #[async_trait(?Send)]
 impl AsyncSubsystem for DummySubsystem {
     async fn run(&mut self, _: &mut SubsystemHandle) -> Result<()> {
-        Ok(())
+        std::unreachable!("Top level subsystem should never be executed. It's just a dummy!");
     }
 }
 
