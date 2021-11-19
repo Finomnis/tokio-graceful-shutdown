@@ -28,7 +28,7 @@ struct SubsystemDescriptors {
 }
 
 impl SubsystemData {
-    pub fn new(name: &'static str, shutdown_token: ShutdownToken) -> Self {
+    pub fn new(name: &str, shutdown_token: ShutdownToken) -> Self {
         Self {
             name: name.to_string(),
             subsystems: RwLock::new(Some(SubsystemDescriptors {
@@ -99,18 +99,16 @@ impl SubsystemHandle {
     ) -> &mut Self {
         let shutdown_token = self.shutdown_token.clone();
 
+        let name = self.data.name.clone() + "/" + name;
+
         // Create subsystem data structure
-        let new_subsystem = Arc::new(SubsystemData::new(name, shutdown_token.clone()));
+        let new_subsystem = Arc::new(SubsystemData::new(&name, shutdown_token.clone()));
 
         // Create handle
         let subsystem_handle = SubsystemHandle::new(new_subsystem.clone());
 
         // Spawn new task
-        let join_handle = tokio::spawn(run_subsystem(
-            self.data.name.clone() + "/" + name,
-            subsystem,
-            subsystem_handle,
-        ));
+        let join_handle = tokio::spawn(run_subsystem(name, subsystem, subsystem_handle));
 
         // Store subsystem data
         self.data.add_subsystem(new_subsystem, join_handle).await;
