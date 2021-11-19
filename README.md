@@ -6,7 +6,7 @@ This crate provides utility functions to perform a graceful shutdown on tokio-rs
 
 Specifically, it provides:
 
-- Listening for shutdown initiation from within subsystems
+- Listening for shutdown requests from within subsystems
 - Manual shutdown initiation from within subsystems
 - Automatic shutdown on
     - SIGINT/SIGTERM/Ctrl+C

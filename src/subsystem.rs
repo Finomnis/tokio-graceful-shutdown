@@ -20,6 +20,7 @@ pub struct SubsystemData {
     shutdown_token: ShutdownToken,
 }
 
+/// The handle through which every subsystem can interact with this crate.
 pub struct SubsystemHandle {
     shutdown_token: ShutdownToken,
     data: Arc<SubsystemData>,
@@ -290,12 +291,66 @@ impl SubsystemHandle {
     ///
     /// This function is usually not required and is there
     /// to provide lower-level access for specific corner cases.
+    #[doc(hidden)]
     pub fn shutdown_token(&self) -> &ShutdownToken {
         &self.shutdown_token
     }
 }
 
+/// The trait that defines an asynchronous subsystem.
+///
+/// Every subsystem in the program should implement this trait.
+///
+/// AsyncSubsystems can be executed by [`crate::Toplevel::start()`] or [`crate::SubsystemHandle::start()`].
+///
+/// # Examples
+///
+/// ```
+/// use anyhow::Result;
+/// use async_trait::async_trait;
+/// use tokio::time::{sleep, Duration};
+/// use tokio_graceful_shutdown::{AsyncSubsystem, SubsystemHandle};
+///
+/// struct CountdownSubsystem {}
+/// impl CountdownSubsystem {
+///     async fn countdown(&self) {
+///         for i in (1..10).rev() {
+///             log::info!("Countdown: {}", i);
+///             sleep(Duration::from_millis(1000)).await;
+///         }
+///     }
+/// }
+///
+/// #[async_trait]
+/// impl AsyncSubsystem for CountdownSubsystem {
+///     async fn run(&mut self, subsys: SubsystemHandle) -> Result<()> {
+///         log::info!("Starting countdown ...");
+///
+///         // This cancels the countdown as soon as shutdown
+///         // mode was entered
+///         tokio::select! {
+///             _ = subsys.on_shutdown_requested() => {
+///                 log::info!("Countdown cancelled.");
+///             },
+///             _ = self.countdown() => {
+///                 log::info!("Countdown finished.");
+///             }
+///         };
+///
+///         Ok(())
+///     }
+/// }
+/// ```
 #[async_trait]
 pub trait AsyncSubsystem {
+    /// This function will be called when the subsystem is executed by [`crate::Toplevel::start()`] or [`crate::SubsystemHandle::start()`].
+    /// It gets provided with a [`SubsystemHandle`] object which can be used to interact with this crate.
+    ///
+    /// # Returns
+    ///
+    /// When the method returns `Ok(())` it is assumed that the subsystem was stopped intentionally and no further
+    /// actions are performed.
+    ///
+    /// When the method returns an `Err`, it is assumed that the subsystem failed and a system shutdown gets initiated.
     async fn run(&mut self, inst: SubsystemHandle) -> Result<()>;
 }

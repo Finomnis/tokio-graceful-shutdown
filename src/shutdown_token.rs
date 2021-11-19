@@ -1,6 +1,7 @@
 use tokio_util::sync::CancellationToken;
 
 #[derive(Clone)]
+#[doc(hidden)]
 pub struct ShutdownToken {
     token: CancellationToken,
 }
