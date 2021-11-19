@@ -13,7 +13,7 @@ impl AsyncSubsystem for Subsystem1 {
         log::info!("Subsystem1 started.");
         subsys.on_shutdown_requested().await;
         log::info!("Shutting down Subsystem1 ...");
-        sleep(Duration::from_millis(500)).await;
+        sleep(Duration::from_millis(1000)).await;
         log::info!("Subsystem1 stopped.");
         Ok(())
     }
@@ -29,6 +29,6 @@ async fn main() -> Result<()> {
         .start("Subsys1", Subsystem1 {})
         .await
         .catch_signals()
-        .wait_for_shutdown(Duration::from_millis(1000))
+        .wait_for_shutdown(Duration::from_millis(500))
         .await
 }

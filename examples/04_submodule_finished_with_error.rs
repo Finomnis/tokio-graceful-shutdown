@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use env_logger::{Builder, Env};
 use log;
@@ -9,13 +9,13 @@ struct Subsystem1 {}
 
 #[async_trait]
 impl AsyncSubsystem for Subsystem1 {
-    async fn run(&mut self, subsys: SubsystemHandle) -> Result<()> {
+    async fn run(&mut self, _subsys: SubsystemHandle) -> Result<()> {
         log::info!("Subsystem1 started.");
-        subsys.on_shutdown_requested().await;
-        log::info!("Shutting down Subsystem1 ...");
         sleep(Duration::from_millis(500)).await;
         log::info!("Subsystem1 stopped.");
-        Ok(())
+
+        // Task ends with an error. This should cause the main program to shutdown.
+        Err(anyhow!("Subsystem1 threw an error."))
     }
 }
 
