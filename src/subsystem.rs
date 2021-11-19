@@ -107,7 +107,7 @@ impl SubsystemHandle {
 
         // Spawn new task
         let join_handle = tokio::spawn(run_subsystem(
-            self.data.name.clone() + name,
+            self.data.name.clone() + "/" + name,
             subsystem,
             subsystem_handle,
         ));
