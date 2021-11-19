@@ -3,8 +3,8 @@ use std::sync::Arc;
 use anyhow::Result;
 use async_recursion::async_recursion;
 use async_trait::async_trait;
-use futures::future::try_join;
-use futures::future::try_join_all;
+use futures::future::join;
+use futures::future::join_all;
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 
@@ -24,7 +24,7 @@ pub struct SubsystemHandle {
 
 struct SubsystemDescriptors {
     data: Vec<Arc<SubsystemData>>,
-    joinhandles: Vec<JoinHandle<()>>,
+    joinhandles: Vec<JoinHandle<Result<(), ()>>>,
 }
 
 impl SubsystemData {
@@ -39,7 +39,11 @@ impl SubsystemData {
         }
     }
 
-    pub async fn add_subsystem(&self, subsystem: Arc<SubsystemData>, joinhandle: JoinHandle<()>) {
+    pub async fn add_subsystem(
+        &self,
+        subsystem: Arc<SubsystemData>,
+        joinhandle: JoinHandle<Result<(), ()>>,
+    ) {
         match self.subsystems.write().await.as_mut() {
             Some(subsystems) => {
                 subsystems.joinhandles.push(joinhandle);
@@ -59,27 +63,57 @@ impl SubsystemData {
             "Unknown error, attempted to wait for subprocesses twice! Should never happen."
         ))?;
 
-        let joinhandles_finished = try_join_all(subsystems.joinhandles.iter_mut());
-        let subsystems_finished = try_join_all(
+        let joinhandles_finished = join_all(subsystems.joinhandles.iter_mut());
+        let subsystems_finished = join_all(
             subsystems
                 .data
                 .iter_mut()
                 .map(|data| data.perform_shutdown()),
         );
 
-        match try_join(
+        match join(
             async {
-                match joinhandles_finished.await {
+                let joinhandles_finished = joinhandles_finished.await;
+
+                let join_results = joinhandles_finished.iter().map(|e| match e {
+                    Ok(Ok(())) => Ok("OK".to_string()),
+                    Ok(Err(())) => Err("Failed".to_string()),
+                    Err(e) => Err(format!("Internal error: {}", e)),
+                });
+
+                let mut result: Result<(), ()> = Ok(());
+                for join_result in join_results {
+                    let msg = match &join_result {
+                        Ok(msg) => msg,
+                        Err(msg) => msg,
+                    };
+                    log::debug!("Shutdown 'unknown': {}", msg);
+
+                    let outcome = match join_result {
+                        Ok(_) => Ok(()),
+                        Err(_) => Err(()),
+                    };
+                    result = result.and(outcome);
+                }
+
+                result
+            },
+            async {
+                match subsystems_finished
+                    .await
+                    .into_iter()
+                    .collect::<Result<Vec<_>>>()
+                {
                     Ok(_) => Ok(()),
-                    Err(e) => Err(anyhow::anyhow!(e)),
+                    Err(e) => Err(e),
                 }
             },
-            subsystems_finished,
         )
         .await
         {
-            Ok(_) => Ok(()),
-            Err(e) => Err(e),
+            (Ok(()), Ok(())) => Ok(()),
+            (Err(()), Ok(())) => Err(anyhow::anyhow!("Shutdown failed.")),
+            (_, Err(e)) => Err(e),
         }
     }
 }
