@@ -13,15 +13,6 @@ pub struct Toplevel {
     subsys_handle: SubsystemHandle,
 }
 
-// struct ToplevelSubsystem {}
-
-// #[async_trait(?Send)]
-// impl AsyncSubsystem for DummySubsystem {
-//     async fn run(&mut self, _: &mut SubsystemHandle) -> Result<()> {
-//         std::unreachable!("Top level subsystem should never be executed. It's just a dummy!");
-//     }
-// }
-
 impl Toplevel {
     pub fn new() -> Self {
         let shutdown_token = ShutdownToken::new();

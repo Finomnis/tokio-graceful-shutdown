@@ -1,6 +1,7 @@
-- Update examples
++ Update examples
 - Propagate submodule errors to program return code
 - Get rid of await() in .start
 - Change return value of .start, etc to mutable references
 - Documentation
 - Tests
+- Don't die on first shutdown failure, instead perform proper shutdown and report result per subsystem
