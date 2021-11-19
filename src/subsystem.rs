@@ -8,6 +8,8 @@ use futures::future::join_all;
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 
+use crate::exit_state::ShutdownResults;
+use crate::exit_state::SubprocessExitState;
 use crate::runner::run_subsystem;
 use crate::shutdown_token::ShutdownToken;
 
@@ -57,11 +59,16 @@ impl SubsystemData {
     }
 
     #[async_recursion]
-    pub async fn perform_shutdown(&self) -> Result<()> {
+    pub async fn perform_shutdown(&self) -> ShutdownResults {
         let mut subsystems_guard = self.subsystems.write().await;
-        let subsystems = subsystems_guard.as_mut().take().ok_or(anyhow::anyhow!(
-            "Unknown error, attempted to wait for subprocesses twice! Should never happen."
-        ))?;
+        let subsystems = match subsystems_guard.as_mut().take() {
+            Some(a) => a,
+            None => {
+                panic!(
+                    "Unknown error, attempted to wait for subprocesses twice! Should never happen."
+                );
+            }
+        };
 
         let joinhandles_finished = join_all(subsystems.joinhandles.iter_mut());
         let subsystems_finished = join_all(
@@ -75,46 +82,46 @@ impl SubsystemData {
             async {
                 let joinhandles_finished = joinhandles_finished.await;
 
-                let join_results = joinhandles_finished.iter().map(|e| match e {
-                    Ok(Ok(())) => Ok("OK".to_string()),
-                    Ok(Err(())) => Err("Failed".to_string()),
-                    Err(e) => Err(format!("Internal error: {}", e)),
-                });
+                let join_results = joinhandles_finished
+                    .iter()
+                    .map(|e| match e {
+                        Ok(Ok(())) => Ok("OK".to_string()),
+                        Ok(Err(())) => Err("Failed".to_string()),
+                        Err(e) => Err(format!("Internal error: {}", e)),
+                    })
+                    .collect::<Vec<_>>();
 
-                let mut result: Result<(), ()> = Ok(());
-                for join_result in join_results {
-                    let msg = match &join_result {
-                        Ok(msg) => msg,
-                        Err(msg) => msg,
-                    };
-                    log::debug!("Shutdown 'unknown': {}", msg);
+                let exit_states = join_results
+                    .iter()
+                    .map(|e| {
+                        let msg = match e {
+                            Ok(msg) => msg,
+                            Err(msg) => msg,
+                        };
+                        SubprocessExitState::new("unknown", &msg)
+                    })
+                    .collect::<Vec<_>>();
 
-                    let outcome = match join_result {
-                        Ok(_) => Ok(()),
-                        Err(_) => Err(()),
-                    };
-                    result = result.and(outcome);
+                match join_results.into_iter().collect::<Result<Vec<_>, _>>() {
+                    Ok(_) => Ok(exit_states),
+                    Err(_) => Err(exit_states),
                 }
-
-                result
             },
             async {
-                match subsystems_finished
+                subsystems_finished
                     .await
                     .into_iter()
-                    .collect::<Result<Vec<_>>>()
-                {
-                    Ok(_) => Ok(()),
-                    Err(e) => Err(e),
-                }
+                    .collect::<Result<Vec<_>, _>>()
             },
         )
         .await
         {
-            (Ok(()), Ok(())) => Ok(()),
-            (Err(()), Ok(())) => Err(anyhow::anyhow!("Shutdown failed.")),
-            (_, Err(e)) => Err(e),
-        }
+            (Ok(e1), Ok(e2)) => Ok(e1),
+            (Err(e1), Ok(e2)) => Err(e1),
+            (Ok(e1), Err(e2)) => Ok(e1),
+            (Err(e1), Err(e2)) => Ok(e1),
+        };
+        Ok(vec![])
     }
 }
 
