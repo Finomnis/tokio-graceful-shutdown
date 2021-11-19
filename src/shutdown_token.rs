@@ -23,6 +23,10 @@ impl ShutdownToken {
     pub async fn wait_for_shutdown(&self) {
         self.token.cancelled().await
     }
+
+    pub fn is_shutting_down(&self) -> bool {
+        self.token.is_cancelled()
+    }
 }
 
 #[cfg(test)]
@@ -36,19 +40,26 @@ mod tests {
     async fn triggers_correctly() {
         let finished = AtomicBool::new(false);
 
-        let token = create_shutdown_token();
+        let token1 = create_shutdown_token();
+        let token2 = token1.clone();
 
         let stoppee = async {
-            token.wait_for_shutdown().await;
+            token2.wait_for_shutdown().await;
             finished.store(true, Ordering::SeqCst);
         };
 
         let stopper = async {
             sleep(Duration::from_millis(100)).await;
             assert!(!finished.load(Ordering::SeqCst));
-            token.shutdown();
+            assert!(!token1.is_shutting_down());
+            assert!(!token2.is_shutting_down());
+
+            token1.shutdown();
             sleep(Duration::from_millis(100)).await;
+
             assert!(finished.load(Ordering::SeqCst));
+            assert!(token1.is_shutting_down());
+            assert!(token2.is_shutting_down());
         };
 
         tokio::join!(stopper, stoppee);
