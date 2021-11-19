@@ -13,8 +13,10 @@ impl ShutdownToken {
     }
 
     pub fn shutdown(&self) {
-        log::info!("Initiating shutdown ...");
-        self.token.cancel()
+        if !self.token.is_cancelled() {
+            log::info!("Initiating shutdown ...");
+            self.token.cancel()
+        }
     }
 
     pub async fn wait_for_shutdown(&self) {
