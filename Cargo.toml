@@ -20,11 +20,8 @@ exclude = [
 # Result propagation
 anyhow = "1.0"
 
-# For holding the shutdown token
-lazy_static = "1.4"
-
 # For async utilities
-tokio = { version = "1", default-features = false, features = ["signal", "rt", "macros"] }
+tokio = { version = "1", default-features = false, features = ["signal", "rt", "macros", "time"] }
 tokio-util = { version = "0.6", default-features = false }
 futures = "0.3"
 async-recursion = "0.3"
