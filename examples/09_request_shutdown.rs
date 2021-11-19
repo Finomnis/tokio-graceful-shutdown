@@ -21,7 +21,7 @@ impl CountdownSubsystem {
 
 #[async_trait]
 impl AsyncSubsystem for CountdownSubsystem {
-    async fn run(&mut self, subsys: SubsystemHandle) -> Result<()> {
+    async fn run(mut self, subsys: SubsystemHandle) -> Result<()> {
         tokio::select! {
             _ = subsys.on_shutdown_requested() => {
                 log::info!("Countdown cancelled.");

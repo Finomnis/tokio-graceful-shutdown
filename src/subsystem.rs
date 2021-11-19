@@ -352,5 +352,5 @@ pub trait AsyncSubsystem {
     /// actions are performed.
     ///
     /// When the method returns an `Err`, it is assumed that the subsystem failed and a system shutdown gets initiated.
-    async fn run(&mut self, inst: SubsystemHandle) -> Result<()>;
+    async fn run(mut self, inst: SubsystemHandle) -> Result<()>;
 }

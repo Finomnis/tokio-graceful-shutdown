@@ -9,7 +9,7 @@ struct Subsystem1 {}
 
 #[async_trait]
 impl AsyncSubsystem for Subsystem1 {
-    async fn run(&mut self, subsys: SubsystemHandle) -> Result<()> {
+    async fn run(mut self, subsys: SubsystemHandle) -> Result<()> {
         log::info!("Subsystem1 started.");
         subsys.on_shutdown_requested().await;
         log::info!("Shutting down Subsystem1 ...");
