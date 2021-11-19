@@ -17,7 +17,7 @@ Specifically, it provides:
 
 ## Usage Example
 
-```Rust
+```rust
 struct Subsystem1 {}
 
 #[async_trait]
@@ -37,7 +37,7 @@ This shows a simple asynchronous subsystem that simply starts, waits for the sys
 
 This subsystem can now be executed like this:
 
-```Rust
+```rust
 #[tokio::main]
 async fn main() -> Result<()> {
     Toplevel::new()

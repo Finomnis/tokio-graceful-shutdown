@@ -14,9 +14,9 @@
 //! # Example
 //!
 //! This example shows an minimal example of how to launch an asynchronous subsystem with the help of this crate.
+//! It contains a countdown subsystem that will end the program after 10 seconds.
 //!
-//! The program will react to Ctrl-C/SIGINT/SIGTERM and will shut down gracefully and reliably.
-//! Further, the nested subsystem `StopSubsystem` will stop the program automatically after 3 seconds.
+//! In the meantime, program will react to Ctrl-C/SIGINT/SIGTERM and will cancel the countdown task accordingly.
 //!
 //! ```
 //! use anyhow::Result;
@@ -26,36 +26,32 @@
 //! use tokio::time::{sleep, Duration};
 //! use tokio_graceful_shutdown::{AsyncSubsystem, SubsystemHandle, Toplevel};
 //!
-//! struct MySubsystem {}
-//! struct StopSubsystem {}
+//! struct CountdownSubsystem {}
+//! impl CountdownSubsystem {
+//!     fn new() -> Self {
+//!         Self {}
+//!     }
 //!
-//! #[async_trait]
-//! impl AsyncSubsystem for StopSubsystem {
-//!     async fn run(&mut self, subsys: SubsystemHandle) -> Result<()> {
-//!         tokio::select! {
-//!             _ = sleep(Duration::from_millis(3000)) => {
-//!                 log::info!("Stopping system ...");
-//!                 subsys.request_shutdown();
-//!             },
-//!             _ = subsys.on_shutdown_requested() => {
-//!                 log::info!("System already shutting down.");
-//!             }
-//!         };
-//!
-//!         log::info!("StopSubsystem ended.");
-//!         Ok(())
+//!     async fn countdown(&self) {
+//!         for i in (1..10).rev() {
+//!             log::info!("Shutting down in: {}", i);
+//!             sleep(Duration::from_millis(1000)).await;
+//!         }
 //!     }
 //! }
 //!
 //! #[async_trait]
-//! impl AsyncSubsystem for MySubsystem {
-//!     async fn run(&mut self, mut subsys: SubsystemHandle) -> Result<()> {
-//!         subsys.start("StopSubsystem", StopSubsystem {});
-//!         log::info!("MySubsystem started.");
-//!         subsys.on_shutdown_requested().await;
-//!         log::info!("Shutting down MySubsystem ...");
-//!         sleep(Duration::from_millis(500)).await;
-//!         log::info!("MySubsystem stopped.");
+//! impl AsyncSubsystem for CountdownSubsystem {
+//!     async fn run(&mut self, subsys: SubsystemHandle) -> Result<()> {
+//!         tokio::select! {
+//!             _ = subsys.on_shutdown_requested() => {
+//!                 log::info!("Countdown cancelled.");
+//!             },
+//!             _ = self.countdown() => {
+//!                 subsys.request_shutdown();
+//!             }
+//!         };
+//!
 //!         Ok(())
 //!     }
 //! }
@@ -67,7 +63,7 @@
 //!
 //!     // Create toplevel
 //!     Toplevel::new()
-//!         .start("MySubsystem", MySubsystem {})
+//!         .start("Countdown", CountdownSubsystem::new())
 //!         .catch_signals()
 //!         .wait_for_shutdown(Duration::from_millis(1000))
 //!         .await
