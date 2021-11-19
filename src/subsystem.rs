@@ -8,6 +8,7 @@ use futures::future::join_all;
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 
+use crate::exit_state::join_shutdown_results;
 use crate::exit_state::ShutdownResults;
 use crate::exit_state::SubprocessExitState;
 use crate::runner::run_subsystem;
@@ -78,7 +79,7 @@ impl SubsystemData {
                 .map(|data| data.perform_shutdown()),
         );
 
-        match join(
+        let (results_direct, results_recursive) = join(
             async {
                 let joinhandles_finished = joinhandles_finished.await;
 
@@ -107,21 +108,11 @@ impl SubsystemData {
                     Err(_) => Err(exit_states),
                 }
             },
-            async {
-                subsystems_finished
-                    .await
-                    .into_iter()
-                    .collect::<Result<Vec<_>, _>>()
-            },
+            subsystems_finished,
         )
-        .await
-        {
-            (Ok(e1), Ok(e2)) => Ok(e1),
-            (Err(e1), Ok(e2)) => Err(e1),
-            (Ok(e1), Err(e2)) => Ok(e1),
-            (Err(e1), Err(e2)) => Ok(e1),
-        };
-        Ok(vec![])
+        .await;
+
+        join_shutdown_results(results_direct, results_recursive)
     }
 }
 

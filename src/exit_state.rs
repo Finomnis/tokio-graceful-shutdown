@@ -14,3 +14,10 @@ impl SubprocessExitState {
 }
 
 pub type ShutdownResults = Result<Vec<SubprocessExitState>, Vec<SubprocessExitState>>;
+
+pub fn join_shutdown_results(
+    left: ShutdownResults,
+    right: Vec<ShutdownResults>,
+) -> ShutdownResults {
+    unimplemented!()
+}
