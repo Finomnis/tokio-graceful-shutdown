@@ -253,6 +253,35 @@ impl SubsystemHandle {
     }
 
     /// Triggers the shutdown mode of the program.
+    ///
+    /// If a submodule itself shall have the capability to initiate a program shutdown,
+    /// this is the method to use.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use anyhow::Result;
+    /// use async_trait::async_trait;
+    /// use tokio::time::{sleep, Duration};
+    /// use tokio_graceful_shutdown::{AsyncSubsystem, SubsystemHandle};
+    ///
+    /// struct StopSubsystem {}
+    ///
+    /// #[async_trait]
+    /// impl AsyncSubsystem for StopSubsystem {
+    ///     async fn run(&mut self, subsys: SubsystemHandle) -> Result<()> {
+    ///         // Wait for one second and then stop the program.
+    ///         sleep(Duration::from_millis(1000));
+    ///
+    ///         // An explicit shutdown request is necessary, because
+    ///         // simply leaving the run() method does NOT initiate a system
+    ///         // shutdown if the return value is Ok(()).
+    ///         subsys.request_shutdown();
+    ///
+    ///         Ok(())
+    ///     }
+    /// }
+    /// ```
     pub fn request_shutdown(&self) {
         self.shutdown_token.shutdown()
     }
