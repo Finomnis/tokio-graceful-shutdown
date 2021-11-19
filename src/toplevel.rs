@@ -36,18 +36,20 @@ impl Toplevel {
         }
     }
 
-    pub fn start<S: AsyncSubsystem + 'static + Send>(
-        &mut self,
+    pub async fn start<S: AsyncSubsystem + 'static + Send>(
+        self,
         name: &'static str,
         subsystem: S,
-    ) -> &mut Self {
+    ) -> Self {
         //self.subsys_data.start(name, subsystem);
-        SubsystemHandle::new(self.subsys_data.clone()).start(name, subsystem);
+        SubsystemHandle::new(self.subsys_data.clone())
+            .start(name, subsystem)
+            .await;
 
         self
     }
 
-    pub fn catch_signals(&mut self) -> &mut Self {
+    pub fn catch_signals(self) -> Self {
         // let shutdown_token = self.subsys_data.shutdown_token();
 
         // tokio::spawn(async move {
@@ -58,7 +60,7 @@ impl Toplevel {
         self
     }
 
-    pub async fn wait_for_shutdown(&mut self, shutdown_timeout: Duration) -> Result<()> {
+    pub async fn wait_for_shutdown(self, shutdown_timeout: Duration) -> Result<()> {
         // self.subsys_data.on_shutdown_request().await;
 
         Ok(())

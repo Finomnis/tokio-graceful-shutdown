@@ -41,6 +41,7 @@ async fn main() -> Result<()> {
     // Create toplevel
     Toplevel::new()
         .start("dummy_subsystem", Subsystem1 {})
+        .await
         .catch_signals()
         .wait_for_shutdown(Duration::from_millis(1000))
         .await
