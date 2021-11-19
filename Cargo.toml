@@ -23,9 +23,10 @@ anyhow = "1.0"
 # For holding the shutdown token
 lazy_static = "1.4"
 
-# For providing the shutdown token
+# For async utilities
 tokio = { version = "1", default-features = false, features = ["signal", "rt", "macros"] }
 tokio-util = { version = "0.6", default-features = false }
+futures = "0.3"
 
 # For logging
 log = "0.4"
