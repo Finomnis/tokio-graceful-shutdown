@@ -1,7 +1,7 @@
 [package]
 name = "tokio-graceful-shutdown"
 authors = ["Finomnis <finomnis@gmail.com>"]
-version = "0.1.3"
+version = "0.2.0"
 edition = "2021"
 license = "Apache-2.0"
 readme = "README.md"
@@ -17,19 +17,20 @@ exclude = [
 ]
 
 [dependencies]
-# Result propagation. TODO remove?
+# Result propagation
 anyhow = "1.0"
 
-# For holding the shutdown token
-lazy_static = "1.4"
-
-# For providing the shutdown token
-tokio = { version = "1", default-features = false, features = ["signal", "rt", "macros"] }
+# For async utilities
+tokio = { version = "1", default-features = false, features = ["signal", "rt", "macros", "time"] }
 tokio-util = { version = "0.6", default-features = false }
+futures = "0.3"
+async-recursion = "0.3"
 
 # For logging
 log = "0.4"
 
+# For async traits
+async-trait = "0.1"
 
 [dev-dependencies]
 # Logging

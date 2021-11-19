@@ -1,19 +1,22 @@
 use anyhow::Result;
+use async_trait::async_trait;
 use env_logger::{Builder, Env};
 use log;
 use tokio::time::{sleep, Duration};
-use tokio_graceful_shutdown::{
-    register_signal_handlers, start_submodule, wait_for_submodule_shutdown,
-    wait_until_shutdown_started,
-};
+use tokio_graceful_shutdown::{AsyncSubsystem, SubsystemHandle, Toplevel};
 
-async fn dummy_task() -> Result<()> {
-    log::info!("dummy_task started.");
-    sleep(Duration::from_millis(500)).await;
-    log::info!("dummy_task stopped.");
+struct Subsystem1 {}
 
-    // Task ends without an error. This should not cause the main program to shutdown.
-    Ok(())
+#[async_trait]
+impl AsyncSubsystem for Subsystem1 {
+    async fn run(&mut self, _subsys: SubsystemHandle) -> Result<()> {
+        log::info!("Subsystem1 started.");
+        sleep(Duration::from_millis(500)).await;
+        log::info!("Subsystem1 stopped.");
+
+        // Task ends without an error. This should not cause the main program to shutdown.
+        Ok(())
+    }
 }
 
 #[tokio::main]
@@ -21,16 +24,10 @@ async fn main() -> Result<()> {
     // Init logging
     Builder::from_env(Env::default().default_filter_or("debug")).init();
 
-    // Register Ctrl+C and SIGTERM handlers
-    register_signal_handlers();
-
-    // Actual program
-    log::info!("Hello, world!");
-    let dummy_task_handle = start_submodule(dummy_task());
-
-    // Wait for program shutdown initiation
-    wait_until_shutdown_started().await;
-
-    // Wait until all submodules have shut down
-    wait_for_submodule_shutdown!(Duration::from_millis(1000), dummy_task_handle)
+    // Create toplevel
+    Toplevel::new()
+        .start("Subsys1", Subsystem1 {})
+        .catch_signals()
+        .wait_for_shutdown(Duration::from_millis(1000))
+        .await
 }
