@@ -107,7 +107,7 @@ impl SubsystemData {
                             Ok(msg) => msg,
                             Err(msg) => msg,
                         };
-                        SubprocessExitState::new(name, &msg)
+                        SubprocessExitState::new(name, msg)
                     })
                     .collect::<Vec<_>>();
 
@@ -177,10 +177,8 @@ impl SubsystemHandle {
         name: &'static str,
         subsystem: S,
     ) -> &mut Self {
-        let shutdown_token = self.shutdown_token.clone();
-
         let name = {
-            if self.data.name.len() > 0 {
+            if !self.data.name.is_empty() {
                 self.data.name.clone() + "/" + name
             } else {
                 name.to_string()
@@ -188,7 +186,7 @@ impl SubsystemHandle {
         };
 
         // Create subsystem data structure
-        let new_subsystem = Arc::new(SubsystemData::new(&name, shutdown_token.clone()));
+        let new_subsystem = Arc::new(SubsystemData::new(&name, self.shutdown_token.clone()));
 
         // Create handle
         let subsystem_handle = SubsystemHandle::new(new_subsystem.clone());

@@ -5,7 +5,7 @@ use std::{panic, sync::Arc};
 use crate::exit_state::prettify_exit_states;
 use crate::signal_handling::wait_for_signal;
 use crate::SubsystemHandle;
-use crate::{shutdown_token::ShutdownToken, AsyncSubsystem};
+use crate::{shutdown_token::create_shutdown_token, AsyncSubsystem};
 
 use super::subsystem::SubsystemData;
 
@@ -14,9 +14,15 @@ pub struct Toplevel {
     subsys_handle: SubsystemHandle,
 }
 
+impl Default for Toplevel {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Toplevel {
     pub fn new() -> Self {
-        let shutdown_token = ShutdownToken::new();
+        let shutdown_token = create_shutdown_token();
 
         // Register panic handler to trigger shutdown token
         let panic_shutdown_token = shutdown_token.clone();

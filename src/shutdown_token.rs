@@ -5,13 +5,13 @@ pub struct ShutdownToken {
     token: CancellationToken,
 }
 
-impl ShutdownToken {
-    pub fn new() -> Self {
-        Self {
-            token: CancellationToken::new(),
-        }
+pub fn create_shutdown_token() -> ShutdownToken {
+    ShutdownToken {
+        token: CancellationToken::new(),
     }
+}
 
+impl ShutdownToken {
     pub fn shutdown(&self) {
         if !self.token.is_cancelled() {
             log::info!("Initiating shutdown ...");
