@@ -24,3 +24,33 @@ impl ShutdownToken {
         self.token.cancelled().await
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use tokio::time::{sleep, Duration};
+
+    #[tokio::test]
+    async fn triggers_correctly() {
+        let finished = AtomicBool::new(false);
+
+        let token = create_shutdown_token();
+
+        let stoppee = async {
+            token.wait_for_shutdown().await;
+            finished.store(true, Ordering::SeqCst);
+        };
+
+        let stopper = async {
+            sleep(Duration::from_millis(100)).await;
+            assert!(!finished.load(Ordering::SeqCst));
+            token.shutdown();
+            sleep(Duration::from_millis(100)).await;
+            assert!(finished.load(Ordering::SeqCst));
+        };
+
+        tokio::join!(stopper, stoppee);
+    }
+}
