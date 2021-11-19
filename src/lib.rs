@@ -14,9 +14,9 @@
 //! # Example
 //!
 //! This example shows an minimal example of how to launch an asynchronous subsystem with the help of this crate.
-//! It contains a countdown subsystem that will end the program after 10 seconds.
 //!
-//! In the meantime, program will react to Ctrl-C/SIGINT/SIGTERM and will cancel the countdown task accordingly.
+//! It contains a countdown subsystem that will end the program after 10 seconds.
+//! During the countdown, the program will react to Ctrl-C/SIGINT/SIGTERM and will cancel the countdown task accordingly.
 //!
 //! ```
 //! use anyhow::Result;
