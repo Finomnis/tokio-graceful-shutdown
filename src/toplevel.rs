@@ -58,6 +58,7 @@ impl Toplevel {
     /// shutdown in case a panic happens.
     /// This prevents a program hang that might happen when multithreaded asynchronous
     /// programs experience a panic on one thread.
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         let shutdown_token = create_shutdown_token();
 
