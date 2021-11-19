@@ -5,7 +5,7 @@ use async_recursion::async_recursion;
 use async_trait::async_trait;
 use futures::future::join;
 use futures::future::join_all;
-use tokio::sync::RwLock;
+use std::sync::Mutex;
 use tokio::task::JoinHandle;
 
 use crate::exit_state::join_shutdown_results;
@@ -16,7 +16,7 @@ use crate::shutdown_token::ShutdownToken;
 
 pub struct SubsystemData {
     name: String,
-    subsystems: RwLock<Option<Vec<SubsystemDescriptor>>>,
+    subsystems: Mutex<Option<Vec<SubsystemDescriptor>>>,
     shutdown_token: ShutdownToken,
 }
 
@@ -34,17 +34,17 @@ impl SubsystemData {
     pub fn new(name: &str, shutdown_token: ShutdownToken) -> Self {
         Self {
             name: name.to_string(),
-            subsystems: RwLock::new(Some(Vec::new())),
+            subsystems: Mutex::new(Some(Vec::new())),
             shutdown_token,
         }
     }
 
-    pub async fn add_subsystem(
+    pub fn add_subsystem(
         &self,
         subsystem: Arc<SubsystemData>,
         joinhandle: JoinHandle<Result<(), ()>>,
     ) {
-        match self.subsystems.write().await.as_mut() {
+        match self.subsystems.lock().unwrap().as_mut() {
             Some(subsystems) => {
                 subsystems.push(SubsystemDescriptor {
                     joinhandle,
@@ -60,8 +60,8 @@ impl SubsystemData {
 
     #[async_recursion]
     pub async fn perform_shutdown(&self) -> ShutdownResults {
-        let mut subsystems_guard = self.subsystems.write().await;
-        let subsystems = match subsystems_guard.as_mut().take() {
+        let subsystems_taken = { self.subsystems.lock().unwrap().take() };
+        let subsystems = match subsystems_taken {
             Some(a) => a,
             None => {
                 panic!(
@@ -132,7 +132,7 @@ impl SubsystemHandle {
         }
     }
 
-    pub async fn start<S: AsyncSubsystem + 'static + Send>(
+    pub fn start<S: AsyncSubsystem + 'static + Send>(
         &mut self,
         name: &'static str,
         subsystem: S,
@@ -151,7 +151,7 @@ impl SubsystemHandle {
         let join_handle = tokio::spawn(run_subsystem(name, subsystem, subsystem_handle));
 
         // Store subsystem data
-        self.data.add_subsystem(new_subsystem, join_handle).await;
+        self.data.add_subsystem(new_subsystem, join_handle);
 
         self
     }

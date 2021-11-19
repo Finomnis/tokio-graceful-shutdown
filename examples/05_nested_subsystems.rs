@@ -10,7 +10,7 @@ struct Subsystem1 {}
 #[async_trait]
 impl AsyncSubsystem for Subsystem1 {
     async fn run(&mut self, mut subsys: SubsystemHandle) -> Result<()> {
-        subsys.start("Subsys2", Subsystem2 {}).await;
+        subsys.start("Subsys2", Subsystem2 {});
         log::info!("Subsystem1 started.");
         subsys.on_shutdown_requested().await;
         log::info!("Shutting down Subsystem1 ...");
@@ -41,7 +41,6 @@ async fn main() -> Result<()> {
     // Create toplevel
     Toplevel::new()
         .start("Subsys1", Subsystem1 {})
-        .await
         .catch_signals()
         .wait_for_shutdown(Duration::from_millis(1000))
         .await

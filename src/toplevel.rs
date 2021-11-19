@@ -33,15 +33,13 @@ impl Toplevel {
         }
     }
 
-    pub async fn start<S: AsyncSubsystem + 'static + Send>(
+    pub fn start<S: AsyncSubsystem + 'static + Send>(
         self,
         name: &'static str,
         subsystem: S,
     ) -> Self {
         //self.subsys_data.start(name, subsystem);
-        SubsystemHandle::new(self.subsys_data.clone())
-            .start(name, subsystem)
-            .await;
+        SubsystemHandle::new(self.subsys_data.clone()).start(name, subsystem);
 
         self
     }
