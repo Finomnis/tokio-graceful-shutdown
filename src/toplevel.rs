@@ -27,7 +27,7 @@ use super::subsystem::SubsystemData;
 ///
 /// #[async_trait]
 /// impl AsyncSubsystem for MySubsystem {
-///     async fn run(&mut self, subsys: SubsystemHandle) -> Result<()> {
+///     async fn run(mut self, subsys: SubsystemHandle) -> Result<()> {
 ///         subsys.request_shutdown();
 ///         Ok(())
 ///     }

@@ -155,7 +155,7 @@ impl SubsystemHandle {
     ///
     /// #[async_trait]
     /// impl AsyncSubsystem for NestedSubsystem {
-    ///     async fn run(&mut self, subsys: SubsystemHandle) -> Result<()> {
+    ///     async fn run(mut self, subsys: SubsystemHandle) -> Result<()> {
     ///         subsys.on_shutdown_requested().await;
     ///         Ok(())
     ///     }
@@ -163,7 +163,7 @@ impl SubsystemHandle {
     ///
     /// #[async_trait]
     /// impl AsyncSubsystem for MySubsystem {
-    ///     async fn run(&mut self, mut subsys: SubsystemHandle) -> Result<()> {
+    ///     async fn run(mut self, mut subsys: SubsystemHandle) -> Result<()> {
     ///         // start a nested subsystem
     ///         subsys.start("Nested", NestedSubsystem{});
     ///
@@ -231,7 +231,7 @@ impl SubsystemHandle {
     ///
     /// #[async_trait]
     /// impl AsyncSubsystem for CountdownSubsystem {
-    ///     async fn run(&mut self, subsys: SubsystemHandle) -> Result<()> {
+    ///     async fn run(mut self, subsys: SubsystemHandle) -> Result<()> {
     ///         log::info!("Starting countdown ...");
     ///
     ///         // This cancels the countdown as soon as shutdown
@@ -270,7 +270,7 @@ impl SubsystemHandle {
     ///
     /// #[async_trait]
     /// impl AsyncSubsystem for StopSubsystem {
-    ///     async fn run(&mut self, subsys: SubsystemHandle) -> Result<()> {
+    ///     async fn run(mut self, subsys: SubsystemHandle) -> Result<()> {
     ///         // Wait for one second and then stop the program.
     ///         sleep(Duration::from_millis(1000));
     ///
@@ -323,7 +323,7 @@ impl SubsystemHandle {
 ///
 /// #[async_trait]
 /// impl AsyncSubsystem for CountdownSubsystem {
-///     async fn run(&mut self, subsys: SubsystemHandle) -> Result<()> {
+///     async fn run(mut self, subsys: SubsystemHandle) -> Result<()> {
 ///         log::info!("Starting countdown ...");
 ///
 ///         // This cancels the countdown as soon as shutdown

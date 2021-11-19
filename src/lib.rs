@@ -42,7 +42,7 @@
 //!
 //! #[async_trait]
 //! impl AsyncSubsystem for CountdownSubsystem {
-//!     async fn run(&mut self, subsys: SubsystemHandle) -> Result<()> {
+//!     async fn run(mut self, subsys: SubsystemHandle) -> Result<()> {
 //!         tokio::select! {
 //!             _ = subsys.on_shutdown_requested() => {
 //!                 log::info!("Countdown cancelled.");
@@ -81,12 +81,3 @@ mod toplevel;
 pub use shutdown_token::ShutdownToken;
 pub use subsystem::{AsyncSubsystem, SubsystemHandle};
 pub use toplevel::Toplevel;
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
-}
