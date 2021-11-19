@@ -5,8 +5,8 @@ Toplevel -> SubsystemData -> SubsystemData
 - SubsystemData:
     - name
     - subsystems
+    - subsystem_joinhandles
     - shutdown_token
-    - joinhandle
 
     - join_subsystems()
 

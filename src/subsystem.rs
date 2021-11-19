@@ -1,77 +1,98 @@
-use std::rc::Rc;
-use std::{collections::HashMap, pin::Pin};
+use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use tokio::sync::oneshot;
+use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 
+use crate::runner::run_subsystem;
 use crate::shutdown_token::ShutdownToken;
 
 pub struct SubsystemData {
-    name: &'static str,
-    subsystems: Vec<Rc<SubsystemData>>,
+    name: String,
+    subsystems: RwLock<Vec<Arc<SubsystemData>>>,
+    subsystem_joinhandles: RwLock<Vec<Arc<JoinHandle<()>>>>,
     shutdown_token: ShutdownToken,
-    join_handle: JoinHandle<()>,
 }
 
 pub struct SubsystemHandle {
     shutdown_token: ShutdownToken,
-    data: Rc<SubsystemData>,
+    data: Arc<SubsystemData>,
 }
 
 impl SubsystemData {
-    pub fn new(
-        name: &'static str,
-        shutdown_token: ShutdownToken,
-        join_handle: JoinHandle<()>,
-    ) -> Self {
+    pub fn new(name: &'static str, shutdown_token: ShutdownToken) -> Self {
         Self {
-            name,
-            subsystems: Vec::new(),
+            name: name.to_string(),
+            subsystems: RwLock::new(Vec::new()),
+            subsystem_joinhandles: RwLock::new(Vec::new()),
             shutdown_token,
-            join_handle,
         }
+    }
+
+    pub async fn add_subsystem(
+        &self,
+        subsystem: Arc<SubsystemData>,
+        joinhandle: Arc<JoinHandle<()>>,
+    ) {
+        self.subsystem_joinhandles.write().await.push(joinhandle);
+        self.subsystems.write().await.push(subsystem);
     }
 }
 
 impl SubsystemHandle {
-    pub fn new(data: Rc<SubsystemData>) -> Self {
+    pub fn new(data: Arc<SubsystemData>) -> Self {
         Self {
             shutdown_token: data.shutdown_token.clone(),
             data,
         }
     }
 
-    pub fn start<S: AsyncSubsystem + 'static + Send>(
+    pub async fn start<S: AsyncSubsystem + 'static + Send>(
         &mut self,
         name: &'static str,
         subsystem: S,
     ) -> &mut Self {
-        let boxed_subsys = Box::new(subsystem);
         let shutdown_token = self.shutdown_token.clone();
 
-        // Spawn new task
-        let (tx, rx) = oneshot::channel();
-        let join_handle = tokio::spawn(async move {
-            // Retreive subsystem handle. Needs to be passed through a
-            // oneshot channel to circumvent a bootstrapping problem
-            let subsystem_handle = rx.await.unwrap();
-            subsystem.run(subsystem_handle);
-        });
-
         // Create subsystem data structure
-        let new_subsystem = Rc::new(SubsystemData::new(name, shutdown_token, join_handle));
+        let new_subsystem = Arc::new(SubsystemData::new(name, shutdown_token.clone()));
 
-        // Pass handle to data structure to spawned task.
-        // This solves the bootstrapping problem that the task
-        // depends on its own join handle
-        tx.send(SubsystemHandle::new(new_subsystem.clone()));
+        // Create handle
+        let subsystem_handle = SubsystemHandle::new(new_subsystem.clone());
+
+        // Spawn new task
+        // let join_handle = tokio::spawn(async move {
+        //     // Retreive subsystem handle. Needs to be passed through a
+        //     // oneshot channel to circumvent a bootstrapping problem
+        //     let subsystem_handle = rx.await.unwrap();
+        //     let result = subsystem.run(subsystem_handle).await;
+        //     //  {
+        //     //     Ok(()) => (),
+        //     //     Err(e) => {
+        //     //         log::error!("Submodule Error: {}", e);
+        //     //         shutdown_token.shutdown();
+        //     //     }
+        //     // };
+        // });
+        let join_handle = Arc::new(tokio::spawn(run_subsystem(
+            self.data.name.clone() + name,
+            subsystem,
+            subsystem_handle,
+        )));
 
         // Store subsystem data
-        self.data.subsystems.push(new_subsystem);
+        self.data.add_subsystem(new_subsystem, join_handle).await;
 
         self
+    }
+
+    pub fn shutdown_token(&self) -> ShutdownToken {
+        self.shutdown_token.clone()
+    }
+
+    pub async fn on_shutdown_request(&self) {
+        self.shutdown_token.wait_for_shutdown().await
     }
 }
 
@@ -114,7 +135,7 @@ impl SubsystemHandle {
 //     fn run(mut self) {}
 // }
 
-#[async_trait(?Send)]
+#[async_trait]
 pub trait AsyncSubsystem {
     async fn run(&mut self, inst: SubsystemHandle) -> Result<()>;
 }

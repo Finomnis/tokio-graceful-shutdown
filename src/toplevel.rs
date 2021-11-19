@@ -1,15 +1,14 @@
 use anyhow::Result;
-use async_trait::async_trait;
 use std::time::Duration;
-use std::{panic, rc::Rc};
+use std::{panic, sync::Arc};
 
 use crate::SubsystemHandle;
-use crate::{shutdown_token::ShutdownToken, signal_handling::wait_for_signal, AsyncSubsystem};
+use crate::{shutdown_token::ShutdownToken, AsyncSubsystem};
 
 use super::subsystem::SubsystemData;
 
 pub struct Toplevel {
-    subsys_data: Rc<SubsystemData>,
+    subsys_data: Arc<SubsystemData>,
 }
 
 // struct ToplevelSubsystem {}
@@ -33,11 +32,7 @@ impl Toplevel {
         }));
 
         Self {
-            subsys_data: Rc::new(SubsystemData::new(
-                "",
-                shutdown_token,
-                tokio::spawn(async {}),
-            )),
+            subsys_data: Arc::new(SubsystemData::new("", shutdown_token)),
         }
     }
 
