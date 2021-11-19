@@ -45,7 +45,7 @@ impl Toplevel {
     }
 
     pub fn catch_signals(self) -> Self {
-        let shutdown_token = self.subsys_handle.shutdown_token();
+        let shutdown_token = self.subsys_handle.shutdown_token().clone();
 
         tokio::spawn(async move {
             wait_for_signal().await;

@@ -125,6 +125,7 @@ impl SubsystemData {
 }
 
 impl SubsystemHandle {
+    #[doc(hidden)]
     pub fn new(data: Arc<SubsystemData>) -> Self {
         Self {
             shutdown_token: data.shutdown_token.clone(),
@@ -132,6 +133,45 @@ impl SubsystemHandle {
         }
     }
 
+    /// Starts a nested subsystem.
+    ///
+    /// Once called, the subsystem will be started immediately, similar to `tokio::spawn`.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the subsystem
+    /// * `subsystem` - The subsystem to be started
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use anyhow::Result;
+    /// use async_trait::async_trait;
+    /// use tokio_graceful_shutdown::{AsyncSubsystem, SubsystemHandle};
+    ///
+    /// struct MySubsystem {}
+    /// struct NestedSubsystem {}
+    ///
+    /// #[async_trait]
+    /// impl AsyncSubsystem for NestedSubsystem {
+    ///     async fn run(&mut self, subsys: SubsystemHandle) -> Result<()> {
+    ///         subsys.on_shutdown_requested().await;
+    ///         Ok(())
+    ///     }
+    /// }
+    ///
+    /// #[async_trait]
+    /// impl AsyncSubsystem for MySubsystem {
+    ///     async fn run(&mut self, mut subsys: SubsystemHandle) -> Result<()> {
+    ///         // start a nested subsystem
+    ///         subsys.start("Nested", NestedSubsystem{});
+    ///
+    ///         subsys.on_shutdown_requested().await;
+    ///         Ok(())
+    ///     }
+    /// }
+    /// ```
+    ///
     pub fn start<S: AsyncSubsystem + 'static + Send>(
         &mut self,
         name: &'static str,
@@ -156,12 +196,69 @@ impl SubsystemHandle {
         self
     }
 
-    pub fn shutdown_token(&self) -> ShutdownToken {
-        self.shutdown_token.clone()
-    }
-
+    /// Wait for the shutdown mode to be triggered.
+    ///
+    /// Once the shutdown mode is entered, all existing calls to this
+    /// method will be released and future calls to this method will
+    /// return immediately.
+    ///
+    /// This is the primary method of subsystems to react to
+    /// the shutdown requests. Most often, it will be used in `tokio::select`
+    /// statements to cancel other code as soon as the shutdown is requested.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use anyhow::Result;
+    /// use async_trait::async_trait;
+    /// use tokio::time::{sleep, Duration};
+    /// use tokio_graceful_shutdown::{AsyncSubsystem, SubsystemHandle};
+    ///
+    /// struct CountdownSubsystem {}
+    /// impl CountdownSubsystem {
+    ///     async fn countdown(&self) {
+    ///         for i in (1..10).rev() {
+    ///             log::info!("Countdown: {}", i);
+    ///             sleep(Duration::from_millis(1000)).await;
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// #[async_trait]
+    /// impl AsyncSubsystem for CountdownSubsystem {
+    ///     async fn run(&mut self, subsys: SubsystemHandle) -> Result<()> {
+    ///         log::info!("Starting countdown ...");
+    ///
+    ///         // This cancels the countdown as soon as shutdown
+    ///         // mode was entered
+    ///         tokio::select! {
+    ///             _ = subsys.on_shutdown_requested() => {
+    ///                 log::info!("Countdown cancelled.");
+    ///             },
+    ///             _ = self.countdown() => {
+    ///                 log::info!("Countdown finished.");
+    ///             }
+    ///         };
+    ///
+    ///         Ok(())
+    ///     }
+    /// }
+    /// ```
     pub async fn on_shutdown_requested(&self) {
         self.shutdown_token.wait_for_shutdown().await
+    }
+
+    /// Triggers the shutdown mode of the program.
+    pub fn request_shutdown(&self) {
+        self.shutdown_token.shutdown()
+    }
+
+    /// Provides access to the shutdown token.
+    ///
+    /// This function is usually not required and is there
+    /// to provide lower-level access for specific corner cases.
+    pub fn shutdown_token(&self) -> &ShutdownToken {
+        &self.shutdown_token
     }
 }
 

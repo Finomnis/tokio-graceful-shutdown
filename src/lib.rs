@@ -5,6 +5,7 @@ mod signal_handling;
 mod subsystem;
 mod toplevel;
 
+pub use shutdown_token::ShutdownToken;
 pub use subsystem::{AsyncSubsystem, SubsystemHandle};
 pub use toplevel::Toplevel;
 
