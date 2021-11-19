@@ -1,2 +1,4 @@
 - Update examples
 - Propagate submodule errors to program return code
+- Get rid of await() in .start
+- Change return value of .start, etc to mutable references
