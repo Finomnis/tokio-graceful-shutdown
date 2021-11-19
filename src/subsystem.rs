@@ -38,6 +38,10 @@ impl SubsystemData {
         self.subsystem_joinhandles.write().await.push(joinhandle);
         self.subsystems.write().await.push(subsystem);
     }
+
+    pub async fn perform_shutdown(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 impl SubsystemHandle {
@@ -62,19 +66,6 @@ impl SubsystemHandle {
         let subsystem_handle = SubsystemHandle::new(new_subsystem.clone());
 
         // Spawn new task
-        // let join_handle = tokio::spawn(async move {
-        //     // Retreive subsystem handle. Needs to be passed through a
-        //     // oneshot channel to circumvent a bootstrapping problem
-        //     let subsystem_handle = rx.await.unwrap();
-        //     let result = subsystem.run(subsystem_handle).await;
-        //     //  {
-        //     //     Ok(()) => (),
-        //     //     Err(e) => {
-        //     //         log::error!("Submodule Error: {}", e);
-        //     //         shutdown_token.shutdown();
-        //     //     }
-        //     // };
-        // });
         let join_handle = Arc::new(tokio::spawn(run_subsystem(
             self.data.name.clone() + name,
             subsystem,

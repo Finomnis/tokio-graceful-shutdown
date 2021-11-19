@@ -67,7 +67,22 @@ impl Toplevel {
 
     pub async fn wait_for_shutdown(self, shutdown_timeout: Duration) -> Result<()> {
         self.subsys_handle.on_shutdown_requested().await;
-        // TODO shut down
-        Ok(())
+
+        let result = tokio::select! {
+            e = self.subsys_data.perform_shutdown() => e,
+            _ = tokio::time::sleep(shutdown_timeout) => Err(anyhow::anyhow!("Submodule shutdown took too long!"))
+        };
+
+        // TODO implement error forwarding from submodule errors
+        match result {
+            Err(e) => {
+                log::error!("{:?}", e);
+                Err(anyhow::anyhow!("An error occured."))
+            }
+            Ok(()) => {
+                log::debug!("Submodules shut down successfully.");
+                Ok(())
+            }
+        }
     }
 }
