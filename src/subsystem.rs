@@ -91,7 +91,7 @@ impl SubsystemHandle {
         self.shutdown_token.clone()
     }
 
-    pub async fn on_shutdown_request(&self) {
+    pub async fn on_shutdown_requested(&self) {
         self.shutdown_token.wait_for_shutdown().await
     }
 }

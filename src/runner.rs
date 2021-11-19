@@ -11,7 +11,7 @@ pub async fn run_subsystem<S: AsyncSubsystem + 'static + Send>(
     match result {
         Ok(()) => (),
         Err(e) => {
-            log::error!("Submodule Error: {}", e);
+            log::error!("Error in submodule '{}': {}", name, e);
             shutdown_token.shutdown();
         }
     };

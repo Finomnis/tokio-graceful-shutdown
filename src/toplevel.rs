@@ -2,6 +2,7 @@ use anyhow::Result;
 use std::time::Duration;
 use std::{panic, sync::Arc};
 
+use crate::signal_handling::wait_for_signal;
 use crate::SubsystemHandle;
 use crate::{shutdown_token::ShutdownToken, AsyncSubsystem};
 
@@ -9,6 +10,7 @@ use super::subsystem::SubsystemData;
 
 pub struct Toplevel {
     subsys_data: Arc<SubsystemData>,
+    subsys_handle: SubsystemHandle,
 }
 
 // struct ToplevelSubsystem {}
@@ -31,8 +33,11 @@ impl Toplevel {
             panic_shutdown_token.shutdown();
         }));
 
+        let subsys_data = Arc::new(SubsystemData::new("", shutdown_token));
+        let subsys_handle = SubsystemHandle::new(subsys_data.clone());
         Self {
-            subsys_data: Arc::new(SubsystemData::new("", shutdown_token)),
+            subsys_data,
+            subsys_handle,
         }
     }
 
@@ -50,19 +55,19 @@ impl Toplevel {
     }
 
     pub fn catch_signals(self) -> Self {
-        // let shutdown_token = self.subsys_data.shutdown_token();
+        let shutdown_token = self.subsys_handle.shutdown_token();
 
-        // tokio::spawn(async move {
-        //     wait_for_signal().await;
-        //     shutdown_token.shutdown();
-        // });
+        tokio::spawn(async move {
+            wait_for_signal().await;
+            shutdown_token.shutdown();
+        });
 
         self
     }
 
     pub async fn wait_for_shutdown(self, shutdown_timeout: Duration) -> Result<()> {
-        // self.subsys_data.on_shutdown_request().await;
-
+        self.subsys_handle.on_shutdown_requested().await;
+        // TODO shut down
         Ok(())
     }
 }
