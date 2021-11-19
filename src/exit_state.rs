@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SubprocessExitState {
     pub name: String,
     pub exit_state: String,
@@ -49,4 +49,25 @@ pub fn join_shutdown_results(
     } else {
         Ok(result)
     }
+}
+
+pub fn prettify_exit_states(exit_codes: &[SubprocessExitState]) -> Vec<String> {
+    let max_subprocess_name_length = exit_codes
+        .iter()
+        .map(|code| code.name.len())
+        .max()
+        .unwrap_or(0);
+
+    let mut exit_codes = exit_codes.to_vec();
+    exit_codes.sort_by_key(|el| el.name.clone());
+
+    exit_codes
+        .iter()
+        .map(|SubprocessExitState { name, exit_state }| {
+            let required_padding_length = max_subprocess_name_length - name.len();
+            let padding = " ".repeat(required_padding_length);
+
+            name.clone() + "  " + &padding + &exit_state
+        })
+        .collect::<Vec<_>>()
 }

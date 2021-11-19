@@ -2,6 +2,7 @@ use anyhow::Result;
 use std::time::Duration;
 use std::{panic, sync::Arc};
 
+use crate::exit_state::prettify_exit_states;
 use crate::signal_handling::wait_for_signal;
 use crate::SubsystemHandle;
 use crate::{shutdown_token::ShutdownToken, AsyncSubsystem};
@@ -72,8 +73,8 @@ impl Toplevel {
                         codes
                     },
                 };
-                for exit_code in exit_codes {
-                    log::debug!("    {}: {}", exit_code.name, exit_code.exit_state);
+                for formatted_exit_code in prettify_exit_states(exit_codes) {
+                    log::debug!("    {}", formatted_exit_code);
                 }
 
                 match e {

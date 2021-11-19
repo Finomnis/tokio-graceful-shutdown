@@ -16,7 +16,7 @@ use crate::shutdown_token::ShutdownToken;
 
 pub struct SubsystemData {
     name: String,
-    subsystems: RwLock<Option<SubsystemDescriptors>>,
+    subsystems: RwLock<Option<Vec<SubsystemDescriptor>>>,
     shutdown_token: ShutdownToken,
 }
 
@@ -25,19 +25,16 @@ pub struct SubsystemHandle {
     data: Arc<SubsystemData>,
 }
 
-struct SubsystemDescriptors {
-    data: Vec<Arc<SubsystemData>>,
-    joinhandles: Vec<JoinHandle<Result<(), ()>>>,
+struct SubsystemDescriptor {
+    data: Arc<SubsystemData>,
+    joinhandle: JoinHandle<Result<(), ()>>,
 }
 
 impl SubsystemData {
     pub fn new(name: &str, shutdown_token: ShutdownToken) -> Self {
         Self {
             name: name.to_string(),
-            subsystems: RwLock::new(Some(SubsystemDescriptors {
-                data: Vec::new(),
-                joinhandles: Vec::new(),
-            })),
+            subsystems: RwLock::new(Some(Vec::new())),
             shutdown_token,
         }
     }
@@ -49,8 +46,10 @@ impl SubsystemData {
     ) {
         match self.subsystems.write().await.as_mut() {
             Some(subsystems) => {
-                subsystems.joinhandles.push(joinhandle);
-                subsystems.data.push(subsystem);
+                subsystems.push(SubsystemDescriptor {
+                    joinhandle,
+                    data: subsystem,
+                });
             }
             None => {
                 log::error!("Unable to add subsystem, system already shutting down!");
@@ -71,10 +70,19 @@ impl SubsystemData {
             }
         };
 
-        let joinhandles_finished = join_all(subsystems.joinhandles.iter_mut());
+        let mut joinhandles = vec![];
+        let mut subsystem_data = vec![];
+        for SubsystemDescriptor { joinhandle, data } in subsystems {
+            joinhandles.push((data.name.clone(), joinhandle));
+            subsystem_data.push(data);
+        }
+        let joinhandles_finished = join_all(
+            joinhandles
+                .iter_mut()
+                .map(|(name, joinhandle)| async { (name, joinhandle.await) }),
+        );
         let subsystems_finished = join_all(
-            subsystems
-                .data
+            subsystem_data
                 .iter_mut()
                 .map(|data| data.perform_shutdown()),
         );
@@ -85,21 +93,21 @@ impl SubsystemData {
 
                 let join_results = joinhandles_finished
                     .iter()
-                    .map(|e| match e {
-                        Ok(Ok(())) => Ok("OK".to_string()),
-                        Ok(Err(())) => Err("Failed".to_string()),
-                        Err(e) => Err(format!("Internal error: {}", e)),
+                    .map(|(name, result)| match result {
+                        Ok(Ok(())) => Ok((name, "OK".to_string())),
+                        Ok(Err(())) => Err((name, "Failed".to_string())),
+                        Err(e) => Err((name, format!("Internal error: {}", e))),
                     })
                     .collect::<Vec<_>>();
 
                 let exit_states = join_results
                     .iter()
                     .map(|e| {
-                        let msg = match e {
+                        let (name, msg) = match e {
                             Ok(msg) => msg,
                             Err(msg) => msg,
                         };
-                        SubprocessExitState::new("unknown", &msg)
+                        SubprocessExitState::new(name, &msg)
                     })
                     .collect::<Vec<_>>();
 
