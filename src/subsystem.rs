@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use async_recursion::async_recursion;
 use async_trait::async_trait;
+use futures::future::try_join;
 use futures::future::try_join_all;
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
@@ -11,8 +13,7 @@ use crate::shutdown_token::ShutdownToken;
 
 pub struct SubsystemData {
     name: String,
-    subsystems: RwLock<Vec<Arc<SubsystemData>>>,
-    subsystem_joinhandles: RwLock<Vec<JoinHandle<()>>>,
+    subsystems: RwLock<Option<SubsystemDescriptors>>,
     shutdown_token: ShutdownToken,
 }
 
@@ -21,25 +22,64 @@ pub struct SubsystemHandle {
     data: Arc<SubsystemData>,
 }
 
+struct SubsystemDescriptors {
+    data: Vec<Arc<SubsystemData>>,
+    joinhandles: Vec<JoinHandle<()>>,
+}
+
 impl SubsystemData {
     pub fn new(name: &'static str, shutdown_token: ShutdownToken) -> Self {
         Self {
             name: name.to_string(),
-            subsystems: RwLock::new(Vec::new()),
-            subsystem_joinhandles: RwLock::new(Vec::new()),
+            subsystems: RwLock::new(Some(SubsystemDescriptors {
+                data: Vec::new(),
+                joinhandles: Vec::new(),
+            })),
             shutdown_token,
         }
     }
 
     pub async fn add_subsystem(&self, subsystem: Arc<SubsystemData>, joinhandle: JoinHandle<()>) {
-        self.subsystem_joinhandles.write().await.push(joinhandle);
-        self.subsystems.write().await.push(subsystem);
+        match self.subsystems.write().await.as_mut() {
+            Some(subsystems) => {
+                subsystems.joinhandles.push(joinhandle);
+                subsystems.data.push(subsystem);
+            }
+            None => {
+                log::error!("Unable to add subsystem, system already shutting down!");
+                joinhandle.abort();
+            }
+        }
     }
 
+    #[async_recursion]
     pub async fn perform_shutdown(&self) -> Result<()> {
-        match try_join_all(self.subsystem_joinhandles.write().await.iter_mut()).await {
+        let mut subsystems_guard = self.subsystems.write().await;
+        let subsystems = subsystems_guard.as_mut().take().ok_or(anyhow::anyhow!(
+            "Unknown error, attempted to wait for subprocesses twice! Should never happen."
+        ))?;
+
+        let joinhandles_finished = try_join_all(subsystems.joinhandles.iter_mut());
+        let subsystems_finished = try_join_all(
+            subsystems
+                .data
+                .iter_mut()
+                .map(|data| data.perform_shutdown()),
+        );
+
+        match try_join(
+            async {
+                match joinhandles_finished.await {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(anyhow::anyhow!(e)),
+                }
+            },
+            subsystems_finished,
+        )
+        .await
+        {
             Ok(_) => Ok(()),
-            Err(err) => Err(anyhow::anyhow!(err)),
+            Err(e) => Err(e),
         }
     }
 }
