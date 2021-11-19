@@ -1,3 +1,2 @@
-- Write Tree-Like submodule system
-- Maybe: Write wrapper that automatically cancels futures when expired?
-    - Problem: cannot be used in tokio::select then, which is the main mechanism of canceling
+- Update examples
+- Propagate submodule errors to program return code
