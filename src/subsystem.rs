@@ -179,7 +179,13 @@ impl SubsystemHandle {
     ) -> &mut Self {
         let shutdown_token = self.shutdown_token.clone();
 
-        let name = self.data.name.clone() + "/" + name;
+        let name = {
+            if self.data.name.len() > 0 {
+                self.data.name.clone() + "/" + name
+            } else {
+                name.to_string()
+            }
+        };
 
         // Create subsystem data structure
         let new_subsystem = Arc::new(SubsystemData::new(&name, shutdown_token.clone()));

@@ -67,7 +67,7 @@ pub fn prettify_exit_states(exit_codes: &[SubprocessExitState]) -> Vec<String> {
             let required_padding_length = max_subprocess_name_length - name.len();
             let padding = " ".repeat(required_padding_length);
 
-            name.clone() + "  " + &padding + &exit_state
+            name.clone() + &padding + "  => " + &exit_state
         })
         .collect::<Vec<_>>()
 }
