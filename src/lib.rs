@@ -32,7 +32,7 @@
 //! #[async_trait]
 //! impl AsyncSubsystem for StopSubsystem {
 //!     async fn run(&mut self, subsys: SubsystemHandle) -> Result<()> {
-//!         tokio::select!{
+//!         tokio::select! {
 //!             _ = sleep(Duration::from_millis(3000)) => {
 //!                 log::info!("Stopping system ...");
 //!                 subsys.request_shutdown();
@@ -50,7 +50,7 @@
 //! #[async_trait]
 //! impl AsyncSubsystem for MySubsystem {
 //!     async fn run(&mut self, mut subsys: SubsystemHandle) -> Result<()> {
-//!         subsys.start("StopSubsystem", StopSubsystem{});
+//!         subsys.start("StopSubsystem", StopSubsystem {});
 //!         log::info!("MySubsystem started.");
 //!         subsys.on_shutdown_requested().await;
 //!         log::info!("Shutting down MySubsystem ...");
@@ -59,7 +59,6 @@
 //!         Ok(())
 //!     }
 //! }
-//!
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<()> {
