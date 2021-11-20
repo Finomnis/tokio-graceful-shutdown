@@ -18,18 +18,12 @@ Specifically, it provides:
 ## Usage Example
 
 ```rust
-struct Subsystem1 {}
-
-#[async_trait]
-impl AsyncSubsystem for Subsystem1 {
-    async fn run(mut self, subsys: SubsystemHandle)
-      -> Result<()>
-    {
-        log::info!("Subsystem1 started.");
-        subsys.on_shutdown_requested().await;
-        log::info!("Subsystem1 stopped.");
-        Ok(())
-    }
+async fn subsys1(subsys: SubsystemHandle) -> Result<()>
+{
+    log::info!("Subsystem1 started.");
+    subsys.on_shutdown_requested().await;
+    log::info!("Subsystem1 stopped.");
+    Ok(())
 }
 ```
 
@@ -41,7 +35,7 @@ This subsystem can now be executed like this:
 #[tokio::main]
 async fn main() -> Result<()> {
     Toplevel::new()
-        .start("Subsys1", Subsystem1::new())
+        .start("Subsys1", subsys1)
         .catch_signals()
         .wait_for_shutdown(Duration::from_millis(1000))
         .await
@@ -63,7 +57,7 @@ Further examples can be seen in the **examples** folder.
 To use this library in your project, add the following to the `[dependencies]` section of `Cargo.toml`:
 ```toml
 [dependencies]
-tokio-graceful-shutdown = "0.2"
+tokio-graceful-shutdown = "0.3"
 ```
 
 To run one of the examples (here `01_normal_shutdown.rs`), simply enter the repository folder and execute:

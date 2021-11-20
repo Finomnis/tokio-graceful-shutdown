@@ -1,9 +1,14 @@
+//! This example demonstrates how to implement a clean shutdown
+//! of a subsystem.
+//!
+//! The central mechanism here is tokio::select, which can cancel
+//! tasks once one of them finishes. This can be used to cancel
+//! tasks once the shutdown was initiated.
+
 use anyhow::Result;
-use async_trait::async_trait;
 use env_logger::{Builder, Env};
-use log;
 use tokio::time::{sleep, Duration};
-use tokio_graceful_shutdown::{AsyncSubsystem, SubsystemHandle, Toplevel};
+use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 
 struct CountdownSubsystem {}
 impl CountdownSubsystem {
@@ -17,11 +22,8 @@ impl CountdownSubsystem {
             sleep(Duration::from_millis(1000)).await;
         }
     }
-}
 
-#[async_trait]
-impl AsyncSubsystem for CountdownSubsystem {
-    async fn run(mut self, subsys: SubsystemHandle) -> Result<()> {
+    async fn run(self, subsys: SubsystemHandle) -> Result<()> {
         log::info!("Starting countdown ...");
 
         tokio::select! {
@@ -44,7 +46,7 @@ async fn main() -> Result<()> {
 
     // Create toplevel
     Toplevel::new()
-        .start("Countdown", CountdownSubsystem::new())
+        .start("Countdown", |h| CountdownSubsystem::new().run(h))
         .catch_signals()
         .wait_for_shutdown(Duration::from_millis(1000))
         .await

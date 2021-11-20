@@ -1,13 +1,18 @@
-use crate::{AsyncSubsystem, SubsystemHandle};
+use crate::SubsystemHandle;
+use anyhow::Result;
+use std::future::Future;
 
-pub async fn run_subsystem<S: AsyncSubsystem + 'static + Send>(
+pub async fn run_subsystem<
+    Fut: Future<Output = Result<()>> + Send,
+    S: FnOnce(SubsystemHandle) -> Fut + Send,
+>(
     name: String,
     subsystem: S,
     subsystem_handle: SubsystemHandle,
 ) -> Result<(), ()> {
     let shutdown_token = subsystem_handle.shutdown_token().clone();
 
-    let result = subsystem.run(subsystem_handle).await;
+    let result = subsystem(subsystem_handle).await;
     match result {
         Ok(()) => Ok(()),
         Err(e) => {
@@ -26,7 +31,6 @@ mod tests {
     use crate::subsystem::SubsystemData;
 
     use anyhow::{anyhow, Result};
-    use async_trait::async_trait;
     use std::sync::Arc;
     use tokio::sync::oneshot;
     use tokio::time::{sleep, Duration};
@@ -35,9 +39,8 @@ mod tests {
         receiver: oneshot::Receiver<Result<()>>,
     }
 
-    #[async_trait]
-    impl AsyncSubsystem for TriggerableSubsystem {
-        async fn run(mut self, subsys: SubsystemHandle) -> Result<()> {
+    impl TriggerableSubsystem {
+        async fn run(self, subsys: SubsystemHandle) -> Result<()> {
             tokio::select! {
                 _ = subsys.on_shutdown_requested() => Err(anyhow!("Cancelled!")),
                 e = self.receiver => e?
@@ -55,7 +58,7 @@ mod tests {
         let subsys = TriggerableSubsystem { receiver };
 
         // Act
-        let runner = run_subsystem("dummy".into(), subsys, subsys_handle);
+        let runner = run_subsystem("dummy".into(), |a| subsys.run(a), subsys_handle);
         let actor = async {
             sleep(Duration::from_millis(100)).await;
             shutdown_token.shutdown();
@@ -86,7 +89,7 @@ mod tests {
 
         // Act
         trigger.send(Err(anyhow!("foobar"))).unwrap();
-        let result = run_subsystem("dummy".into(), subsys, subsys_handle).await;
+        let result = run_subsystem("dummy".into(), |a| subsys.run(a), subsys_handle).await;
 
         // Assert
         assert!(shutdown_token.is_shutting_down());
@@ -104,7 +107,7 @@ mod tests {
 
         // Act
         trigger.send(Ok(())).unwrap();
-        let result = run_subsystem("dummy".into(), subsys, subsys_handle).await;
+        let result = run_subsystem("dummy".into(), |a| subsys.run(a), subsys_handle).await;
 
         // Assert
         assert!(!shutdown_token.is_shutting_down());

@@ -1,7 +1,7 @@
 [package]
 name = "tokio-graceful-shutdown"
 authors = ["Finomnis <finomnis@gmail.com>"]
-version = "0.3.0-beta.0"
+version = "0.3.0-beta.1"
 edition = "2021"
 license = "Apache-2.0"
 readme = "README.md"
@@ -28,9 +28,6 @@ async-recursion = "0.3"
 
 # For logging
 log = "0.4"
-
-# For async traits
-async-trait = "0.1"
 
 [dev-dependencies]
 # Logging

@@ -1,10 +1,11 @@
 use anyhow::Result;
+use std::future::Future;
 use std::time::Duration;
 use std::{panic, sync::Arc};
 
 use crate::exit_state::prettify_exit_states;
+use crate::shutdown_token::create_shutdown_token;
 use crate::signal_handling::wait_for_signal;
-use crate::{shutdown_token::create_shutdown_token, AsyncSubsystem};
 use crate::{ShutdownToken, SubsystemHandle};
 
 use super::subsystem::SubsystemData;
@@ -18,26 +19,19 @@ use super::subsystem::SubsystemData;
 ///
 /// ```
 /// use anyhow::Result;
-/// use async_trait::async_trait;
-/// use log;
 /// use tokio::time::{Duration, sleep};
-/// use tokio_graceful_shutdown::{AsyncSubsystem, SubsystemHandle, Toplevel};
+/// use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 ///
-/// struct MySubsystem {}
-///
-/// #[async_trait]
-/// impl AsyncSubsystem for MySubsystem {
-///     async fn run(mut self, subsys: SubsystemHandle) -> Result<()> {
-///         subsys.request_shutdown();
-///         Ok(())
-///     }
+/// async fn my_subsystem(subsys: SubsystemHandle) -> Result<()> {
+///     subsys.request_shutdown();
+///     Ok(())
 /// }
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<()> {
 ///     // Create toplevel
 ///     Toplevel::new()
-///         .start("MySubsystem", MySubsystem {})
+///         .start("MySubsystem", my_subsystem)
 ///         .catch_signals()
 ///         .wait_for_shutdown(Duration::from_millis(1000))
 ///         .await
@@ -84,16 +78,33 @@ impl Toplevel {
         }
     }
 
-    /// Starts a new subsystem, analogous to `SubsystemHandle::start`.
+    /// Starts a new subsystem.
     ///
-    /// Once called, the subsystem will be started immediately, similar to `tokio::spawn`.
+    /// Once called, the subsystem will be started immediately, similar to [`tokio::spawn`].
+    ///
+    /// # Subsystem
+    ///
+    /// The functionality of the subsystem is represented by the 'subsystem' argument.
+    /// It has to be provided either as an asynchronous function or an asynchronous lambda.
+    ///
+    /// It gets provided with a [`SubsystemHandle`] object which can be used to interact with this crate.
+    ///
+    /// ## Returns
+    ///
+    /// When the subsystem returns `Ok(())` it is assumed that the subsystem was stopped intentionally and no further
+    /// actions are performed.
+    ///
+    /// When the subsystem returns an `Err`, it is assumed that the subsystem failed and a program shutdown gets initiated.
     ///
     /// # Arguments
     ///
     /// * `name` - The name of the subsystem
     /// * `subsystem` - The subsystem to be started
     ///
-    pub fn start<S: AsyncSubsystem + 'static + Send>(
+    pub fn start<
+        Fut: Future<Output = Result<()>> + Send,
+        S: 'static + FnOnce(SubsystemHandle) -> Fut + Send,
+    >(
         self,
         name: &'static str,
         subsystem: S,
@@ -126,7 +137,7 @@ impl Toplevel {
         self
     }
 
-    /// Waits for the program to be shut down successfully.
+    /// Performs a clean program shutdown, once a shutdown is requested.
     ///
     /// In most cases, this will be the final method of `main()`, as it blocks until system
     /// shutdown and returns an appropriate `Result` that can be directly returned by `main()`.
@@ -134,7 +145,8 @@ impl Toplevel {
     /// When a program shutdown happens, this function collects the return values of all subsystems
     /// to determine the return code of the entire program.
     ///
-    /// When the shutdown takes longer than the given timeout, an error will be returned.
+    /// When the shutdown takes longer than the given timeout, an error will be returned and remaining subsystems
+    /// will be cancelled.
     ///
     /// # Arguments
     ///

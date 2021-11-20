@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_recursion::async_recursion;
-use async_trait::async_trait;
 use futures::future::join;
 use futures::future::join_all;
+use std::future::Future;
 use std::sync::Mutex;
 use tokio::task::JoinHandle;
 
@@ -13,6 +13,9 @@ use crate::exit_state::ShutdownResults;
 use crate::exit_state::SubprocessExitState;
 use crate::runner::run_subsystem;
 use crate::shutdown_token::ShutdownToken;
+
+#[cfg(doc)]
+use crate::Toplevel;
 
 pub struct SubsystemData {
     name: String,
@@ -134,9 +137,9 @@ impl SubsystemHandle {
         }
     }
 
-    /// Starts a nested subsystem.
+    /// Starts a nested subsystem, analogous to [`Toplevel::start`].
     ///
-    /// Once called, the subsystem will be started immediately, similar to `tokio::spawn`.
+    /// Once called, the subsystem will be started immediately, similar to [`tokio::spawn`].
     ///
     /// # Arguments
     ///
@@ -147,33 +150,26 @@ impl SubsystemHandle {
     ///
     /// ```
     /// use anyhow::Result;
-    /// use async_trait::async_trait;
-    /// use tokio_graceful_shutdown::{AsyncSubsystem, SubsystemHandle};
+    /// use tokio_graceful_shutdown::SubsystemHandle;
     ///
-    /// struct MySubsystem {}
-    /// struct NestedSubsystem {}
-    ///
-    /// #[async_trait]
-    /// impl AsyncSubsystem for NestedSubsystem {
-    ///     async fn run(mut self, subsys: SubsystemHandle) -> Result<()> {
-    ///         subsys.on_shutdown_requested().await;
-    ///         Ok(())
-    ///     }
+    /// async fn nested_subsystem(subsys: SubsystemHandle) -> Result<()> {
+    ///     subsys.on_shutdown_requested().await;
+    ///     Ok(())
     /// }
     ///
-    /// #[async_trait]
-    /// impl AsyncSubsystem for MySubsystem {
-    ///     async fn run(mut self, mut subsys: SubsystemHandle) -> Result<()> {
-    ///         // start a nested subsystem
-    ///         subsys.start("Nested", NestedSubsystem{});
+    /// async fn my_subsystem(mut subsys: SubsystemHandle) -> Result<()> {
+    ///     // start a nested subsystem
+    ///     subsys.start("Nested", nested_subsystem);
     ///
-    ///         subsys.on_shutdown_requested().await;
-    ///         Ok(())
-    ///     }
+    ///     subsys.on_shutdown_requested().await;
+    ///     Ok(())
     /// }
     /// ```
     ///
-    pub fn start<S: AsyncSubsystem + 'static + Send>(
+    pub fn start<
+        Fut: Future<Output = Result<()>> + Send,
+        S: 'static + FnOnce(SubsystemHandle) -> Fut + Send,
+    >(
         &mut self,
         name: &'static str,
         subsystem: S,
@@ -193,7 +189,8 @@ impl SubsystemHandle {
         let subsystem_handle = SubsystemHandle::new(new_subsystem.clone());
 
         // Spawn new task
-        let join_handle = tokio::spawn(run_subsystem(name, subsystem, subsystem_handle));
+        let join_handle =
+            tokio::spawn(async move { run_subsystem(name, subsystem, subsystem_handle).await });
 
         // Store subsystem data
         self.data.add_subsystem(new_subsystem, join_handle);
@@ -215,38 +212,31 @@ impl SubsystemHandle {
     ///
     /// ```
     /// use anyhow::Result;
-    /// use async_trait::async_trait;
     /// use tokio::time::{sleep, Duration};
-    /// use tokio_graceful_shutdown::{AsyncSubsystem, SubsystemHandle};
+    /// use tokio_graceful_shutdown::SubsystemHandle;
     ///
-    /// struct CountdownSubsystem {}
-    /// impl CountdownSubsystem {
-    ///     async fn countdown(&self) {
-    ///         for i in (1..10).rev() {
-    ///             log::info!("Countdown: {}", i);
-    ///             sleep(Duration::from_millis(1000)).await;
-    ///         }
+    /// async fn countdown() {
+    ///     for i in (1..10).rev() {
+    ///         log::info!("Countdown: {}", i);
+    ///         sleep(Duration::from_millis(1000)).await;
     ///     }
     /// }
     ///
-    /// #[async_trait]
-    /// impl AsyncSubsystem for CountdownSubsystem {
-    ///     async fn run(mut self, subsys: SubsystemHandle) -> Result<()> {
-    ///         log::info!("Starting countdown ...");
+    /// async fn countdown_subsystem(subsys: SubsystemHandle) -> Result<()> {
+    ///     log::info!("Starting countdown ...");
     ///
-    ///         // This cancels the countdown as soon as shutdown
-    ///         // mode was entered
-    ///         tokio::select! {
-    ///             _ = subsys.on_shutdown_requested() => {
-    ///                 log::info!("Countdown cancelled.");
-    ///             },
-    ///             _ = self.countdown() => {
-    ///                 log::info!("Countdown finished.");
-    ///             }
-    ///         };
+    ///     // This cancels the countdown as soon as shutdown
+    ///     // mode was entered
+    ///     tokio::select! {
+    ///         _ = subsys.on_shutdown_requested() => {
+    ///             log::info!("Countdown cancelled.");
+    ///         },
+    ///         _ = countdown() => {
+    ///             log::info!("Countdown finished.");
+    ///         }
+    ///     };
     ///
-    ///         Ok(())
-    ///     }
+    ///     Ok(())
     /// }
     /// ```
     pub async fn on_shutdown_requested(&self) {
@@ -262,25 +252,19 @@ impl SubsystemHandle {
     ///
     /// ```
     /// use anyhow::Result;
-    /// use async_trait::async_trait;
     /// use tokio::time::{sleep, Duration};
-    /// use tokio_graceful_shutdown::{AsyncSubsystem, SubsystemHandle};
+    /// use tokio_graceful_shutdown::SubsystemHandle;
     ///
-    /// struct StopSubsystem {}
+    /// async fn stop_subsystem(subsys: SubsystemHandle) -> Result<()> {
+    ///     // This subsystem wait for one second and then stops the program.
+    ///     sleep(Duration::from_millis(1000));
     ///
-    /// #[async_trait]
-    /// impl AsyncSubsystem for StopSubsystem {
-    ///     async fn run(mut self, subsys: SubsystemHandle) -> Result<()> {
-    ///         // Wait for one second and then stop the program.
-    ///         sleep(Duration::from_millis(1000));
+    ///     // An explicit shutdown request is necessary, because
+    ///     // simply leaving the run() method does NOT initiate a system
+    ///     // shutdown if the return value is Ok(()).
+    ///     subsys.request_shutdown();
     ///
-    ///         // An explicit shutdown request is necessary, because
-    ///         // simply leaving the run() method does NOT initiate a system
-    ///         // shutdown if the return value is Ok(()).
-    ///         subsys.request_shutdown();
-    ///
-    ///         Ok(())
-    ///     }
+    ///     Ok(())
     /// }
     /// ```
     pub fn request_shutdown(&self) {
@@ -295,62 +279,4 @@ impl SubsystemHandle {
     pub fn shutdown_token(&self) -> &ShutdownToken {
         &self.shutdown_token
     }
-}
-
-/// The trait that defines an asynchronous subsystem.
-///
-/// Every subsystem in the program should implement this trait.
-///
-/// AsyncSubsystems can be executed by [`crate::Toplevel::start()`] or [`crate::SubsystemHandle::start()`].
-///
-/// # Examples
-///
-/// ```
-/// use anyhow::Result;
-/// use async_trait::async_trait;
-/// use tokio::time::{sleep, Duration};
-/// use tokio_graceful_shutdown::{AsyncSubsystem, SubsystemHandle};
-///
-/// struct CountdownSubsystem {}
-/// impl CountdownSubsystem {
-///     async fn countdown(&self) {
-///         for i in (1..10).rev() {
-///             log::info!("Countdown: {}", i);
-///             sleep(Duration::from_millis(1000)).await;
-///         }
-///     }
-/// }
-///
-/// #[async_trait]
-/// impl AsyncSubsystem for CountdownSubsystem {
-///     async fn run(mut self, subsys: SubsystemHandle) -> Result<()> {
-///         log::info!("Starting countdown ...");
-///
-///         // This cancels the countdown as soon as shutdown
-///         // mode was entered
-///         tokio::select! {
-///             _ = subsys.on_shutdown_requested() => {
-///                 log::info!("Countdown cancelled.");
-///             },
-///             _ = self.countdown() => {
-///                 log::info!("Countdown finished.");
-///             }
-///         };
-///
-///         Ok(())
-///     }
-/// }
-/// ```
-#[async_trait]
-pub trait AsyncSubsystem {
-    /// This function will be called when the subsystem is executed by [`crate::Toplevel::start()`] or [`crate::SubsystemHandle::start()`].
-    /// It gets provided with a [`SubsystemHandle`] object which can be used to interact with this crate.
-    ///
-    /// # Returns
-    ///
-    /// When the method returns `Ok(())` it is assumed that the subsystem was stopped intentionally and no further
-    /// actions are performed.
-    ///
-    /// When the method returns an `Err`, it is assumed that the subsystem failed and a system shutdown gets initiated.
-    async fn run(mut self, inst: SubsystemHandle) -> Result<()>;
 }
