@@ -46,6 +46,10 @@ impl SubsystemData {
         }
     }
 
+    /// Registers a new subsystem in self.subsystems.
+    ///
+    /// If a shutdown is already running, self.subsystems will be 'None',
+    /// and the newly spawned subsystem will be cancelled.
     pub fn add_subsystem(
         &self,
         subsystem: Arc<SubsystemData>,
@@ -65,6 +69,12 @@ impl SubsystemData {
         }
     }
 
+    /// Moves all subsystem descriptors to the shutdown_subsystem vector.
+    ///
+    /// This leaves self.subsystems 'None', causing this subsystem to be unable
+    /// to spawn new subsystems. This is important to avoid a racecondition where
+    /// the subsystem could spawn a nested subsystem during cleanup, leaking the
+    /// new nested subsystem.
     async fn prepare_shutdown(&self) -> MutexGuard<'_, Vec<SubsystemDescriptor>> {
         let mut shutdown_subsystems = self.shutdown_subsystems.lock().await;
         let mut subsystems = self.subsystems.lock().unwrap();
