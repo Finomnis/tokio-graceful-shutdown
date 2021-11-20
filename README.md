@@ -1,7 +1,5 @@
 # tokio-graceful-shutdown
 
-IMPORTANT: This crate is in an early stage and not ready for production.
-
 This crate provides utility functions to perform a graceful shutdown on tokio-rs based services.
 
 Specifically, it provides:
