@@ -25,7 +25,7 @@ async fn subsys1(subsys: SubsystemHandle) -> Result<()>
 }
 ```
 
-This shows a simple asynchronous subsystem that simply starts, waits for the system shutdown to be triggered, and then stops itself.
+This shows a very basic asynchronous subsystem that simply starts, waits for the system shutdown to be triggered, and then stops itself.
 
 This subsystem can now be executed like this:
 
