@@ -19,25 +19,19 @@ use super::subsystem::SubsystemData;
 ///
 /// ```
 /// use anyhow::Result;
-/// use async_trait::async_trait;
 /// use tokio::time::{Duration, sleep};
-/// use tokio_graceful_shutdown::{AsyncSubsystem, SubsystemHandle, Toplevel};
+/// use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 ///
-/// struct MySubsystem {}
-///
-/// #[async_trait]
-/// impl AsyncSubsystem for MySubsystem {
-///     async fn run(mut self, subsys: SubsystemHandle) -> Result<()> {
-///         subsys.request_shutdown();
-///         Ok(())
-///     }
+/// async fn my_subsystem(subsys: SubsystemHandle) -> Result<()> {
+///     subsys.request_shutdown();
+///     Ok(())
 /// }
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<()> {
 ///     // Create toplevel
 ///     Toplevel::new()
-///         .start("MySubsystem", MySubsystem {})
+///         .start("MySubsystem", my_subsystem)
 ///         .catch_signals()
 ///         .wait_for_shutdown(Duration::from_millis(1000))
 ///         .await
@@ -84,9 +78,9 @@ impl Toplevel {
         }
     }
 
-    /// Starts a new subsystem, analogous to `SubsystemHandle::start`.
+    /// Starts a new subsystem, analogous to [`SubsystemHandle::start`].
     ///
-    /// Once called, the subsystem will be started immediately, similar to `tokio::spawn`.
+    /// Once called, the subsystem will be started immediately, similar to [`tokio::spawn`].
     ///
     /// # Arguments
     ///
@@ -129,7 +123,7 @@ impl Toplevel {
         self
     }
 
-    /// Waits for the program to be shut down successfully.
+    /// Performs a clean program shutdown, once a shutdown is requested.
     ///
     /// In most cases, this will be the final method of `main()`, as it blocks until system
     /// shutdown and returns an appropriate `Result` that can be directly returned by `main()`.
@@ -137,7 +131,8 @@ impl Toplevel {
     /// When a program shutdown happens, this function collects the return values of all subsystems
     /// to determine the return code of the entire program.
     ///
-    /// When the shutdown takes longer than the given timeout, an error will be returned.
+    /// When the shutdown takes longer than the given timeout, an error will be returned and remaining subsystems
+    /// will be cancelled.
     ///
     /// # Arguments
     ///
