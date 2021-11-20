@@ -1,11 +1,14 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use anyhow::anyhow;
-use tokio::time::{sleep, Duration};
+use tokio::time::{sleep, timeout, Duration};
+use tokio_graceful_shutdown::subsys::LambdaSubsystem;
 use tokio_graceful_shutdown::Toplevel;
 
 mod common;
-use common::{immediate::ImmediateSubsystem, slow_shutdown::SlowShutdownSubsystem};
+use common::event::Event;
+use common::immediate::ImmediateSubsystem;
+use common::slow_shutdown::SlowShutdownSubsystem;
 
 #[tokio::test]
 async fn normal_shutdown() {
@@ -91,4 +94,34 @@ async fn subsystem_finishes_with_error() {
 
     let (result, ()) = tokio::join!(runner, tester);
     assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn lambda_subsystem_receives_shutdown() {
+    let (subsys_finished, set_subsys_finished) = Event::create();
+
+    let subsys = LambdaSubsystem::new(|subsys| async move {
+        subsys.on_shutdown_requested().await;
+        set_subsys_finished();
+        Ok(())
+    });
+
+    let toplevel = Toplevel::new().start("subsys", subsys);
+    let shutdown_token = toplevel.get_shutdown_token().clone();
+    let result = tokio::spawn(toplevel.wait_for_shutdown(Duration::from_millis(100)));
+
+    sleep(Duration::from_millis(100)).await;
+    assert!(!subsys_finished.get());
+
+    shutdown_token.shutdown();
+    timeout(Duration::from_millis(100), subsys_finished.wait())
+        .await
+        .unwrap();
+
+    let result = timeout(Duration::from_millis(100), result)
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert!(result.is_ok());
 }

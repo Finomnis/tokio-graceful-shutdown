@@ -19,7 +19,6 @@ use super::subsystem::SubsystemData;
 /// ```
 /// use anyhow::Result;
 /// use async_trait::async_trait;
-/// use log;
 /// use tokio::time::{Duration, sleep};
 /// use tokio_graceful_shutdown::{AsyncSubsystem, SubsystemHandle, Toplevel};
 ///

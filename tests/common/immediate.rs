@@ -1,6 +1,5 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use log;
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{AsyncSubsystem, SubsystemHandle};
 
