@@ -4,8 +4,8 @@ use std::{panic, sync::Arc};
 
 use crate::exit_state::prettify_exit_states;
 use crate::signal_handling::wait_for_signal;
-use crate::SubsystemHandle;
 use crate::{shutdown_token::create_shutdown_token, AsyncSubsystem};
+use crate::{ShutdownToken, SubsystemHandle};
 
 use super::subsystem::SubsystemData;
 
@@ -167,5 +167,10 @@ impl Toplevel {
             },
             _ = tokio::time::sleep(shutdown_timeout) => Err(anyhow::anyhow!("Subsystem shutdown took too long!"))
         }
+    }
+
+    #[doc(hidden)]
+    pub fn get_shutdown_token(&self) -> &ShutdownToken {
+        self.subsys_handle.shutdown_token()
     }
 }
