@@ -277,3 +277,49 @@ async fn subsystem_can_request_shutdown() {
         },
     );
 }
+
+#[tokio::test]
+async fn shutdown_timeout_causes_cancellation() {
+    let (subsys_finished, set_subsys_finished) = Event::create();
+
+    let subsystem = |subsys: SubsystemHandle| async move {
+        subsys.on_shutdown_requested().await;
+        sleep(Duration::from_millis(300)).await;
+        set_subsys_finished();
+        Ok(())
+    };
+
+    let (toplevel_finished, set_toplevel_finished) = Event::create();
+
+    let toplevel = Toplevel::new().start("subsys", subsystem);
+    let shutdown_token = toplevel.get_shutdown_token().clone();
+
+    tokio::join!(
+        async {
+            let result = toplevel.wait_for_shutdown(Duration::from_millis(200)).await;
+            set_toplevel_finished();
+
+            // Assert graceful shutdown does not cause an Error code
+            assert!(result.is_err());
+        },
+        async {
+            sleep(Duration::from_millis(200)).await;
+            assert!(!toplevel_finished.get());
+            assert!(!subsys_finished.get());
+            assert!(!shutdown_token.is_shutting_down());
+
+            shutdown_token.shutdown();
+            timeout(Duration::from_millis(300), toplevel_finished.wait())
+                .await
+                .unwrap();
+
+            // Assert shutdown timed out causes a shutdown
+            assert!(toplevel_finished.get());
+            assert!(!subsys_finished.get());
+
+            // Assert subsystem was canceled and didn't continue running in the background
+            sleep(Duration::from_millis(500)).await;
+            assert!(!subsys_finished.get());
+        },
+    );
+}
