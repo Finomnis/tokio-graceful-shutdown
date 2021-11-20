@@ -78,9 +78,23 @@ impl Toplevel {
         }
     }
 
-    /// Starts a new subsystem, analogous to [`SubsystemHandle::start`].
+    /// Starts a new subsystem.
     ///
     /// Once called, the subsystem will be started immediately, similar to [`tokio::spawn`].
+    ///
+    /// # Subsystem
+    ///
+    /// The functionality of the subsystem is represented by the 'subsystem' argument.
+    /// It has to be provided either as an asynchronous function or an asynchronous lambda.
+    ///
+    /// It gets provided with a [`SubsystemHandle`] object which can be used to interact with this crate.
+    ///
+    /// ## Returns
+    ///
+    /// When the subsystem returns `Ok(())` it is assumed that the subsystem was stopped intentionally and no further
+    /// actions are performed.
+    ///
+    /// When the subsystem returns an `Err`, it is assumed that the subsystem failed and a program shutdown gets initiated.
     ///
     /// # Arguments
     ///
