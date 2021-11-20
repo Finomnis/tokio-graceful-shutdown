@@ -1,1 +1,2 @@
+- Recursive cancel on timeout and proper debug message
 - Tests

@@ -29,9 +29,6 @@ async-recursion = "0.3"
 # For logging
 log = "0.4"
 
-# For async traits
-async-trait = "0.1"
-
 [dev-dependencies]
 # Logging
 env_logger = "0.9"

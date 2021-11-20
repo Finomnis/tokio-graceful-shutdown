@@ -1,8 +1,10 @@
+//! This example demonstrates how a subsystem can initiate
+//! a shutdown.
+
 use anyhow::Result;
-use async_trait::async_trait;
 use env_logger::{Builder, Env};
 use tokio::time::{sleep, Duration};
-use tokio_graceful_shutdown::{AsyncSubsystem, SubsystemHandle, Toplevel};
+use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 
 struct CountdownSubsystem {}
 impl CountdownSubsystem {
@@ -12,23 +14,18 @@ impl CountdownSubsystem {
 
     async fn countdown(&self) {
         for i in (1..10).rev() {
-            log::info!("Countdown: {}", i);
+            log::info!("Shutting down in: {}", i);
             sleep(Duration::from_millis(1000)).await;
         }
     }
-}
 
-#[async_trait]
-impl AsyncSubsystem for CountdownSubsystem {
-    async fn run(mut self, subsys: SubsystemHandle) -> Result<()> {
-        log::info!("Starting countdown ...");
-
+    async fn run(self, subsys: SubsystemHandle) -> Result<()> {
         tokio::select! {
             _ = subsys.on_shutdown_requested() => {
                 log::info!("Countdown cancelled.");
             },
             _ = self.countdown() => {
-                log::info!("Countdown finished.");
+                subsys.request_shutdown();
             }
         };
 
@@ -43,7 +40,7 @@ async fn main() -> Result<()> {
 
     // Create toplevel
     Toplevel::new()
-        .start("Countdown", CountdownSubsystem::new())
+        .start("Countdown", |h| CountdownSubsystem::new().run(h))
         .catch_signals()
         .wait_for_shutdown(Duration::from_millis(1000))
         .await

@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_recursion::async_recursion;
-use async_trait::async_trait;
 use futures::future::join;
 use futures::future::join_all;
+use std::future::Future;
 use std::sync::Mutex;
 use tokio::task::JoinHandle;
 
@@ -138,6 +138,20 @@ impl SubsystemHandle {
     ///
     /// Once called, the subsystem will be started immediately, similar to `tokio::spawn`.
     ///
+    /// # Subsystem
+    ///
+    /// The functionality of the subsystem is represented by the 'subsystem' argument.
+    /// It has to be provided either as an asynchronous function or an asynchronous lambda.
+    ///
+    /// It gets provided with a [`SubsystemHandle`] object which can be used to interact with this crate.
+    ///
+    /// ## Returns
+    ///
+    /// When the subsystem returns `Ok(())` it is assumed that the subsystem was stopped intentionally and no further
+    /// actions are performed.
+    ///
+    /// When the subsystem returns an `Err`, it is assumed that the subsystem failed and a program shutdown gets initiated.
+    ///
     /// # Arguments
     ///
     /// * `name` - The name of the subsystem
@@ -173,7 +187,10 @@ impl SubsystemHandle {
     /// }
     /// ```
     ///
-    pub fn start<S: AsyncSubsystem + 'static + Send>(
+    pub fn start<
+        Fut: Future<Output = Result<()>> + Send,
+        S: 'static + FnOnce(SubsystemHandle) -> Fut + Send,
+    >(
         &mut self,
         name: &'static str,
         subsystem: S,
@@ -193,7 +210,8 @@ impl SubsystemHandle {
         let subsystem_handle = SubsystemHandle::new(new_subsystem.clone());
 
         // Spawn new task
-        let join_handle = tokio::spawn(run_subsystem(name, subsystem, subsystem_handle));
+        let join_handle =
+            tokio::spawn(async move { run_subsystem(name, subsystem, subsystem_handle).await });
 
         // Store subsystem data
         self.data.add_subsystem(new_subsystem, join_handle);
@@ -297,6 +315,7 @@ impl SubsystemHandle {
     }
 }
 
+/*
 /// The trait that defines an asynchronous subsystem.
 ///
 /// Every subsystem in the program should implement this trait.
@@ -341,16 +360,4 @@ impl SubsystemHandle {
 ///     }
 /// }
 /// ```
-#[async_trait]
-pub trait AsyncSubsystem {
-    /// This function will be called when the subsystem is executed by [`crate::Toplevel::start()`] or [`crate::SubsystemHandle::start()`].
-    /// It gets provided with a [`SubsystemHandle`] object which can be used to interact with this crate.
-    ///
-    /// # Returns
-    ///
-    /// When the method returns `Ok(())` it is assumed that the subsystem was stopped intentionally and no further
-    /// actions are performed.
-    ///
-    /// When the method returns an `Err`, it is assumed that the subsystem failed and a system shutdown gets initiated.
-    async fn run(mut self, inst: SubsystemHandle) -> Result<()>;
-}
+*/

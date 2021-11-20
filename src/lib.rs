@@ -74,10 +74,9 @@ mod exit_state;
 mod runner;
 mod shutdown_token;
 mod signal_handling;
-pub mod subsys;
 mod subsystem;
 mod toplevel;
 
 pub use shutdown_token::ShutdownToken;
-pub use subsystem::{AsyncSubsystem, SubsystemHandle};
+pub use subsystem::SubsystemHandle;
 pub use toplevel::Toplevel;

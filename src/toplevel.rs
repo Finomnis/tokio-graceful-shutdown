@@ -1,10 +1,11 @@
 use anyhow::Result;
+use std::future::Future;
 use std::time::Duration;
 use std::{panic, sync::Arc};
 
 use crate::exit_state::prettify_exit_states;
+use crate::shutdown_token::create_shutdown_token;
 use crate::signal_handling::wait_for_signal;
-use crate::{shutdown_token::create_shutdown_token, AsyncSubsystem};
 use crate::{ShutdownToken, SubsystemHandle};
 
 use super::subsystem::SubsystemData;
@@ -92,7 +93,10 @@ impl Toplevel {
     /// * `name` - The name of the subsystem
     /// * `subsystem` - The subsystem to be started
     ///
-    pub fn start<S: AsyncSubsystem + 'static + Send>(
+    pub fn start<
+        Fut: Future<Output = Result<()>> + Send,
+        S: 'static + FnOnce(SubsystemHandle) -> Fut + Send,
+    >(
         self,
         name: &'static str,
         subsystem: S,
