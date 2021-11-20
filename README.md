@@ -2,6 +2,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/tokio-graceful-shutdown)](https://crates.io/crates/tokio-graceful-shutdown)
 [![Crates.io](https://img.shields.io/crates/d/tokio-graceful-shutdown)](https://crates.io/crates/tokio-graceful-shutdown)
+[![docs.rs](https://img.shields.io/docsrs/tokio-graceful-shutdown)](https://docs.rs/tokio-graceful-shutdown)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](https://github.com/Finomnis/tokio-graceful-shutdown/blob/main/LICENSE)
 [![Build Status](https://img.shields.io/github/workflow/status/Finomnis/tokio-graceful-shutdown/CI/main)](https://github.com/Finomnis/tokio-graceful-shutdown/actions/workflows/ci.yml?query=branch%3Amain)
 
