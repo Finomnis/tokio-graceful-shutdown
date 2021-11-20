@@ -29,7 +29,7 @@ async fn normal_shutdown() {
 }
 
 #[tokio::test]
-async fn shutdown_timeout() {
+async fn shutdown_timeout_causes_error() {
     let subsystem = |subsys: SubsystemHandle| async move {
         subsys.on_shutdown_requested().await;
         sleep(Duration::from_millis(400)).await;
