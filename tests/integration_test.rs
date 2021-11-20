@@ -200,3 +200,80 @@ async fn nested_subsystem_error_propagates() {
         },
     );
 }
+
+#[tokio::test]
+async fn panic_gets_handled_correctly() {
+    let nested_subsystem = |_subsys: SubsystemHandle| async move {
+        panic!("Error!");
+    };
+
+    let subsystem = move |mut subsys: SubsystemHandle| async move {
+        subsys.start("nested", nested_subsystem);
+        subsys.on_shutdown_requested().await;
+        Ok(())
+    };
+
+    let (toplevel_finished, set_toplevel_finished) = Event::create();
+
+    let toplevel = Toplevel::new().start("subsys", subsystem);
+    let shutdown_token = toplevel.get_shutdown_token().clone();
+
+    tokio::join!(
+        async {
+            let result = toplevel.wait_for_shutdown(Duration::from_millis(100)).await;
+            set_toplevel_finished();
+            // Assert panic causes Error propagation to Toplevel
+            assert!(result.is_err());
+        },
+        async {
+            sleep(Duration::from_millis(200)).await;
+            // Assert panic causes a shutdown
+            assert!(toplevel_finished.get());
+            assert!(shutdown_token.is_shutting_down());
+        },
+    );
+}
+
+#[tokio::test]
+async fn subsystem_can_request_shutdown() {
+    let (subsystem_should_stop, stop_subsystem) = Event::create();
+
+    let (subsys_finished, set_subsys_finished) = Event::create();
+
+    let subsystem = |subsys: SubsystemHandle| async move {
+        subsystem_should_stop.wait().await;
+        subsys.request_shutdown();
+        subsys.on_shutdown_requested().await;
+        set_subsys_finished();
+        Ok(())
+    };
+
+    let (toplevel_finished, set_toplevel_finished) = Event::create();
+
+    let toplevel = Toplevel::new().start("subsys", subsystem);
+    let shutdown_token = toplevel.get_shutdown_token().clone();
+
+    tokio::join!(
+        async {
+            let result = toplevel.wait_for_shutdown(Duration::from_millis(100)).await;
+            set_toplevel_finished();
+
+            // Assert graceful shutdown does not cause an Error code
+            assert!(result.is_ok());
+        },
+        async {
+            sleep(Duration::from_millis(200)).await;
+            assert!(!toplevel_finished.get());
+            assert!(!subsys_finished.get());
+            assert!(!shutdown_token.is_shutting_down());
+
+            stop_subsystem();
+            sleep(Duration::from_millis(200)).await;
+
+            // Assert request_shutdown() causes a shutdown
+            assert!(toplevel_finished.get());
+            assert!(subsys_finished.get());
+            assert!(shutdown_token.is_shutting_down());
+        },
+    );
+}
