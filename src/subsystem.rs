@@ -69,12 +69,17 @@ impl SubsystemData {
         }
     }
 
-    /// Moves all subsystem descriptors to the shutdown_subsystem vector.
+    /// Moves all subsystem descriptors to the self.shutdown_subsystem vector.
+    /// This indicates to the subsystem that it should no longer be possible to
+    /// spawn new nested subsystems.
     ///
-    /// This leaves self.subsystems 'None', causing this subsystem to be unable
-    /// to spawn new subsystems. This is important to avoid a racecondition where
-    /// the subsystem could spawn a nested subsystem during cleanup, leaking the
-    /// new nested subsystem.
+    /// This is achieved by writing 'None' to self.subsystems.
+    ///
+    /// Preventing new nested subsystems to be registered is important to avoid
+    /// a race condition where the subsystem could spawn a nested subsystem by calling
+    /// [`SubsystemHandle.start`] during cleanup, leaking the new nested subsystem.
+    ///
+    /// (The place where adding new subsystems will fail is in [`SubsystemData.add_subsystem`])
     async fn prepare_shutdown(&self) -> MutexGuard<'_, Vec<SubsystemDescriptor>> {
         let mut shutdown_subsystems = self.shutdown_subsystems.lock().await;
         let mut subsystems = self.subsystems.lock().unwrap();
@@ -84,6 +89,12 @@ impl SubsystemData {
         shutdown_subsystems
     }
 
+    /// Recursively goes through all subsystems, awaits their join handles,
+    /// and collects their exit states.
+    ///
+    /// Returns the collected subsystem exit states.
+    ///
+    /// This function can handle cancellation.
     #[async_recursion]
     pub async fn perform_shutdown(&self) -> ShutdownResults {
         let mut subsystems = self.prepare_shutdown().await;
