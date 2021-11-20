@@ -1,8 +1,5 @@
 use tokio::sync::watch;
 
-pub struct EventSetter {
-    sender: watch::Sender<bool>,
-}
 pub struct Event {
     receiver: watch::Receiver<bool>,
 }
