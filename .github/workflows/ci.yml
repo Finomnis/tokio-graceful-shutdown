@@ -7,7 +7,7 @@
 on: [push, pull_request]
 
 
-name: Cross-compile
+name: CI
 
 jobs:
   build:
