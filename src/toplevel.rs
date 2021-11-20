@@ -137,6 +137,8 @@ impl Toplevel {
         self
     }
 
+    /// Wait for all subsystems to finish.
+    /// Then return and print all of their exit codes.
     async fn attempt_clean_shutdown(&self) -> Result<()> {
         let result = self.subsys_data.perform_shutdown().await;
 
