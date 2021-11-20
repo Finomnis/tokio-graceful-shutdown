@@ -137,6 +137,30 @@ impl Toplevel {
         self
     }
 
+    async fn attempt_clean_shutdown(&self) -> Result<()> {
+        let result = self.subsys_data.perform_shutdown().await;
+
+        // Print subsystem exit states
+        let exit_codes = match &result {
+            Ok(codes) => {
+                log::debug!("Shutdown successful. Subsystem states:");
+                codes
+            }
+            Err(codes) => {
+                log::debug!("Some subsystems failed. Subsystem states:");
+                codes
+            }
+        };
+        for formatted_exit_code in prettify_exit_states(exit_codes) {
+            log::debug!("    {}", formatted_exit_code);
+        }
+
+        match result {
+            Ok(_) => Ok(()),
+            Err(_) => Err(anyhow::anyhow!("Subsytem errors occurred.")),
+        }
+    }
+
     /// Performs a clean program shutdown, once a shutdown is requested.
     ///
     /// In most cases, this will be the final method of `main()`, as it blocks until system
@@ -155,29 +179,13 @@ impl Toplevel {
     pub async fn wait_for_shutdown(self, shutdown_timeout: Duration) -> Result<()> {
         self.subsys_handle.on_shutdown_requested().await;
 
-        tokio::select! {
-            e = self.subsys_data.perform_shutdown() => {
-                // Print subsystem exit states
-                let exit_codes = match &e {
-                    Ok(codes) => {
-                        log::debug!("Shutdown successful. Subsystem states:");
-                        codes
-                    },
-                    Err(codes) => {
-                        log::debug!("Some subsystems failed. Subsystem states:");
-                        codes
-                    },
-                };
-                for formatted_exit_code in prettify_exit_states(exit_codes) {
-                    log::debug!("    {}", formatted_exit_code);
-                }
-
-                match e {
-                    Ok(_) => Ok(()),
-                    Err(_) => Err(anyhow::anyhow!("Subsytem errors occurred.")),
-                }
-            },
-            _ = tokio::time::sleep(shutdown_timeout) => Err(anyhow::anyhow!("Subsystem shutdown took too long!"))
+        match tokio::time::timeout(shutdown_timeout, self.attempt_clean_shutdown()).await {
+            Ok(val) => val,
+            Err(_) => {
+                log::error!("Shutdown timed out. Attempting to cleanup stale subsystems ...");
+                self.subsys_data.cancel_all_subsystems().await;
+                tokio::time::timeout(shutdown_timeout, self.attempt_clean_shutdown()).await?
+            }
         }
     }
 
