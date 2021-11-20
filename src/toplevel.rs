@@ -49,6 +49,13 @@ pub struct Toplevel {
     subsys_handle: SubsystemHandle,
 }
 
+impl Drop for Toplevel {
+    fn drop(&mut self) {
+        // Restore panic hook to its original state
+        let _ = panic::take_hook();
+    }
+}
+
 impl Toplevel {
     /// Creates a new Toplevel object.
     ///
