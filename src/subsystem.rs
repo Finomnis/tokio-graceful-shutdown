@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use tokio::sync::MutexGuard;
 
 use anyhow::Result;
 use async_recursion::async_recursion;
@@ -20,6 +21,7 @@ use crate::Toplevel;
 pub struct SubsystemData {
     name: String,
     subsystems: Mutex<Option<Vec<SubsystemDescriptor>>>,
+    shutdown_subsystems: tokio::sync::Mutex<Vec<SubsystemDescriptor>>,
     shutdown_token: ShutdownToken,
 }
 
@@ -40,9 +42,14 @@ impl SubsystemData {
             name: name.to_string(),
             subsystems: Mutex::new(Some(Vec::new())),
             shutdown_token,
+            shutdown_subsystems: tokio::sync::Mutex::new(Vec::new()),
         }
     }
 
+    /// Registers a new subsystem in self.subsystems.
+    ///
+    /// If a shutdown is already running, self.subsystems will be 'None',
+    /// and the newly spawned subsystem will be cancelled.
     pub fn add_subsystem(
         &self,
         subsystem: Arc<SubsystemData>,
@@ -62,21 +69,39 @@ impl SubsystemData {
         }
     }
 
+    /// Moves all subsystem descriptors to the self.shutdown_subsystem vector.
+    /// This indicates to the subsystem that it should no longer be possible to
+    /// spawn new nested subsystems.
+    ///
+    /// This is achieved by writing 'None' to self.subsystems.
+    ///
+    /// Preventing new nested subsystems to be registered is important to avoid
+    /// a race condition where the subsystem could spawn a nested subsystem by calling
+    /// [`SubsystemHandle.start`] during cleanup, leaking the new nested subsystem.
+    ///
+    /// (The place where adding new subsystems will fail is in [`SubsystemData.add_subsystem`])
+    async fn prepare_shutdown(&self) -> MutexGuard<'_, Vec<SubsystemDescriptor>> {
+        let mut shutdown_subsystems = self.shutdown_subsystems.lock().await;
+        let mut subsystems = self.subsystems.lock().unwrap();
+        if let Some(e) = subsystems.take() {
+            shutdown_subsystems.extend(e.into_iter())
+        };
+        shutdown_subsystems
+    }
+
+    /// Recursively goes through all subsystems, awaits their join handles,
+    /// and collects their exit states.
+    ///
+    /// Returns the collected subsystem exit states.
+    ///
+    /// This function can handle cancellation.
     #[async_recursion]
     pub async fn perform_shutdown(&self) -> ShutdownResults {
-        let subsystems_taken = { self.subsystems.lock().unwrap().take() };
-        let subsystems = match subsystems_taken {
-            Some(a) => a,
-            None => {
-                panic!(
-                    "Unknown error, attempted to wait for subprocesses twice! Should never happen."
-                );
-            }
-        };
+        let mut subsystems = self.prepare_shutdown().await;
 
         let mut joinhandles = vec![];
         let mut subsystem_data = vec![];
-        for SubsystemDescriptor { joinhandle, data } in subsystems {
+        for SubsystemDescriptor { joinhandle, data } in subsystems.iter_mut() {
             joinhandles.push((data.name.clone(), joinhandle));
             subsystem_data.push(data);
         }
@@ -125,6 +150,15 @@ impl SubsystemData {
         .await;
 
         join_shutdown_results(results_direct, results_recursive)
+    }
+
+    #[async_recursion]
+    pub async fn cancel_all_subsystems(&self) {
+        let subsystems = self.prepare_shutdown().await;
+        for subsystem in subsystems.iter() {
+            subsystem.joinhandle.abort();
+            subsystem.data.cancel_all_subsystems().await;
+        }
     }
 }
 

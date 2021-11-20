@@ -29,7 +29,7 @@ async fn normal_shutdown() {
 }
 
 #[tokio::test]
-async fn shutdown_timeout() {
+async fn shutdown_timeout_causes_error() {
     let subsystem = |subsys: SubsystemHandle| async move {
         subsys.on_shutdown_requested().await;
         sleep(Duration::from_millis(400)).await;
@@ -274,6 +274,108 @@ async fn subsystem_can_request_shutdown() {
             assert!(toplevel_finished.get());
             assert!(subsys_finished.get());
             assert!(shutdown_token.is_shutting_down());
+        },
+    );
+}
+
+#[tokio::test]
+async fn shutdown_timeout_causes_cancellation() {
+    let (subsys_finished, set_subsys_finished) = Event::create();
+
+    let subsystem = |subsys: SubsystemHandle| async move {
+        subsys.on_shutdown_requested().await;
+        sleep(Duration::from_millis(300)).await;
+        set_subsys_finished();
+        Ok(())
+    };
+
+    let (toplevel_finished, set_toplevel_finished) = Event::create();
+
+    let toplevel = Toplevel::new().start("subsys", subsystem);
+    let shutdown_token = toplevel.get_shutdown_token().clone();
+
+    tokio::join!(
+        async {
+            let result = toplevel.wait_for_shutdown(Duration::from_millis(200)).await;
+            set_toplevel_finished();
+
+            // Assert graceful shutdown does not cause an Error code
+            assert!(result.is_err());
+        },
+        async {
+            sleep(Duration::from_millis(200)).await;
+            assert!(!toplevel_finished.get());
+            assert!(!subsys_finished.get());
+            assert!(!shutdown_token.is_shutting_down());
+
+            shutdown_token.shutdown();
+            timeout(Duration::from_millis(300), toplevel_finished.wait())
+                .await
+                .unwrap();
+
+            // Assert shutdown timed out causes a shutdown
+            assert!(toplevel_finished.get());
+            assert!(!subsys_finished.get());
+
+            // Assert subsystem was canceled and didn't continue running in the background
+            sleep(Duration::from_millis(500)).await;
+            assert!(!subsys_finished.get());
+        },
+    );
+}
+
+#[tokio::test]
+async fn spawning_task_during_shutdown_causes_task_to_be_cancelled() {
+    let (subsys_finished, set_subsys_finished) = Event::create();
+    let (nested_finished, set_nested_finished) = Event::create();
+
+    let nested = |_: SubsystemHandle| async move {
+        sleep(Duration::from_millis(100)).await;
+        set_nested_finished();
+        Ok(())
+    };
+
+    let subsystem = move |mut subsys: SubsystemHandle| async move {
+        subsys.on_shutdown_requested().await;
+        sleep(Duration::from_millis(100)).await;
+        subsys.start("Nested", nested);
+        set_subsys_finished();
+        Ok(())
+    };
+
+    let (toplevel_finished, set_toplevel_finished) = Event::create();
+
+    let toplevel = Toplevel::new().start("subsys", subsystem);
+    let shutdown_token = toplevel.get_shutdown_token().clone();
+
+    tokio::join!(
+        async {
+            let result = toplevel.wait_for_shutdown(Duration::from_millis(500)).await;
+            set_toplevel_finished();
+
+            // Assert graceful shutdown does not cause an Error code
+            assert!(result.is_ok());
+        },
+        async {
+            sleep(Duration::from_millis(200)).await;
+            assert!(!toplevel_finished.get());
+            assert!(!subsys_finished.get());
+            assert!(!shutdown_token.is_shutting_down());
+            assert!(!nested_finished.get());
+
+            shutdown_token.shutdown();
+            timeout(Duration::from_millis(200), toplevel_finished.wait())
+                .await
+                .unwrap();
+
+            // Assert that subsystem did not get past spawning the task, as spawning a task while shutting
+            // down causes a panic.
+            assert!(subsys_finished.get());
+            assert!(!nested_finished.get());
+
+            // Assert nested was canceled and didn't continue running in the background
+            sleep(Duration::from_millis(500)).await;
+            assert!(!nested_finished.get());
         },
     );
 }
