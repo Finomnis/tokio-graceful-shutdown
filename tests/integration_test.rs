@@ -44,7 +44,7 @@ async fn shutdown_timeout() {
 }
 
 #[tokio::test]
-async fn submodule_finishes_with_success() {
+async fn subsystem_finishes_with_success() {
     let subsystem = ImmediateSubsystem::new();
 
     let toplevel_finished = AtomicBool::new(false);
@@ -70,7 +70,7 @@ async fn submodule_finishes_with_success() {
 }
 
 #[tokio::test]
-async fn submodule_finishes_with_error() {
+async fn subsystem_finishes_with_error() {
     let subsystem = ImmediateSubsystem::new().return_value(Err(anyhow!("Error!")));
 
     let toplevel_finished = AtomicBool::new(false);
