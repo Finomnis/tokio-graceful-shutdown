@@ -82,7 +82,7 @@ Performing a graceful shutdown on an asynchronous system is a non-trivial proble
   - Waiting for the tasks to finish
   - Implement a timeout mechanism to prevent deadlock
 
-  If then further functionality is required, like listening for signals like SIGINT or SIGTERM, the boilerplate code will become quite messy.
+  If then further functionality is required, as listening for signals like SIGINT or SIGTERM, the boilerplate code will become quite messy.
 
 And this is exactly what this crate aims to provide: clean abstractions to all this boilerplate code.
 
