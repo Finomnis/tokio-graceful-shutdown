@@ -46,9 +46,6 @@ pub struct Toplevel {
 
 impl Drop for Toplevel {
     fn drop(&mut self) {
-        // Restore panic hook to its original state
-        let _ = panic::take_hook();
-
         // Unregister the toplevel object to make sure another one can be created in future
         if let Ok(true) =
             TOPLEVEL_EXISTS.compare_exchange(true, false, Ordering::SeqCst, Ordering::SeqCst)
@@ -81,13 +78,6 @@ impl Toplevel {
         }
 
         let shutdown_token = create_shutdown_token();
-
-        // Register panic handler to trigger shutdown token
-        // let panic_shutdown_token = shutdown_token.clone();
-        // panic::set_hook(Box::new(move |panic_info| {
-        //     log::error!("ERROR: {}", panic_info);
-        //     panic_shutdown_token.shutdown();
-        // }));
 
         let subsys_data = Arc::new(SubsystemData::new("", shutdown_token));
         let subsys_handle = SubsystemHandle::new(subsys_data.clone());

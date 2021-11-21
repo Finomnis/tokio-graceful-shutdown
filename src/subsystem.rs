@@ -7,7 +7,6 @@ use futures::future::join;
 use futures::future::join_all;
 use std::future::Future;
 use std::sync::Mutex;
-use tokio::task::JoinHandle;
 
 use crate::exit_state::join_shutdown_results;
 use crate::exit_state::ShutdownResults;
@@ -224,7 +223,6 @@ impl SubsystemHandle {
         let subsystem_handle = SubsystemHandle::new(new_subsystem.clone());
 
         // Spawn new task
-        let shutdown_token = subsystem_handle.shutdown_token().clone();
         let subsystem_runner = SubsystemRunner::new(
             name,
             subsystem_handle.shutdown_token().clone(),

@@ -1,13 +1,12 @@
 use crate::{
     event::{Event, EventTrigger},
-    ShutdownToken, SubsystemHandle,
+    ShutdownToken,
 };
 use anyhow::Result;
-use std::{future::Future, slice::Join};
+use std::future::Future;
 use tokio::task::{JoinError, JoinHandle};
 
 pub struct SubsystemRunner {
-    shutdown_token: ShutdownToken,
     outer_joinhandle: JoinHandle<Result<Result<(), ()>, JoinError>>,
     request_cancellation: EventTrigger,
 }
@@ -19,41 +18,35 @@ impl SubsystemRunner {
         name: String,
         cancellation_requested: Event,
     ) -> Result<Result<(), ()>, JoinError> {
-        let inner_joinhandle_ref = &mut inner_joinhandle;
-        let result = tokio::select! {
-            result = inner_joinhandle_ref => {
-                match result {
-                    Ok(Ok(())) => {Ok(Ok(()))},
-                    Ok(Err(e)) => {
-                        log::error!("Error in subsystem '{}': {:?}", name, e);
-                        shutdown_token.shutdown();
-                        Ok(Err(()))
-                    },
-                    Err(e) => {
-                        log::error!("Error in subsystem '{}': {:?}", name, e);
-                        shutdown_token.shutdown();
-                        Err(e)
+        let joinhandle_ref = &mut inner_joinhandle;
+        tokio::select! {
+            result = joinhandle_ref => {
+                    match result {
+                        Ok(Ok(())) => {Ok(Ok(()))},
+                        Ok(Err(e)) => {
+                            log::error!("Error in subsystem '{}': {:?}", name, e);
+                            shutdown_token.shutdown();
+                            Ok(Err(()))
+                        },
+                        Err(e) => {
+                            log::error!("Error in subsystem '{}': {}", name, e);
+                            shutdown_token.shutdown();
+                            Err(e)
+                        }
                     }
-                }
             },
             _ = cancellation_requested.wait() => {
-                // If cancellation is requested, cancel the subsystem and query its return
-                // value
-                inner_joinhandle_ref.abort();
-                match inner_joinhandle_ref.await {
-                    Ok(Ok(())) => {Ok(Ok(()))},
+                inner_joinhandle.abort();
+                match inner_joinhandle.await {
+                    Ok(Ok(())) => Ok(Ok(())),
                     Ok(Err(e)) => {
                         log::error!("Error in subsystem '{}': {:?}", name, e);
                         Ok(Err(()))
-                    },
-                    Err(e) => {
-                        Err(e)
                     }
+                    Err(e) => Err(e),
                 }
             }
-        };
-
-        result
+        }
     }
 
     pub fn new<Fut: 'static + Future<Output = Result<()>> + Send>(
@@ -65,16 +58,15 @@ impl SubsystemRunner {
 
         // Spawn to nested tasks.
         // This enables us to catch panics, as panics get returned through a JoinHandle.
-        let mut inner_joinhandle = tokio::spawn(subsystem_future);
+        let inner_joinhandle = tokio::spawn(subsystem_future);
         let outer_joinhandle = tokio::spawn(Self::handle_subsystem(
             inner_joinhandle,
-            shutdown_token.clone(),
+            shutdown_token,
             name,
             cancellation_requested,
         ));
 
         Self {
-            shutdown_token,
             outer_joinhandle,
             request_cancellation: request_cancellation,
         }
@@ -89,6 +81,7 @@ impl SubsystemRunner {
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -180,3 +173,4 @@ mod tests {
         assert_eq!(result, Ok(()));
     }
 }
+*/
