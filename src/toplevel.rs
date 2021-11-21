@@ -48,6 +48,8 @@ impl Drop for Toplevel {
     fn drop(&mut self) {
         // Restore panic hook to its original state
         let _ = panic::take_hook();
+
+        // Unregister the toplevel object to make sure another one can be created in future
         if let Ok(true) =
             TOPLEVEL_EXISTS.compare_exchange(true, false, Ordering::SeqCst, Ordering::SeqCst)
         {
@@ -75,7 +77,7 @@ impl Toplevel {
             TOPLEVEL_EXISTS.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst);
         if let Ok(false) = counter {
         } else {
-            panic!("Error: Attempt to create more than one Toplevel object!");
+            panic!("Only one Toplevel object can exist at any given time!");
         }
 
         let shutdown_token = create_shutdown_token();
