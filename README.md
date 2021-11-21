@@ -75,7 +75,7 @@ cargo run --example 01_normal_shutdown
 
 Performing a graceful shutdown on an asynchronous system is a non-trivial problem. There are several solutions, but they all have their drawbacks:
 
-- Global cancellation by forking with `tokio::select`. This is a wide-spread solution, but has the drawback that the canceled tasks cannot react to it, so it's impossible for them to shut down gracefully.
+- Global cancellation by forking with `tokio::select`. This is a wide-spread solution, but has the drawback that the cancelled tasks cannot react to it, so it's impossible for them to shut down gracefully.
 - Forking with `tokio::spawn` and signalling the desire to shutdown running tasks with mechanisms like `tokio::CancellationToken`. This allows tasks to shut down gracefully, but requires a lot of boilerplate code, like
   - Passing the tokens to the tasks
   - Waiting for the tasks to finish
