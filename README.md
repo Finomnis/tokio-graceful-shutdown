@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](https://github.com/Finomnis/tokio-graceful-shutdown/blob/main/LICENSE)
 [![Build Status](https://img.shields.io/github/workflow/status/Finomnis/tokio-graceful-shutdown/CI/main)](https://github.com/Finomnis/tokio-graceful-shutdown/actions/workflows/ci.yml?query=branch%3Amain)
 [![docs.rs](https://img.shields.io/docsrs/tokio-graceful-shutdown)](https://docs.rs/tokio-graceful-shutdown)
-
+[![Coverage Status](https://coveralls.io/repos/github/Finomnis/tokio-graceful-shutdown/badge.svg?branch=main)](https://coveralls.io/github/Finomnis/tokio-graceful-shutdown?branch=main)
 
 This crate provides utility functions to perform a graceful shutdown on tokio-rs based services.
 
