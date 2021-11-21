@@ -26,6 +26,7 @@ pub struct SubsystemData {
 }
 
 /// The handle through which every subsystem can interact with this crate.
+#[derive(Clone)]
 pub struct SubsystemHandle {
     shutdown_token: ShutdownToken,
     data: Arc<SubsystemData>,
