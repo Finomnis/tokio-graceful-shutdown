@@ -1,5 +1,6 @@
 use anyhow::Result;
 use std::future::Future;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use std::{panic, sync::Arc};
 
@@ -47,8 +48,16 @@ impl Drop for Toplevel {
     fn drop(&mut self) {
         // Restore panic hook to its original state
         let _ = panic::take_hook();
+        if let Ok(true) =
+            TOPLEVEL_EXISTS.compare_exchange(true, false, Ordering::SeqCst, Ordering::SeqCst)
+        {
+        } else {
+            log::error!("Trying to unregister Toplevel module, but there was no toplevel module registered!");
+        }
     }
 }
+
+static TOPLEVEL_EXISTS: AtomicBool = AtomicBool::new(false);
 
 impl Toplevel {
     /// Creates a new Toplevel object.
@@ -61,6 +70,14 @@ impl Toplevel {
     /// programs experience a panic on one thread.
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
+        // Make sure only one toplevel object gets instantiated simultaneously
+        let counter =
+            TOPLEVEL_EXISTS.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst);
+        if let Ok(false) = counter {
+        } else {
+            panic!("Error: Attempt to create more than one Toplevel object!");
+        }
+
         let shutdown_token = create_shutdown_token();
 
         // Register panic handler to trigger shutdown token

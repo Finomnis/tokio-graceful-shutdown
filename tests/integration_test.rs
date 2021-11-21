@@ -412,3 +412,29 @@ async fn double_panic_does_not_stop_graceful_shutdown() {
 
     assert!(subsys_finished.get());
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 3)]
+async fn creating_two_toplevels_throws_an_error() {
+    let (subsys_finished, set_subsys_finished) = Event::create();
+
+    let subsys1 = move |_subsys: SubsystemHandle| async move {
+        let _nested_toplevel = Toplevel::new();
+        set_subsys_finished();
+        Ok(())
+    };
+
+    let toplevel = Toplevel::new().start("subsys", subsys1);
+    let shutdown_token = toplevel.get_shutdown_token().clone();
+
+    tokio::join!(
+        async {
+            let result = toplevel.wait_for_shutdown(Duration::from_millis(500)).await;
+            assert!(result.is_err());
+        },
+        async {
+            sleep(Duration::from_millis(100)).await;
+            shutdown_token.shutdown();
+        }
+    );
+    assert!(!subsys_finished.get());
+}
