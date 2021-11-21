@@ -15,7 +15,7 @@ async fn subsys1(subsys: SubsystemHandle) -> Result<()> {
 
     log::info!("Subsystem1 started.");
     tokio::select! {
-        _ =subsys.on_shutdown_requested() => (),
+        _ = subsys.on_shutdown_requested() => (),
         _ = sleep(Duration::from_secs(2)) => {
             panic!("Subsystem1 panicked!");
         }
