@@ -2,6 +2,8 @@
 //! by another panic, the shutdown is still performed normally and the third
 //! subsystem gets cleaned up without a problem.
 //!
+//! Note that this even works when running in tokio's single-threaded mode.
+//!
 //! There is no real programming knowledge to be gained here, this example is just
 //! to demonstrate the robustness of the system.
 
@@ -36,7 +38,7 @@ async fn subsys3(subsys: SubsystemHandle) -> Result<()> {
     Ok(())
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     // Init logging
     Builder::from_env(Env::default().default_filter_or("debug")).init();
