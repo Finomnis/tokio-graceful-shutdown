@@ -81,6 +81,7 @@
 //! to initiate a shutdown.
 //!
 
+pub mod event;
 mod exit_state;
 mod runner;
 mod shutdown_token;

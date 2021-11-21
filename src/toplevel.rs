@@ -83,11 +83,11 @@ impl Toplevel {
         let shutdown_token = create_shutdown_token();
 
         // Register panic handler to trigger shutdown token
-        let panic_shutdown_token = shutdown_token.clone();
-        panic::set_hook(Box::new(move |panic_info| {
-            log::error!("ERROR: {}", panic_info);
-            panic_shutdown_token.shutdown();
-        }));
+        // let panic_shutdown_token = shutdown_token.clone();
+        // panic::set_hook(Box::new(move |panic_info| {
+        //     log::error!("ERROR: {}", panic_info);
+        //     panic_shutdown_token.shutdown();
+        // }));
 
         let subsys_data = Arc::new(SubsystemData::new("", shutdown_token));
         let subsys_handle = SubsystemHandle::new(subsys_data.clone());
@@ -121,7 +121,7 @@ impl Toplevel {
     /// * `subsystem` - The subsystem to be started
     ///
     pub fn start<
-        Fut: Future<Output = Result<()>> + Send,
+        Fut: 'static + Future<Output = Result<()>> + Send,
         S: 'static + FnOnce(SubsystemHandle) -> Fut + Send,
     >(
         self,
