@@ -79,7 +79,7 @@ Performing a graceful shutdown on an asynchronous system is a non-trivial proble
 - Forking with `tokio::spawn` and signalling the desire to shutdown running tasks with mechanisms like `tokio::CancellationToken`. This allows tasks to shut down gracefully, but requires a lot of boilerplate code, like
   - Passing the tokens to the tasks
   - Waiting for the tasks to finish
-  - Implementing a timeout mechanism to prevent deadlock
+  - Implementing a timeout mechanism to prevent hangs
   - Collecting subsystem return values
   - Making sure that subsystem errors get handled correctly
 
