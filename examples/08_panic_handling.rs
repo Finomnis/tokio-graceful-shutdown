@@ -1,3 +1,9 @@
+//! This example demonstrates that like errors, panics also get dealt with
+//! gracefully.
+//!
+//! A normal program shutdown is performed, and other subsystems get the
+//! chance to clean up their work.
+
 use anyhow::Result;
 use env_logger::{Builder, Env};
 use tokio::time::{sleep, Duration};
