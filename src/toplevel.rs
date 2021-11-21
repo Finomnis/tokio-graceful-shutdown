@@ -1,8 +1,7 @@
 use anyhow::Result;
 use std::future::Future;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
-use std::{panic, sync::Arc};
 
 use crate::exit_state::prettify_exit_states;
 use crate::shutdown_token::create_shutdown_token;
@@ -44,39 +43,12 @@ pub struct Toplevel {
     subsys_handle: SubsystemHandle,
 }
 
-impl Drop for Toplevel {
-    fn drop(&mut self) {
-        // Unregister the toplevel object to make sure another one can be created in future
-        if let Ok(true) =
-            TOPLEVEL_EXISTS.compare_exchange(true, false, Ordering::SeqCst, Ordering::SeqCst)
-        {
-        } else {
-            log::error!("Trying to unregister Toplevel module, but there was no toplevel module registered!");
-        }
-    }
-}
-
-static TOPLEVEL_EXISTS: AtomicBool = AtomicBool::new(false);
-
 impl Toplevel {
     /// Creates a new Toplevel object.
     ///
     /// The Toplevel object is the base for everything else in this crate.
-    ///
-    /// During creation, a panic hook is registered to cause a graceful system
-    /// shutdown in case a panic happens.
-    /// This prevents a program hang that might happen when multithreaded asynchronous
-    /// programs experience a panic on one thread.
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        // Make sure only one toplevel object gets instantiated simultaneously
-        let counter =
-            TOPLEVEL_EXISTS.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst);
-        if let Ok(false) = counter {
-        } else {
-            panic!("Only one Toplevel object can exist at any given time!");
-        }
-
         let shutdown_token = create_shutdown_token();
 
         let subsys_data = Arc::new(SubsystemData::new("", shutdown_token));
