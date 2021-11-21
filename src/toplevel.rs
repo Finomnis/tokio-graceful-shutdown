@@ -128,7 +128,6 @@ impl Toplevel {
         name: &'static str,
         subsystem: S,
     ) -> Self {
-        //self.subsys_data.start(name, subsystem);
         SubsystemHandle::new(self.subsys_data.clone()).start(name, subsystem);
 
         self
