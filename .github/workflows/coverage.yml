@@ -12,6 +12,8 @@ jobs:
     name: Coverage
     continue-on-error: true
     runs-on: ubuntu-latest
+    env:
+      RUST_TEST_THREADS: "1"
     steps:
       - name: Install rust
         uses: actions-rs/toolchain@v1
