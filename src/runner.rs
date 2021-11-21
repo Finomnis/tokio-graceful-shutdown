@@ -68,7 +68,7 @@ impl SubsystemRunner {
 
         Self {
             outer_joinhandle,
-            request_cancellation: request_cancellation,
+            request_cancellation,
         }
     }
 

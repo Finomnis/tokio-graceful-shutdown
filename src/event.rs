@@ -19,9 +19,9 @@ impl Event {
         (Self { receiver }, EventTrigger { sender })
     }
 
-    pub fn get(&self) -> bool {
-        *self.receiver.borrow()
-    }
+    // pub fn get(&self) -> bool {
+    //     *self.receiver.borrow()
+    // }
 
     pub async fn wait(&self) {
         let mut receiver = self.receiver.clone();
