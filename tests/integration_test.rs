@@ -379,3 +379,36 @@ async fn spawning_task_during_shutdown_causes_task_to_be_cancelled() {
         },
     );
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 3)]
+async fn double_panic_does_not_stop_graceful_shutdown() {
+    let (subsys_finished, set_subsys_finished) = Event::create();
+
+    let subsys3 = |subsys: SubsystemHandle| async move {
+        subsys.on_shutdown_requested().await;
+        sleep(Duration::from_millis(400)).await;
+        set_subsys_finished();
+        Ok(())
+    };
+
+    let subsys2 = |_subsys: SubsystemHandle| async move {
+        sleep(Duration::from_millis(100)).await;
+        panic!("Subsystem2 panicked!")
+    };
+
+    let subsys1 = move |mut subsys: SubsystemHandle| async move {
+        subsys.start("Subsys2", subsys2);
+        subsys.start("Subsys3", subsys3);
+        subsys.on_shutdown_requested().await;
+        sleep(Duration::from_millis(100)).await;
+        panic!("Subsystem1 panicked!")
+    };
+
+    let result = Toplevel::new()
+        .start("subsys", subsys1)
+        .wait_for_shutdown(Duration::from_millis(500))
+        .await;
+    assert!(result.is_err());
+
+    assert!(subsys_finished.get());
+}

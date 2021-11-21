@@ -1,3 +1,7 @@
+//! This example demonstrates that if one subsystem returns an error,
+//! a graceful shutdown is performed and other subsystems get the chance
+//! to clean up.
+
 use anyhow::{anyhow, Result};
 use env_logger::{Builder, Env};
 use tokio::time::{sleep, Duration};

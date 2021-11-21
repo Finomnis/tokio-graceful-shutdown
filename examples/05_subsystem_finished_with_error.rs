@@ -1,3 +1,11 @@
+//! This example shows how the library reacts to failing subsystems.
+//!
+//! If a subsystem returns an `Err(...)` value, it is assumed that the
+//! subsystem failed and in response the program will be shut down.
+//!
+//! As expected, this is a graceful shutdown, giving other subsystems
+//! the chance to also shut down gracefully.
+
 use anyhow::{anyhow, Result};
 use env_logger::{Builder, Env};
 use tokio::time::{sleep, Duration};

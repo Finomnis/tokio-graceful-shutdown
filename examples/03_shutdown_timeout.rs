@@ -1,3 +1,9 @@
+//! This subsystem demonstrates the shutdown timeout mechanism.
+//!
+//! The subsystem takes longer to shut down than the timeout allows,
+//! so the subsystem gets cancelled and the program returns an appropriate
+//! error code.
+
 use anyhow::Result;
 use env_logger::{Builder, Env};
 use tokio::time::{sleep, Duration};

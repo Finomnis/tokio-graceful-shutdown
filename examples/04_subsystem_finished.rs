@@ -1,3 +1,9 @@
+//! This subsystem demonstrates that subsystems can also stop
+//! prematurely.
+//!
+//! Returning Ok(()) from a subsystem indicates that the subsystem
+//! stopped intentionally, and no further measures by the runtime are performed.
+
 use anyhow::Result;
 use env_logger::{Builder, Env};
 use tokio::time::{sleep, Duration};

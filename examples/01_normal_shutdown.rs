@@ -1,3 +1,15 @@
+//! This example demonstrates the basic usage pattern of this crate.
+//!
+//! The system shows that a subsystem gets started, and when the program
+//! gets shut down (by pressing Ctrl-C), the subsystem gets shut down
+//! gracefully.
+//!
+//! In this case, the subsystem is an async function.
+//! This crate supports async functions and async coroutines.
+//!
+//! If custom arguments for the subsystem coroutine are required,
+//! a struct has to be used instead, as seen in other examples.
+
 use anyhow::Result;
 use env_logger::{Builder, Env};
 use tokio::time::{sleep, Duration};

@@ -1,5 +1,9 @@
-//! This example demonstrates how one subsystem can launch another
-//! nested subsystem.
+//! This example demonstrates if a subsystem panics during a shutdown caused
+//! by another panic, the shutdown is still performed normally and the third
+//! subsystem gets cleaned up without a problem.
+//!
+//! There is no real programming knowledge to be gained here, this example is just
+//! to demonstrate the robustness of the system.
 
 use anyhow::Result;
 use env_logger::{Builder, Env};
@@ -8,20 +12,27 @@ use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 
 async fn subsys1(mut subsys: SubsystemHandle) -> Result<()> {
     subsys.start("Subsys2", subsys2);
+    subsys.start("Subsys3", subsys3);
     log::info!("Subsystem1 started.");
     subsys.on_shutdown_requested().await;
     log::info!("Shutting down Subsystem1 ...");
-    sleep(Duration::from_millis(500)).await;
-    log::info!("Subsystem1 stopped.");
-    Ok(())
+    sleep(Duration::from_millis(200)).await;
+    panic!("Subsystem1 panicked!");
 }
 
-async fn subsys2(subsys: SubsystemHandle) -> Result<()> {
+async fn subsys2(_subsys: SubsystemHandle) -> Result<()> {
     log::info!("Subsystem2 started.");
-    subsys.on_shutdown_requested().await;
-    log::info!("Shutting down Subsystem2 ...");
     sleep(Duration::from_millis(500)).await;
-    log::info!("Subsystem2 stopped.");
+
+    panic!("Subsystem2 panicked!")
+}
+
+async fn subsys3(subsys: SubsystemHandle) -> Result<()> {
+    log::info!("Subsystem3 started.");
+    subsys.on_shutdown_requested().await;
+    log::info!("Shutting down Subsystem3 ...");
+    sleep(Duration::from_millis(500)).await;
+    log::info!("Subsystem3 shut down successfully.");
     Ok(())
 }
 
