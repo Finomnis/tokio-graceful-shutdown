@@ -1,4 +1,4 @@
-//! This example demonstrates how to gracefullyshutdown a hyper
+//! This example demonstrates how to gracefully shutdown a hyper
 //! server using this crate.
 //!
 //! This example closely follows hyper's "hello" example.
