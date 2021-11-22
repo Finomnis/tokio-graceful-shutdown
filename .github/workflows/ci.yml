@@ -103,6 +103,8 @@ jobs:
           override: true
 
       - name: Run cargo doc
+        env:
+          RUSTDOCFLAGS: "-Dwarnings"
         uses: actions-rs/cargo@v1
         with:
           command: doc
