@@ -26,9 +26,11 @@ jobs:
       - name: Run leak test with jemalloc
         uses: actions-rs/cargo@v1
         with:
-          command: run --example jemalloc_leak_test
+          command: run
+          args: --example jemalloc_leak_test
 
       - name: Run leak test with jemalloc
         uses: actions-rs/cargo@v1
         with:
-          command: run --release --example jemalloc_leak_test
+          command: run
+          args: --release --example jemalloc_leak_test
