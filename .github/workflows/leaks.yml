@@ -20,6 +20,14 @@ jobs:
           toolchain: nightly
           override: true
 
+      - name: Build test binary
+        uses: actions-rs/cargo@v1
+        env:
+          RUSTFLAGS: "-Z sanitizer=leak"
+        with:
+          command: build
+          args: --target x86_64-unknown-linux-gnu --test memory_leaks
+
       - name: Run leak check
         uses: actions-rs/cargo@v1
         env:

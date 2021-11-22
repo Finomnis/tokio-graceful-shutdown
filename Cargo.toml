@@ -39,7 +39,3 @@ tokio = { version = "1", features = ["full"] }
 
 # Hyper example
 hyper = { version = "0.14", features = ["full"] }
-
-# Make leak sanitizer more reliable
-[profile.dev]
-opt-level = 1
