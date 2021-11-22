@@ -7,12 +7,11 @@ use futures::future::join;
 use futures::future::join_all;
 use std::future::Future;
 use std::sync::Mutex;
-use tokio::task::JoinHandle;
 
 use crate::exit_state::join_shutdown_results;
 use crate::exit_state::ShutdownResults;
 use crate::exit_state::SubprocessExitState;
-use crate::runner::run_subsystem;
+use crate::runner::SubsystemRunner;
 use crate::shutdown_token::ShutdownToken;
 
 #[cfg(doc)]
@@ -34,7 +33,7 @@ pub struct SubsystemHandle {
 
 struct SubsystemDescriptor {
     data: Arc<SubsystemData>,
-    joinhandle: JoinHandle<Result<(), ()>>,
+    subsystem_runner: SubsystemRunner,
 }
 
 impl SubsystemData {
@@ -51,21 +50,17 @@ impl SubsystemData {
     ///
     /// If a shutdown is already running, self.subsystems will be 'None',
     /// and the newly spawned subsystem will be cancelled.
-    pub fn add_subsystem(
-        &self,
-        subsystem: Arc<SubsystemData>,
-        joinhandle: JoinHandle<Result<(), ()>>,
-    ) {
+    pub fn add_subsystem(&self, subsystem: Arc<SubsystemData>, subsystem_runner: SubsystemRunner) {
         match self.subsystems.lock().unwrap().as_mut() {
             Some(subsystems) => {
                 subsystems.push(SubsystemDescriptor {
-                    joinhandle,
+                    subsystem_runner,
                     data: subsystem,
                 });
             }
             None => {
                 log::error!("Unable to add subsystem, system already shutting down!");
-                joinhandle.abort();
+                subsystem_runner.abort();
             }
         }
     }
@@ -100,16 +95,20 @@ impl SubsystemData {
     pub async fn perform_shutdown(&self) -> ShutdownResults {
         let mut subsystems = self.prepare_shutdown().await;
 
-        let mut joinhandles = vec![];
+        let mut subsystem_runners = vec![];
         let mut subsystem_data = vec![];
-        for SubsystemDescriptor { joinhandle, data } in subsystems.iter_mut() {
-            joinhandles.push((data.name.clone(), joinhandle));
+        for SubsystemDescriptor {
+            subsystem_runner,
+            data,
+        } in subsystems.iter_mut()
+        {
+            subsystem_runners.push((data.name.clone(), subsystem_runner));
             subsystem_data.push(data);
         }
         let joinhandles_finished = join_all(
-            joinhandles
+            subsystem_runners
                 .iter_mut()
-                .map(|(name, joinhandle)| async { (name, joinhandle.await) }),
+                .map(|(name, subsystem_runner)| async { (name, subsystem_runner.join().await) }),
         );
         let subsystems_finished = join_all(
             subsystem_data
@@ -157,7 +156,7 @@ impl SubsystemData {
     pub async fn cancel_all_subsystems(&self) {
         let subsystems = self.prepare_shutdown().await;
         for subsystem in subsystems.iter() {
-            subsystem.joinhandle.abort();
+            subsystem.subsystem_runner.abort();
             subsystem.data.cancel_all_subsystems().await;
         }
     }
@@ -202,7 +201,7 @@ impl SubsystemHandle {
     /// ```
     ///
     pub fn start<
-        Fut: Future<Output = Result<()>> + Send,
+        Fut: 'static + Future<Output = Result<()>> + Send,
         S: 'static + FnOnce(SubsystemHandle) -> Fut + Send,
     >(
         &mut self,
@@ -224,11 +223,14 @@ impl SubsystemHandle {
         let subsystem_handle = SubsystemHandle::new(new_subsystem.clone());
 
         // Spawn new task
-        let join_handle =
-            tokio::spawn(async move { run_subsystem(name, subsystem, subsystem_handle).await });
+        let subsystem_runner = SubsystemRunner::new(
+            name,
+            subsystem_handle.shutdown_token().clone(),
+            subsystem(subsystem_handle),
+        );
 
         // Store subsystem data
-        self.data.add_subsystem(new_subsystem, join_handle);
+        self.data.add_subsystem(new_subsystem, subsystem_runner);
 
         self
     }
