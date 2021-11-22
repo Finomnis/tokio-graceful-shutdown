@@ -39,7 +39,3 @@ tokio = { version = "1", features = ["full"] }
 
 # Hyper example
 hyper = { version = "0.14", features = ["full"] }
-
-# Memory Leaks (used in CI)
-[target.'cfg(not(target_env = "msvc"))'.dependencies]
-jemallocator = { version = "0.3", features = ["profiling", "stats", "debug"] }

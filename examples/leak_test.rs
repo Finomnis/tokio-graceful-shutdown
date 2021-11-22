@@ -1,10 +1,12 @@
 //! This example is not an actual example.
 //!
 //! It is just a demonstrator to show that this crate does not leak memory.
-//! It includes the jemalloc allocator with profiling enabled.
+//! It gets used by the CI to perform a very crude leak check.
 //!
 //! Run this example with the environment variable:
-//!    MALLOC_CONF=stats_print:true,prof_leak:true
+//!     sudo apt install valgrind
+//!     cargo build --example leak_test
+//!     valgrind --leak-check=yes target/debug/examples/leak_test
 //!
 //! This will print allocation information, including the amount of leaked memory.
 
@@ -12,13 +14,6 @@ use anyhow::Result;
 use env_logger::{Builder, Env};
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
-
-#[cfg(not(target_env = "msvc"))]
-use jemallocator::Jemalloc;
-
-#[cfg(not(target_env = "msvc"))]
-#[global_allocator]
-static GLOBAL: Jemalloc = Jemalloc;
 
 async fn subsys1(mut subsys: SubsystemHandle) -> Result<()> {
     subsys.start("Subsys2", subsys2);
