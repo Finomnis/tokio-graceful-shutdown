@@ -6,7 +6,7 @@ on:
     branches: [main]
 
 jobs:
-  jemalloc:
+  valgrind:
     name: Valgrind
     runs-on: ubuntu-latest
     steps:
@@ -27,9 +27,9 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --example jemalloc_leak_test
+          args: --example leak_test
 
-      - name: Run debug test with jemalloc
+      - name: Run debug test with valgrind
         env:
           MALLOC_CONF: "stats_print:true,prof_leak:true"
         run: valgrind --leak-check=yes ./target/debug/examples/leak_test
@@ -38,9 +38,9 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --example jemalloc_leak_test
+          args: --release --example leak_test
 
-      - name: Run release test with jemalloc
+      - name: Run release test with valgrind
         env:
           MALLOC_CONF: "stats_print:true,prof_leak:true"
         run: valgrind --leak-check=yes ./target/release/examples/leak_test
