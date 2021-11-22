@@ -14,11 +14,16 @@ use crate::runner::SubsystemRunner;
 use crate::shutdown_token::ShutdownToken;
 
 impl SubsystemData {
-    pub fn new(name: &str, shutdown_token: ShutdownToken) -> Self {
+    pub fn new(
+        name: &str,
+        global_shutdown_token: ShutdownToken,
+        local_shutdown_token: ShutdownToken,
+    ) -> Self {
         Self {
             name: name.to_string(),
             subsystems: Mutex::new(Some(Vec::new())),
-            shutdown_token,
+            global_shutdown_token,
+            local_shutdown_token,
             shutdown_subsystems: tokio::sync::Mutex::new(Vec::new()),
         }
     }

@@ -12,13 +12,13 @@ pub struct SubsystemData {
     name: String,
     subsystems: Mutex<Option<Vec<SubsystemDescriptor>>>,
     shutdown_subsystems: tokio::sync::Mutex<Vec<SubsystemDescriptor>>,
-    shutdown_token: ShutdownToken,
+    local_shutdown_token: ShutdownToken,
+    global_shutdown_token: ShutdownToken,
 }
 
-/// The handle through which every subsystem can interact with this crate.
+/// The handle given to each subsystem through which the subsystem can interact with this crate.
 #[derive(Clone)]
 pub struct SubsystemHandle {
-    shutdown_token: ShutdownToken,
     data: Arc<SubsystemData>,
 }
 

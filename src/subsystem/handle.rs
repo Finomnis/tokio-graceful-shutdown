@@ -11,10 +11,7 @@ use crate::ShutdownToken;
 impl SubsystemHandle {
     #[doc(hidden)]
     pub fn new(data: Arc<SubsystemData>) -> Self {
-        Self {
-            shutdown_token: data.shutdown_token.clone(),
-            data,
-        }
+        Self { data }
     }
 
     /// Starts a nested subsystem, analogous to [`Toplevel::start`].
@@ -63,7 +60,11 @@ impl SubsystemHandle {
         };
 
         // Create subsystem data structure
-        let new_subsystem = Arc::new(SubsystemData::new(&name, self.shutdown_token.clone()));
+        let new_subsystem = Arc::new(SubsystemData::new(
+            &name,
+            self.global_shutdown_token().clone(),
+            self.local_shutdown_token().child_token(),
+        ));
 
         // Create handle
         let subsystem_handle = SubsystemHandle::new(new_subsystem.clone());
@@ -71,7 +72,7 @@ impl SubsystemHandle {
         // Spawn new task
         let subsystem_runner = SubsystemRunner::new(
             name,
-            subsystem_handle.shutdown_token().clone(),
+            subsystem_handle.global_shutdown_token().clone(),
             subsystem(subsystem_handle),
         );
 
@@ -123,7 +124,7 @@ impl SubsystemHandle {
     /// }
     /// ```
     pub async fn on_shutdown_requested(&self) {
-        self.shutdown_token.wait_for_shutdown().await
+        self.data.local_shutdown_token.wait_for_shutdown().await
     }
 
     /// Triggers the shutdown mode of the program.
@@ -151,15 +152,24 @@ impl SubsystemHandle {
     /// }
     /// ```
     pub fn request_shutdown(&self) {
-        self.shutdown_token.shutdown()
+        self.data.global_shutdown_token.shutdown()
     }
 
-    /// Provides access to the shutdown token.
+    /// Provides access to the process-wide parent shutdown token.
     ///
     /// This function is usually not required and is there
     /// to provide lower-level access for specific corner cases.
     #[doc(hidden)]
-    pub fn shutdown_token(&self) -> &ShutdownToken {
-        &self.shutdown_token
+    pub fn global_shutdown_token(&self) -> &ShutdownToken {
+        &self.data.global_shutdown_token
+    }
+
+    /// Provides access to the subsystem local shutdown token.
+    ///
+    /// This function is usually not required and is there
+    /// to provide lower-level access for specific corner cases.
+    #[doc(hidden)]
+    pub fn local_shutdown_token(&self) -> &ShutdownToken {
+        &self.data.local_shutdown_token
     }
 }

@@ -49,9 +49,15 @@ impl Toplevel {
     /// The Toplevel object is the base for everything else in this crate.
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        let shutdown_token = create_shutdown_token();
+        // On the top-level, the global and local shutdown token are identical
+        let global_shutdown_token = create_shutdown_token();
+        let local_shutdown_token = global_shutdown_token.clone();
 
-        let subsys_data = Arc::new(SubsystemData::new("", shutdown_token));
+        let subsys_data = Arc::new(SubsystemData::new(
+            "",
+            global_shutdown_token,
+            local_shutdown_token,
+        ));
         let subsys_handle = SubsystemHandle::new(subsys_data.clone());
         Self {
             subsys_data,
@@ -107,7 +113,7 @@ impl Toplevel {
     ///     - SIGINT and SIGTERM
     ///
     pub fn catch_signals(self) -> Self {
-        let shutdown_token = self.subsys_handle.shutdown_token().clone();
+        let shutdown_token = self.subsys_handle.global_shutdown_token().clone();
 
         tokio::spawn(async move {
             wait_for_signal().await;
@@ -173,6 +179,6 @@ impl Toplevel {
 
     #[doc(hidden)]
     pub fn get_shutdown_token(&self) -> &ShutdownToken {
-        self.subsys_handle.shutdown_token()
+        self.subsys_handle.global_shutdown_token()
     }
 }
