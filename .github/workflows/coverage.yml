@@ -8,8 +8,8 @@ concurrency:
   group: coverage-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  coverage:
-    name: Coverage
+  coveralls:
+    name: Coveralls
     continue-on-error: true
     runs-on: ubuntu-latest
     env:
