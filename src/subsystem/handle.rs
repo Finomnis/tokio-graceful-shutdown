@@ -8,6 +8,9 @@ use super::SubsystemHandle;
 use crate::runner::SubsystemRunner;
 use crate::ShutdownToken;
 
+#[cfg(doc)]
+use crate::Toplevel;
+
 impl SubsystemHandle {
     #[doc(hidden)]
     pub fn new(data: Arc<SubsystemData>) -> Self {
