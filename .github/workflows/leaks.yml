@@ -10,8 +10,6 @@ jobs:
   jemalloc:
     name: Jemalloc
     runs-on: ubuntu-latest
-    env:
-      MALLOC_CONF: "prof_leak:true"
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -23,14 +21,24 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Run leak test with jemalloc
+      - name: Build debug test
         uses: actions-rs/cargo@v1
         with:
-          command: run
+          command: build
           args: --example jemalloc_leak_test
 
-      - name: Run leak test with jemalloc
+      - name: Build release test
         uses: actions-rs/cargo@v1
         with:
-          command: run
+          command: build
           args: --release --example jemalloc_leak_test
+
+      - name: Run debug test with jemalloc
+        env:
+          MALLOC_CONF: "stats_print:true,prof_leak:true"
+        run: ./target/debug/examples/jemalloc_leak_test
+
+      - name: Run release test with jemalloc
+        env:
+          MALLOC_CONF: "stats_print:true,prof_leak:true"
+        run: ./target/release/examples/jemalloc_leak_test

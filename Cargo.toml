@@ -42,4 +42,4 @@ hyper = { version = "0.14", features = ["full"] }
 
 # Memory Leaks (used in CI)
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
-jemallocator = "0.3"
+jemallocator = { version = "0.3", features = ["profiling"] }
