@@ -1,0 +1,3 @@
+- Think about smart ways to shut down partial subsystems
+    - Return value of start()? With a shutdown_subsystem token?
+    - Additional function in SubsystemHandle to shut down subsystem tree
