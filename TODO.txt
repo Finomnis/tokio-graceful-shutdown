@@ -5,6 +5,8 @@
 Necessities for partial shutdown function:
 - shut down all nested tasks
 - wait until all nested tasks are shut down
+    - waiting should be done by event variables that trigger as soon as
+      the subsystem is finished. Can sadly NOT be done through the joinhandle.
 - remove all nested tasks from the subtask tree (unless failed)
 
 IMPORTANT: Make sure that we do not produce a memory leak.
