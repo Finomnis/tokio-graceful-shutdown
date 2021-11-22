@@ -1,3 +1,11 @@
 - Think about smart ways to shut down partial subsystems
     - Return value of start()? With a shutdown_subsystem token?
     - Additional function in SubsystemHandle to shut down subsystem tree
+
+Necessities for partial shutdown function:
+- shut down all nested tasks
+- wait until all nested tasks are shut down
+- remove all nested tasks from the subtask tree (unless failed)
+
+IMPORTANT: Make sure that we do not produce a memory leak.
+(Did that already happen by storing putting a reference to the subsystem in the SubsystemHandle?)
