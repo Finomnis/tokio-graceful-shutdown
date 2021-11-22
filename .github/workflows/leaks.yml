@@ -28,7 +28,7 @@ jobs:
           command: build
           args: --target x86_64-unknown-linux-gnu --tests
 
-      - name: Run leak check
+      - name: Run tests with leak sanitizer
         uses: actions-rs/cargo@v1
         env:
           RUSTFLAGS: "-Z sanitizer=leak"
