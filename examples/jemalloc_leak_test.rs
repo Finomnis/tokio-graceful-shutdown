@@ -1,11 +1,12 @@
-//! This example demonstrates if a subsystem panics during a shutdown caused
-//! by another panic, the shutdown is still performed normally and the third
-//! subsystem gets cleaned up without a problem.
+//! This example is not an actual example.
 //!
-//! Note that this even works when running in tokio's single-threaded mode.
+//! It is just a demonstrator to show that this crate does not leak memory.
+//! It includes the jemalloc allocator with profiling enabled.
 //!
-//! There is no real programming knowledge to be gained here, this example is just
-//! to demonstrate the robustness of the system.
+//! Run this example with the environment variable:
+//!    MALLOC_CONF=stats_print:true,prof_leak:true
+//!
+//! This will print allocation information, including the amount of leaked memory.
 
 use anyhow::Result;
 use env_logger::{Builder, Env};
@@ -25,27 +26,34 @@ async fn subsys1(mut subsys: SubsystemHandle) -> Result<()> {
     log::info!("Subsystem1 started.");
     subsys.on_shutdown_requested().await;
     log::info!("Shutting down Subsystem1 ...");
-    sleep(Duration::from_millis(200)).await;
-    panic!("Subsystem1 panicked!");
+    sleep(Duration::from_millis(500)).await;
+    log::info!("Subsystem1 stopped.");
+    Ok(())
 }
 
-async fn subsys2(_subsys: SubsystemHandle) -> Result<()> {
+async fn subsys2(subsys: SubsystemHandle) -> Result<()> {
     log::info!("Subsystem2 started.");
-    sleep(Duration::from_millis(500)).await;
-
-    panic!("Subsystem2 panicked!")
+    subsys.on_shutdown_requested().await;
+    log::info!("Shutting down Subsystem2 ...");
+    sleep(Duration::from_millis(400)).await;
+    log::info!("Subsystem2 stopped.");
+    Ok(())
 }
 
 async fn subsys3(subsys: SubsystemHandle) -> Result<()> {
     log::info!("Subsystem3 started.");
-    subsys.on_shutdown_requested().await;
-    log::info!("Shutting down Subsystem3 ...");
-    sleep(Duration::from_millis(500)).await;
-    log::info!("Subsystem3 shut down successfully.");
+    tokio::select! {
+        _ = sleep(Duration::from_millis(200)) => {
+            log::info!("Sybsystem3 initiates a shutdown ...");
+            subsys.request_shutdown();
+        },
+        _ = subsys.on_shutdown_requested() => (),
+    };
+    log::info!("Subsystem3 stopped.");
     Ok(())
 }
 
-#[tokio::main(flavor = "current_thread")]
+#[tokio::main]
 async fn main() -> Result<()> {
     // Init logging
     Builder::from_env(Env::default().default_filter_or("debug")).init();
