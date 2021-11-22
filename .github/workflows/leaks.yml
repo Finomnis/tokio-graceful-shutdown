@@ -6,43 +6,8 @@ on:
     branches: [main]
 
 jobs:
-  valgrind:
-    name: Valgrind
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
-
-      - name: Install valgrind
-        run: sudo apt-get install -y valgrind
-
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-
-      - name: Build leak check
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --example leak_test
-
-      - name: Build empty reference
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --example leak_test_empty
-
-      - name: Run leak check with valgrind
-        run: valgrind --leak-check=full ./target/debug/examples/leak_test
-
-      - name: Run empty reference with valgrind
-        run: valgrind --leak-check=full ./target/debug/examples/leak_test_empty
-
-  builtin:
-    name: Built-in
+  llvm:
+    name: LLVM
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
@@ -60,13 +25,5 @@ jobs:
         env:
           RUSTFLAGS: "-Z sanitizer=leak"
         with:
-          command: run
-          args: --target x86_64-unknown-linux-gnu --example leak_test
-
-      - name: Run empty reference
-        uses: actions-rs/cargo@v1
-        env:
-          RUSTFLAGS: "-Z sanitizer=leak"
-        with:
-          command: run
-          args: --target x86_64-unknown-linux-gnu --example leak_test_empty
+          command: test
+          args: --target x86_64-unknown-linux-gnu --test memory_leaks

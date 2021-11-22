@@ -1,15 +1,3 @@
-//! This example is not an actual example.
-//!
-//! It is just a demonstrator to show that this crate does not leak memory.
-//! It gets used by the CI to perform a very crude leak check.
-//!
-//! Run this example with the environment variable:
-//!     sudo apt install valgrind
-//!     cargo build --example leak_test
-//!     valgrind --leak-check=yes target/debug/examples/leak_test
-//!
-//! This will print allocation information, including the amount of leaked memory.
-
 use anyhow::Result;
 use env_logger::{Builder, Env};
 use tokio::time::{sleep, Duration};
@@ -22,8 +10,7 @@ async fn subsys1(mut subsys: SubsystemHandle) -> Result<()> {
     subsys.on_shutdown_requested().await;
     log::info!("Shutting down Subsystem1 ...");
     sleep(Duration::from_millis(500)).await;
-    log::info!("Subsystem1 stopped.");
-    Ok(())
+    panic!("Subsystem1 panicks!");
 }
 
 async fn subsys2(subsys: SubsystemHandle) -> Result<()> {
@@ -39,8 +26,7 @@ async fn subsys3(subsys: SubsystemHandle) -> Result<()> {
     log::info!("Subsystem3 started.");
     tokio::select! {
         _ = sleep(Duration::from_millis(200)) => {
-            log::info!("Sybsystem3 initiates a shutdown ...");
-            subsys.request_shutdown();
+            panic!("Sybsystem3 panics!");
         },
         _ = subsys.on_shutdown_requested() => (),
     };
@@ -48,15 +34,20 @@ async fn subsys3(subsys: SubsystemHandle) -> Result<()> {
     Ok(())
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+#[tokio::test]
+async fn test() {
     // Init logging
     Builder::from_env(Env::default().default_filter_or("debug")).init();
 
+    let xs = vec![0, 1, 2, 3];
+    std::mem::forget(xs);
+
     // Create toplevel
-    Toplevel::new()
+    let result = Toplevel::new()
         .start("Subsys1", subsys1)
         .catch_signals()
         .wait_for_shutdown(Duration::from_millis(1000))
-        .await
+        .await;
+
+    assert!(result.is_err());
 }
