@@ -11,7 +11,7 @@ jobs:
     name: Jemalloc
     runs-on: ubuntu-latest
     env:
-      MALLOC_CONF: "stats_print:true,prof_leak:true,lg_prof_sample:0"
+      MALLOC_CONF: "prof_leak:true,lg_prof_sample:0"
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
