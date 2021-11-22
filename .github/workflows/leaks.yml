@@ -27,16 +27,16 @@ jobs:
           command: build
           args: --example jemalloc_leak_test
 
+      - name: Run debug test with jemalloc
+        env:
+          MALLOC_CONF: "stats_print:true,prof_leak:true"
+        run: ./target/debug/examples/jemalloc_leak_test
+
       - name: Build release test
         uses: actions-rs/cargo@v1
         with:
           command: build
           args: --release --example jemalloc_leak_test
-
-      - name: Run debug test with jemalloc
-        env:
-          MALLOC_CONF: "stats_print:true,prof_leak:true"
-        run: ./target/debug/examples/jemalloc_leak_test
 
       - name: Run release test with jemalloc
         env:
