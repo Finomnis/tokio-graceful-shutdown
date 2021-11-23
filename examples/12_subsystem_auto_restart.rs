@@ -34,7 +34,7 @@ async fn subsys1_with_autorestart(subsys: SubsystemHandle) -> Result<()> {
                     match result {
                         Ok(result) => return result,
                         Err(err) => {
-                            log::error!("Subsystem1 failed: {:?}", err);
+                            log::error!("Subsystem1 failed: {}", err);
                             log::info!("Restarting subsystem1 ...");
                         }
                     }
