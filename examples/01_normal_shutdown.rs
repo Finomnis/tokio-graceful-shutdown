@@ -1,6 +1,6 @@
 //! This example demonstrates the basic usage pattern of this crate.
 //!
-//! The system shows that a subsystem gets started, and when the program
+//! It shows that a subsystem gets started, and when the program
 //! gets shut down (by pressing Ctrl-C), the subsystem gets shut down
 //! gracefully.
 //!

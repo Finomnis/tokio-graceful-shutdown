@@ -151,7 +151,7 @@ impl Toplevel {
 
     /// Performs a clean program shutdown, once a shutdown is requested.
     ///
-    /// In most cases, this will be the final method of `main()`, as it blocks until system
+    /// In most cases, this will be the final method of `main()`, as it blocks until program
     /// shutdown and returns an appropriate `Result` that can be directly returned by `main()`.
     ///
     /// When a program shutdown happens, this function collects the return values of all subsystems

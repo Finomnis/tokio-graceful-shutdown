@@ -41,7 +41,7 @@ impl SubsystemData {
                 });
             }
             None => {
-                log::error!("Unable to add subsystem, system already shutting down!");
+                log::error!("Unable to add subsystem, parent subsystem already shutting down!");
                 subsystem_runner.abort();
             }
         }

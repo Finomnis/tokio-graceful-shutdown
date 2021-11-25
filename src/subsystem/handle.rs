@@ -147,7 +147,7 @@ impl SubsystemHandle {
     ///     sleep(Duration::from_millis(1000));
     ///
     ///     // An explicit shutdown request is necessary, because
-    ///     // simply leaving the run() method does NOT initiate a system
+    ///     // simply leaving the run() method does NOT initiate a program
     ///     // shutdown if the return value is Ok(()).
     ///     subsys.request_shutdown();
     ///

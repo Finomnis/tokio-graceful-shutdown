@@ -32,7 +32,7 @@ async fn subsys1(subsys: SubsystemHandle) -> Result<()>
 }
 ```
 
-This shows a very basic asynchronous subsystem that simply starts, waits for the system shutdown to be triggered, and then stops itself.
+This shows a very basic asynchronous subsystem that simply starts, waits for the program shutdown to be triggered, and then stops itself.
 
 This subsystem can now be executed like this:
 
@@ -52,7 +52,7 @@ Subsystems can then be started using the `start()` functionality of the toplevel
 
 The `catch_signals()` method signals the `Toplevel` object to listen for SIGINT/SIGTERM/Ctrl+C and initiate a shutdown thereafter.
 
-`wait_for_shutdown()` is the final and most important method of `Toplevel`. It idles until the system enters the shutdown mode. Then, it collects all the return values of the subsystems and determines the global error state, and makes sure shutdown completes within the given timeout.
+`wait_for_shutdown()` is the final and most important method of `Toplevel`. It idles until the program enters the shutdown mode. Then, it collects all the return values of the subsystems and determines the global error state, and makes sure shutdown completes within the given timeout.
 Lastly, it returns an error value that can be directly used as a return code for `main()`.
 
 Further examples can be seen in the **examples** folder.
@@ -73,7 +73,7 @@ cargo run --example 01_normal_shutdown
 
 ## Motivation
 
-Performing a graceful shutdown on an asynchronous system is a non-trivial problem. There are several solutions, but they all have their drawbacks:
+Performing a graceful shutdown on an asynchronous program is a non-trivial problem. There are several solutions, but they all have their drawbacks:
 
 - Global cancellation by forking with `tokio::select`. This is a wide-spread solution, but has the drawback that the cancelled tasks cannot react to it, so it's impossible for them to shut down gracefully.
 - Forking with `tokio::spawn` and signalling the desire to shutdown running tasks with mechanisms like `tokio::CancellationToken`. This allows tasks to shut down gracefully, but requires a lot of boilerplate code, like

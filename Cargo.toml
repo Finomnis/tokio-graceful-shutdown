@@ -6,7 +6,7 @@ edition = "2021"
 license = "Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/Finomnis/tokio-graceful-shutdown"
-description = "Utilities to perform a graceful shutdown on a Tokio based system."
+description = "Utilities to perform a graceful shutdown on a Tokio based service."
 keywords = ["tokio", "shutdown"]
 categories = ["asynchronous"]
 
