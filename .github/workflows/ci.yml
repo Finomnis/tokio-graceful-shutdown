@@ -141,7 +141,7 @@ jobs:
   release:
     name: Publish version
     runs-on: ubuntu-latest
-    if: github.event_name == 'release'
+    #if: github.event_name == 'release'
     needs: [build, test, lints, docs, leaks]
     steps:
       - name: Checkout sources
@@ -156,16 +156,24 @@ jobs:
           components: rustfmt, clippy
 
       - name: Query crate version
-        run: export CRATE_VERSION = $(cargo metadata --format-version=1 --no-deps | python -c "import sys,json; print('v' + json.load(sys.stdin)['packages'][0]['version'])")
+        run: echo "crate_version=$(cargo metadata --format-version=1 --no-deps | python -c "import sys,json; print('v' + json.load(sys.stdin)['packages'][0]['version'])")" >> $GITHUB_ENV
 
       - name: Query release tag version
-        run: export RELEASE_TAG_VERSION = ${{ github.event.release.name }}
+        run: echo "release_tag_version=${{ github.event.release.name }}" >> $GITHUB_ENV
 
       - name: Print versions
-        run: echo "Crate: $CRATE_VERSION, Release: $RELEASE_TAG_VERSION"
+        run: echo "Crate - ${{ env.crate_version }}, Release - ${{ env.release_tag_version }}"
+
+      - name: Check version not empty
+        run: test -n ${{ env.crate_version }}
 
       - name: Check matching versions
-        run: test $CRATE_VERSION = $RELEASE_TAG_VERSION
+        run: test ${{ env.crate_version }} = ${{ env.release_tag_version }}
 
-      - name: Publish with cargo
+      - name: Cargo login
+        env:
+          CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: cargo login ${CRATES_IO_TOKEN}
+
+      - name: Cargo publish
         run: echo "DUMMY. TODO Implement"
