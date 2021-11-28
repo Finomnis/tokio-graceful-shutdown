@@ -412,3 +412,52 @@ async fn double_panic_does_not_stop_graceful_shutdown() {
 
     assert!(subsys_finished.get());
 }
+
+#[tokio::test]
+async fn destroying_toplevel_cancels_subsystems() {
+    let (subsys_started, set_subsys_started) = Event::create();
+    let (subsys_finished, set_subsys_finished) = Event::create();
+
+    let subsys1 = move |_subsys: SubsystemHandle| async move {
+        set_subsys_started();
+        sleep(Duration::from_millis(100)).await;
+        set_subsys_finished();
+        Ok(())
+    };
+
+    {
+        let _result = Toplevel::new().start("subsys", subsys1);
+    }
+
+    sleep(Duration::from_millis(300)).await;
+    assert!(subsys_started.get());
+    assert!(!subsys_finished.get());
+}
+
+#[tokio::test]
+async fn destroying_toplevel_cancels_nested_toplevel_subsystems() {
+    let (subsys_started, set_subsys_started) = Event::create();
+    let (subsys_finished, set_subsys_finished) = Event::create();
+
+    let subsys2 = move |_subsys: SubsystemHandle| async move {
+        set_subsys_started();
+        sleep(Duration::from_millis(100)).await;
+        set_subsys_finished();
+        Ok(())
+    };
+
+    let subsys1 = move |_subsys: SubsystemHandle| async move {
+        Toplevel::new()
+            .start("subsys2", subsys2)
+            .wait_for_shutdown(Duration::from_millis(100))
+            .await
+    };
+
+    {
+        let _result = Toplevel::new().start("subsys", subsys1);
+    }
+
+    sleep(Duration::from_millis(300)).await;
+    assert!(subsys_started.get());
+    assert!(!subsys_finished.get());
+}

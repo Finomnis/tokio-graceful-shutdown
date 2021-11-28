@@ -11,6 +11,15 @@ pub struct SubsystemRunner {
     request_cancellation: EventTrigger,
 }
 
+/// Dropping the SubsystemRunner cancels the task.
+///
+/// In consequence, this means that dropping the Toplevel object cancels all tasks.
+impl Drop for SubsystemRunner {
+    fn drop(&mut self) {
+        self.abort();
+    }
+}
+
 impl SubsystemRunner {
     async fn handle_subsystem(
         mut inner_joinhandle: JoinHandle<Result<()>>,
