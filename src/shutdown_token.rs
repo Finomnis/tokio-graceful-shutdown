@@ -106,4 +106,18 @@ mod tests {
 
         tokio::join!(stopper, stoppee);
     }
+
+    #[tokio::test]
+    async fn double_shutdown_causes_no_error() {
+        let token1 = create_shutdown_token();
+        let token2 = create_shutdown_token();
+
+        token1.shutdown();
+        token1.shutdown();
+        token2.partial_shutdown();
+        token2.partial_shutdown();
+
+        assert!(token1.is_shutting_down());
+        assert!(token2.is_shutting_down());
+    }
 }
