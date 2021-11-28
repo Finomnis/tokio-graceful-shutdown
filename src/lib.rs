@@ -81,6 +81,12 @@
 //! to initiate a shutdown.
 //!
 
+#![doc(
+    issue_tracker_base_url = "https://github.com/Finomnis/tokio-graceful-shutdown/issues",
+    test(no_crate_inject, attr(deny(warnings))),
+    test(attr(allow(dead_code)))
+)]
+
 mod event;
 mod exit_state;
 mod runner;
