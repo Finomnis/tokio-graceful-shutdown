@@ -141,6 +141,7 @@ jobs:
   release:
     name: Publish version
     runs-on: ubuntu-latest
+    environment: production
     if: github.event_name == 'release'
     needs: [build, test, lints, docs, leaks]
     steps:
@@ -171,12 +172,10 @@ jobs:
         run: test ${{ env.crate_version }} = ${{ env.release_tag_version }}
 
       - name: Cargo login
-        env:
-          CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
         uses: actions-rs/cargo@v1
         with:
           command: login
-          args: ${CRATES_IO_TOKEN}
+          args: ${{ secrets.CRATES_IO_TOKEN }}
 
       - name: Cargo publish
         uses: actions-rs/cargo@v1
