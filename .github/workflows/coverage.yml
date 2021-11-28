@@ -30,6 +30,8 @@ jobs:
           version: 0.1.12
           use-tool-cache: true
       - name: Coverage
+        env:
+          RUST_LOG: "debug"
         uses: actions-rs/cargo@v1
         with:
           command: llvm-cov

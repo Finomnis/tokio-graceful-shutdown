@@ -55,6 +55,6 @@ async fn main() -> Result<()> {
     Toplevel::new()
         .start("Subsys1", subsys1_with_autorestart)
         .catch_signals()
-        .wait_for_shutdown(Duration::from_millis(1000))
+        .handle_shutdown_requests(Duration::from_millis(1000))
         .await
 }

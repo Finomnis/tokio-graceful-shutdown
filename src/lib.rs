@@ -10,6 +10,7 @@
 //!     - Subsystem panic
 //! - Clean shutdown procedure with timeout and error propagation
 //! - Subsystem nesting
+//! - Partial shutdown of a selected subsystem tree
 //!
 //! # Example
 //!
@@ -53,7 +54,7 @@
 //!     Toplevel::new()
 //!         .start("Countdown", countdown_subsystem)
 //!         .catch_signals()
-//!         .wait_for_shutdown(Duration::from_millis(1000))
+//!         .handle_shutdown_requests(Duration::from_millis(1000))
 //!         .await
 //! }
 //! ```
@@ -62,11 +63,11 @@
 //!
 //! For one, the [`Toplevel`] object represents the root object of the subsystem tree
 //! and is the main entry point of how to interact with this crate.
-//! Subsystems can then be started using the `start()` functionality of the toplevel object.
+//! Subsystems can then be started using the [`start()`](Toplevel::start) functionality of the toplevel object.
 //!
-//! The `catch_signals()` method signals the `Toplevel` object to listen for SIGINT/SIGTERM/Ctrl+C and initiate a shutdown thereafter.
+//! The [`catch_signals()`](Toplevel::catch_signals) method signals the `Toplevel` object to listen for SIGINT/SIGTERM/Ctrl+C and initiate a shutdown thereafter.
 //!
-//! `wait_for_shutdown()` is the final and most important method of `Toplevel`. It idles until the program enters the shutdown mode. Then, it collects all the return values of the subsystems and determines the global error state, and makes sure shutdown happens within the given timeout.
+//! [`handle_shutdown_requests()`](Toplevel::handle_shutdown_requests) is the final and most important method of `Toplevel`. It idles until the program enters the shutdown mode. Then, it collects all the return values of the subsystems and determines the global error state, and makes sure shutdown happens within the given timeout.
 //! Lastly, it returns an error value that can be directly used as a return code for `main()`.
 //!
 //! Further, the way to register and start a new submodule ist to provide
@@ -81,6 +82,12 @@
 //! to initiate a shutdown.
 //!
 
+#![doc(
+    issue_tracker_base_url = "https://github.com/Finomnis/tokio-graceful-shutdown/issues",
+    test(no_crate_inject, attr(deny(warnings))),
+    test(attr(allow(dead_code)))
+)]
+
 mod event;
 mod exit_state;
 mod runner;
@@ -90,5 +97,7 @@ mod subsystem;
 mod toplevel;
 
 pub use shutdown_token::ShutdownToken;
+pub use subsystem::NestedSubsystem;
+pub use subsystem::PartialShutdownError;
 pub use subsystem::SubsystemHandle;
 pub use toplevel::Toplevel;

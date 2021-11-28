@@ -3,9 +3,11 @@ use std::sync::Arc;
 
 use anyhow::Result;
 
+use super::NestedSubsystem;
 use super::SubsystemData;
 use super::SubsystemHandle;
 use crate::runner::SubsystemRunner;
+use crate::PartialShutdownError;
 use crate::ShutdownToken;
 
 #[cfg(doc)]
@@ -25,6 +27,11 @@ impl SubsystemHandle {
     ///
     /// * `name` - The name of the subsystem
     /// * `subsystem` - The subsystem to be started
+    ///
+    /// # Returns
+    ///
+    /// A [`NestedSubsystem`] that can be used to perform a partial shutdown
+    /// on the created submodule.
     ///
     /// # Examples
     ///
@@ -53,7 +60,7 @@ impl SubsystemHandle {
         &mut self,
         name: &'static str,
         subsystem: S,
-    ) -> &mut Self {
+    ) -> NestedSubsystem {
         let name = {
             if !self.data.name.is_empty() {
                 self.data.name.clone() + "/" + name
@@ -80,9 +87,9 @@ impl SubsystemHandle {
         );
 
         // Store subsystem data
-        self.data.add_subsystem(new_subsystem, subsystem_runner);
+        let id = self.data.add_subsystem(new_subsystem, subsystem_runner);
 
-        self
+        NestedSubsystem { id }
     }
 
     /// Wait for the shutdown mode to be triggered.
@@ -144,7 +151,7 @@ impl SubsystemHandle {
     ///
     /// async fn stop_subsystem(subsys: SubsystemHandle) -> Result<()> {
     ///     // This subsystem wait for one second and then stops the program.
-    ///     sleep(Duration::from_millis(1000));
+    ///     sleep(Duration::from_millis(1000)).await;
     ///
     ///     // An explicit shutdown request is necessary, because
     ///     // simply leaving the run() method does NOT initiate a program
@@ -156,6 +163,51 @@ impl SubsystemHandle {
     /// ```
     pub fn request_shutdown(&self) {
         self.data.global_shutdown_token.shutdown()
+    }
+
+    /// Preforms a partial shutdown of the given nested subsystem.
+    ///
+    /// # Arguments
+    ///
+    /// * `subsystem` - The nested subsystem that should be shut down
+    ///
+    /// # Returns
+    ///
+    /// A [`PartialShutdownError`] on failure.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use anyhow::Result;
+    /// use tokio::time::{sleep, Duration};
+    /// use tokio_graceful_shutdown::SubsystemHandle;
+    ///
+    /// async fn nested_subsystem(subsys: SubsystemHandle) -> Result<()> {
+    ///     // This subsystem does nothing but wait for the shutdown to happen
+    ///     subsys.on_shutdown_requested().await;
+    ///     Ok(())
+    /// }
+    ///
+    /// async fn subsystem(mut subsys: SubsystemHandle) -> Result<()> {
+    ///     // This subsystem waits for one second and then performs a partial shutdown
+    ///
+    ///     // Spawn nested subsystem
+    ///     let nested = subsys.start("nested", nested_subsystem);
+    ///
+    ///     // Wait for a second
+    ///     sleep(Duration::from_millis(1000)).await;
+    ///
+    ///     // Perform a partial shutdown of the nested subsystem
+    ///     subsys.perform_partial_shutdown(nested).await?;
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn perform_partial_shutdown(
+        &self,
+        subsystem: NestedSubsystem,
+    ) -> Result<(), PartialShutdownError> {
+        self.data.perform_partial_shutdown(subsystem).await
     }
 
     /// Provides access to the process-wide parent shutdown token.
