@@ -1,15 +1,17 @@
 use std::sync::Arc;
 use tokio::sync::MutexGuard;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_recursion::async_recursion;
 use futures::future::join;
 use futures::future::join_all;
 use std::sync::Mutex;
 
+use super::NestedSubsystem;
 use super::SubsystemData;
 use super::SubsystemDescriptor;
 use super::SubsystemIdentifier;
+use crate::exit_state::prettify_exit_states;
 use crate::exit_state::{join_shutdown_results, ShutdownResults, SubprocessExitState};
 use crate::runner::SubsystemRunner;
 use crate::shutdown_token::ShutdownToken;
@@ -33,11 +35,16 @@ impl SubsystemData {
     ///
     /// If a shutdown is already running, self.subsystems will be 'None',
     /// and the newly spawned subsystem will be cancelled.
-    pub fn add_subsystem(&self, subsystem: Arc<SubsystemData>, subsystem_runner: SubsystemRunner) {
+    pub fn add_subsystem(
+        &self,
+        subsystem: Arc<SubsystemData>,
+        subsystem_runner: SubsystemRunner,
+    ) -> SubsystemIdentifier {
+        let id = SubsystemIdentifier::create();
         match self.subsystems.lock().unwrap().as_mut() {
             Some(subsystems) => {
                 subsystems.push(SubsystemDescriptor {
-                    id: SubsystemIdentifier::create(),
+                    id: id.clone(),
                     subsystem_runner,
                     data: subsystem,
                 });
@@ -70,16 +77,16 @@ impl SubsystemData {
         shutdown_subsystems
     }
 
-    /// Recursively goes through all subsystems, awaits their join handles,
+    /// Recursively goes through all given subsystems, awaits their join handles,
     /// and collects their exit states.
     ///
     /// Returns the collected subsystem exit states.
     ///
     /// This function can handle cancellation.
     #[async_recursion]
-    pub async fn perform_shutdown(&self) -> ShutdownResults {
-        let mut subsystems = self.prepare_shutdown().await;
-
+    async fn perform_shutdown_on_subsystems(
+        subsystems: &mut Vec<SubsystemDescriptor>,
+    ) -> ShutdownResults {
         let mut subsystem_runners = vec![];
         let mut subsystem_data = vec![];
         for SubsystemDescriptor {
@@ -138,6 +145,19 @@ impl SubsystemData {
         join_shutdown_results(results_direct, results_recursive)
     }
 
+    /// Recursively goes through all subsystems, awaits their join handles,
+    /// and collects their exit states.
+    ///
+    /// Returns the collected subsystem exit states.
+    ///
+    /// This function can handle cancellation.
+    #[async_recursion]
+    pub async fn perform_shutdown(&self) -> ShutdownResults {
+        let mut subsystems = self.prepare_shutdown().await;
+
+        SubsystemData::perform_shutdown_on_subsystems(&mut subsystems).await
+    }
+
     #[async_recursion]
     pub async fn cancel_all_subsystems(&self) {
         let subsystems = self.prepare_shutdown().await;
@@ -145,5 +165,49 @@ impl SubsystemData {
             subsystem.subsystem_runner.abort();
             subsystem.data.cancel_all_subsystems().await;
         }
+    }
+
+    pub async fn perform_partial_shutdown(
+        &self,
+        subsystem_handle: NestedSubsystem,
+    ) -> Result<Result<()>> {
+        let subsystem = {
+            let mut subsystems_mutex = self.subsystems.lock().unwrap();
+            let subsystems = subsystems_mutex.as_mut().ok_or(anyhow!(
+                "Unable to perform partial shutdown, system is already shutting down!"
+            ))?;
+            let position = subsystems
+                .iter()
+                .position(|elem| elem.id == subsystem_handle.id)
+                .ok_or(anyhow! {"Cannot find nested subsystem in given subsystem!"})?;
+            subsystems.swap_remove(position)
+        };
+
+        // Initiate shutdown
+        subsystem.data.local_shutdown_token.partial_shutdown();
+
+        // Wait for shutdown to finish
+        let mut subsystem_vec = vec![subsystem];
+        let result = SubsystemData::perform_shutdown_on_subsystems(&mut subsystem_vec).await;
+
+        // Print subsystem exit states
+        let exit_codes = match &result {
+            Ok(codes) => {
+                log::debug!("Partial shutdown successful. Subsystem states:");
+                codes
+            }
+            Err(codes) => {
+                log::debug!("Some subsystems during partial shutdown failed. Subsystem states:");
+                codes
+            }
+        };
+        for formatted_exit_code in prettify_exit_states(exit_codes) {
+            log::debug!("    {}", formatted_exit_code);
+        }
+
+        Ok(match result {
+            Ok(_) => Ok(()),
+            Err(_) => Err(anyhow::anyhow!("Subsytem errors occurred.")),
+        })
     }
 }

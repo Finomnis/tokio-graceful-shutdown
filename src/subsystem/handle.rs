@@ -169,9 +169,7 @@ impl SubsystemHandle {
     ///
     /// TBD
     pub async fn perform_partial_shutdown(&self, subsystem: NestedSubsystem) {
-        // TODO shut down nested tasks
-        // TODO wait for nested tasks to be shut down
-        // TODO remove nested tasks from subtask tree (unless failed)
+        self.data.perform_partial_shutdown(subsystem).await;
     }
 
     /// Provides access to the process-wide parent shutdown token.
