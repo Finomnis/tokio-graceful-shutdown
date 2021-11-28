@@ -1,5 +1,6 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+#[derive(PartialEq, Debug, Clone)]
 pub struct SubsystemIdentifier {
     id: usize,
 }
@@ -11,5 +12,24 @@ impl SubsystemIdentifier {
         Self {
             id: NEXT_ID.fetch_add(1, Ordering::SeqCst),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn equals_with_itself() {
+        let identifier1 = SubsystemIdentifier::create();
+        let identifier2 = identifier1.clone();
+        assert_eq!(identifier1, identifier2);
+    }
+
+    #[test]
+    fn does_not_equal_with_others() {
+        let identifier1 = SubsystemIdentifier::create();
+        let identifier2 = SubsystemIdentifier::create();
+        assert_ne!(identifier1, identifier2);
     }
 }
