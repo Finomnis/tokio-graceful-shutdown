@@ -1,4 +1,5 @@
 use anyhow::anyhow;
+use env_logger;
 use tokio::time::{sleep, timeout, Duration};
 use tokio_graceful_shutdown::{PartialShutdownError, SubsystemHandle, Toplevel};
 
@@ -7,6 +8,8 @@ use common::event::Event;
 
 #[tokio::test]
 async fn normal_shutdown() {
+    env_logger::init();
+
     let subsystem = |subsys: SubsystemHandle| async move {
         subsys.on_shutdown_requested().await;
         sleep(Duration::from_millis(200)).await;
@@ -32,6 +35,8 @@ async fn normal_shutdown() {
 
 #[tokio::test]
 async fn shutdown_timeout_causes_error() {
+    env_logger::init();
+
     let subsystem = |subsys: SubsystemHandle| async move {
         subsys.on_shutdown_requested().await;
         sleep(Duration::from_millis(400)).await;
@@ -57,6 +62,8 @@ async fn shutdown_timeout_causes_error() {
 
 #[tokio::test]
 async fn subsystem_finishes_with_success() {
+    env_logger::init();
+
     let subsystem = |_| async { Ok(()) };
 
     let (toplevel_finished, set_toplevel_finished) = Event::create();
@@ -87,6 +94,8 @@ async fn subsystem_finishes_with_success() {
 
 #[tokio::test]
 async fn subsystem_finishes_with_error() {
+    env_logger::init();
+
     let subsystem = |_| async { Err(anyhow!("Error!")) };
 
     let (toplevel_finished, set_toplevel_finished) = Event::create();
@@ -114,6 +123,8 @@ async fn subsystem_finishes_with_error() {
 
 #[tokio::test]
 async fn subsystem_receives_shutdown() {
+    env_logger::init();
+
     let (subsys_finished, set_subsys_finished) = Event::create();
 
     let subsys = |subsys: SubsystemHandle| async move {
@@ -144,6 +155,8 @@ async fn subsystem_receives_shutdown() {
 
 #[tokio::test]
 async fn nested_subsystem_receives_shutdown() {
+    env_logger::init();
+
     let (subsys_finished, set_subsys_finished) = Event::create();
 
     let nested_subsystem = |subsys: SubsystemHandle| async move {
@@ -180,6 +193,8 @@ async fn nested_subsystem_receives_shutdown() {
 
 #[tokio::test]
 async fn nested_subsystem_error_propagates() {
+    env_logger::init();
+
     let nested_subsystem = |_subsys: SubsystemHandle| async move { Err(anyhow!("Error!")) };
 
     let subsystem = move |mut subsys: SubsystemHandle| async move {
@@ -213,6 +228,8 @@ async fn nested_subsystem_error_propagates() {
 
 #[tokio::test]
 async fn panic_gets_handled_correctly() {
+    env_logger::init();
+
     let nested_subsystem = |_subsys: SubsystemHandle| async move {
         panic!("Error!");
     };
@@ -248,6 +265,8 @@ async fn panic_gets_handled_correctly() {
 
 #[tokio::test]
 async fn subsystem_can_request_shutdown() {
+    env_logger::init();
+
     let (subsystem_should_stop, stop_subsystem) = Event::create();
 
     let (subsys_finished, set_subsys_finished) = Event::create();
@@ -294,6 +313,8 @@ async fn subsystem_can_request_shutdown() {
 
 #[tokio::test]
 async fn shutdown_timeout_causes_cancellation() {
+    env_logger::init();
+
     let (subsys_finished, set_subsys_finished) = Event::create();
 
     let subsystem = |subsys: SubsystemHandle| async move {
@@ -342,6 +363,8 @@ async fn shutdown_timeout_causes_cancellation() {
 
 #[tokio::test]
 async fn spawning_task_during_shutdown_causes_task_to_be_cancelled() {
+    env_logger::init();
+
     let (subsys_finished, set_subsys_finished) = Event::create();
     let (nested_finished, set_nested_finished) = Event::create();
 
@@ -400,6 +423,8 @@ async fn spawning_task_during_shutdown_causes_task_to_be_cancelled() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
 async fn double_panic_does_not_stop_graceful_shutdown() {
+    env_logger::init();
+
     let (subsys_finished, set_subsys_finished) = Event::create();
 
     let subsys3 = |subsys: SubsystemHandle| async move {
@@ -433,6 +458,8 @@ async fn double_panic_does_not_stop_graceful_shutdown() {
 
 #[tokio::test]
 async fn destroying_toplevel_cancels_subsystems() {
+    env_logger::init();
+
     let (subsys_started, set_subsys_started) = Event::create();
     let (subsys_finished, set_subsys_finished) = Event::create();
 
@@ -454,6 +481,8 @@ async fn destroying_toplevel_cancels_subsystems() {
 
 #[tokio::test]
 async fn destroying_toplevel_cancels_nested_toplevel_subsystems() {
+    env_logger::init();
+
     let (subsys_started, set_subsys_started) = Event::create();
     let (subsys_finished, set_subsys_finished) = Event::create();
 
@@ -482,6 +511,8 @@ async fn destroying_toplevel_cancels_nested_toplevel_subsystems() {
 
 #[tokio::test]
 async fn partial_shutdown_request_stops_nested_subsystems() {
+    env_logger::init();
+
     let (subsys1_started, set_subsys1_started) = Event::create();
     let (subsys1_finished, set_subsys1_finished) = Event::create();
     let (subsys2_started, set_subsys2_started) = Event::create();
@@ -545,6 +576,8 @@ async fn partial_shutdown_request_stops_nested_subsystems() {
 
 #[tokio::test]
 async fn partial_shutdown_panic_gets_propagated_correctly() {
+    env_logger::init();
+
     let (nested_started, set_nested_started) = Event::create();
     let (nested_finished, set_nested_finished) = Event::create();
 
@@ -578,6 +611,8 @@ async fn partial_shutdown_panic_gets_propagated_correctly() {
 
 #[tokio::test]
 async fn partial_shutdown_error_gets_propagated_correctly() {
+    env_logger::init();
+
     let (nested_started, set_nested_started) = Event::create();
     let (nested_finished, set_nested_finished) = Event::create();
 
@@ -611,6 +646,8 @@ async fn partial_shutdown_error_gets_propagated_correctly() {
 
 #[tokio::test]
 async fn partial_shutdown_during_program_shutdown_causes_error() {
+    env_logger::init();
+
     let (nested_started, set_nested_started) = Event::create();
     let (nested_finished, set_nested_finished) = Event::create();
 
@@ -652,6 +689,8 @@ async fn partial_shutdown_during_program_shutdown_causes_error() {
 
 #[tokio::test]
 async fn partial_shutdown_on_wrong_parent_causes_error() {
+    env_logger::init();
+
     let (nested_started, set_nested_started) = Event::create();
     let (nested_finished, set_nested_finished) = Event::create();
 
