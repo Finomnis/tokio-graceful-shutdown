@@ -22,12 +22,33 @@ impl Display for PartialShutdownError {
             f,
             "{}",
             match self {
-                PartialShutdownError::SubsystemFailed => "At least one subsystem returned an error",
+                PartialShutdownError::SubsystemFailed => "at least one subsystem returned an error",
                 PartialShutdownError::SubsystemNotFound =>
-                    "Cannot find nested subsystem in given subsystem!",
+                    "unable to find nested subsystem in given subsystem",
                 PartialShutdownError::AlreadyShuttingDown =>
-                    "Unable to perform partial shutdown, system is already shutting down!",
+                    "unable to perform partial shutdown, the program is already shutting down",
             }
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn prints_correct_error_messages() {
+        assert_eq!(
+            format!("{}", PartialShutdownError::SubsystemFailed),
+            "at least one subsystem returned an error",
+        );
+        assert_eq!(
+            format!("{}", PartialShutdownError::SubsystemNotFound),
+            "unable to find nested subsystem in given subsystem",
+        );
+        assert_eq!(
+            format!("{}", PartialShutdownError::AlreadyShuttingDown),
+            "unable to perform partial shutdown, the program is already shutting down",
+        );
     }
 }
