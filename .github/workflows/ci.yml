@@ -141,7 +141,7 @@ jobs:
   release:
     name: Publish version
     runs-on: ubuntu-latest
-    #if: github.event_name == 'release'
+    if: github.event_name == 'release'
     needs: [build, test, lints, docs, leaks]
     steps:
       - name: Checkout sources
@@ -173,7 +173,12 @@ jobs:
       - name: Cargo login
         env:
           CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-        run: cargo login ${CRATES_IO_TOKEN}
+        uses: actions-rs/cargo@v1
+        with:
+          command: login
+          args: ${CRATES_IO_TOKEN}
 
       - name: Cargo publish
-        run: echo "DUMMY. TODO Implement"
+        uses: actions-rs/cargo@v1
+        with:
+          command: publish
