@@ -9,6 +9,7 @@ use std::sync::Mutex;
 
 use super::SubsystemData;
 use super::SubsystemDescriptor;
+use super::SubsystemIdentifier;
 use crate::exit_state::{join_shutdown_results, ShutdownResults, SubprocessExitState};
 use crate::runner::SubsystemRunner;
 use crate::shutdown_token::ShutdownToken;
@@ -36,6 +37,7 @@ impl SubsystemData {
         match self.subsystems.lock().unwrap().as_mut() {
             Some(subsystems) => {
                 subsystems.push(SubsystemDescriptor {
+                    id: SubsystemIdentifier::create(),
                     subsystem_runner,
                     data: subsystem,
                 });
@@ -80,6 +82,7 @@ impl SubsystemData {
         let mut subsystem_runners = vec![];
         let mut subsystem_data = vec![];
         for SubsystemDescriptor {
+            id: _,
             subsystem_runner,
             data,
         } in subsystems.iter_mut()
