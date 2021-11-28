@@ -28,6 +28,11 @@ impl SubsystemHandle {
     /// * `name` - The name of the subsystem
     /// * `subsystem` - The subsystem to be started
     ///
+    /// # Returns
+    ///
+    /// A [`NestedSubsystem`] that can be used to perform a partial shutdown
+    /// on the created submodule.
+    ///
     /// # Examples
     ///
     /// ```
@@ -146,7 +151,7 @@ impl SubsystemHandle {
     ///
     /// async fn stop_subsystem(subsys: SubsystemHandle) -> Result<()> {
     ///     // This subsystem wait for one second and then stops the program.
-    ///     sleep(Duration::from_millis(1000));
+    ///     sleep(Duration::from_millis(1000)).await;
     ///
     ///     // An explicit shutdown request is necessary, because
     ///     // simply leaving the run() method does NOT initiate a program
@@ -168,7 +173,36 @@ impl SubsystemHandle {
     ///
     /// # Returns
     ///
-    /// TBD
+    /// A [`PartialShutdownError`] on failure.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use anyhow::Result;
+    /// use tokio::time::{sleep, Duration};
+    /// use tokio_graceful_shutdown::SubsystemHandle;
+    ///
+    /// async fn nested_subsystem(subsys: SubsystemHandle) -> Result<()> {
+    ///     // This subsystem does nothing but wait for the shutdown to happen
+    ///     subsys.on_shutdown_requested().await;
+    ///     Ok(())
+    /// }
+    ///
+    /// async fn subsystem(mut subsys: SubsystemHandle) -> Result<()> {
+    ///     // This subsystem waits for one second and then performs a partial shutdown
+    ///
+    ///     // Spawn nested subsystem
+    ///     let nested = subsys.start("nested", nested_subsystem);
+    ///
+    ///     // Wait for a second
+    ///     sleep(Duration::from_millis(1000)).await;
+    ///
+    ///     // Perform a partial shutdown of the nested subsystem
+    ///     subsys.perform_partial_shutdown(nested).await?;
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
     pub async fn perform_partial_shutdown(
         &self,
         subsystem: NestedSubsystem,

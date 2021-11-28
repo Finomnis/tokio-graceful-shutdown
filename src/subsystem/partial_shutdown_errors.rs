@@ -2,10 +2,10 @@ use std::error::Error;
 use std::fmt::Display;
 
 /// This enum contains all the possible errors that a partial shutdown
-/// could case.
+/// could cause.
 #[derive(Debug)]
 pub enum PartialShutdownError {
-    /// At least one subsystem caused an error
+    /// At least one subsystem caused an error.
     SubsystemFailed,
     /// The given nested subsystem does not seem to be a child of
     /// the parent subsystem.

@@ -35,6 +35,9 @@ struct SubsystemDescriptor {
     subsystem_runner: SubsystemRunner,
 }
 
+/// A nested subsystem. Can be used to perform a partial shutdown.
+///
+/// For more information, see [`SubsystemHandle::start()`] and [`SubsystemHandle::perform_partial_shutdown()`].
 pub struct NestedSubsystem {
     id: SubsystemIdentifier,
 }

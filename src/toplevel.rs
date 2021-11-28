@@ -19,7 +19,7 @@ use super::subsystem::SubsystemData;
 ///
 /// ```
 /// use anyhow::Result;
-/// use tokio::time::{Duration, sleep};
+/// use tokio::time::Duration;
 /// use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 ///
 /// async fn my_subsystem(subsys: SubsystemHandle) -> Result<()> {
