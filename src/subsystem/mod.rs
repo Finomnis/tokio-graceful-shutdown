@@ -32,4 +32,6 @@ struct SubsystemDescriptor {
     subsystem_runner: SubsystemRunner,
 }
 
-pub struct NestedSubsystem {}
+pub struct NestedSubsystem {
+    id: SubsystemIdentifier,
+}

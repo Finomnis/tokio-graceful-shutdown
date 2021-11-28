@@ -81,9 +81,9 @@ impl SubsystemHandle {
         );
 
         // Store subsystem data
-        self.data.add_subsystem(new_subsystem, subsystem_runner);
+        let id = self.data.add_subsystem(new_subsystem, subsystem_runner);
 
-        NestedSubsystem {}
+        NestedSubsystem { id }
     }
 
     /// Wait for the shutdown mode to be triggered.

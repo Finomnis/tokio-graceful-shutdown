@@ -47,6 +47,7 @@ impl SubsystemData {
                 subsystem_runner.abort();
             }
         }
+        id
     }
 
     /// Moves all subsystem descriptors to the self.shutdown_subsystem vector.
