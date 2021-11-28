@@ -110,8 +110,8 @@ jobs:
   release:
     name: Publish version
     runs-on: ubuntu-latest
-    if: {{ github.event_name == "release" }}
-    needs: build, test, lints, docs
+    if: github.event_name == 'release'
+    needs: [build, test, lints, docs]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -131,7 +131,7 @@ jobs:
         run: export RELEASE_TAG_VERSION = ${{ github.event.release.name }}
 
       - name: Check matching versions
-        run: [[ "$CRATE_VERSION" == "$RELEASE_TAG_VERSION" ]]
+        run: echo "$CRATE_VERSION == $RELEASE_TAG_VERSION"
 
       - name: Publish with cargo
         run: echo "DUMMY. TODO Implement"
