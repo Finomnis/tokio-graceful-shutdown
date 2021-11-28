@@ -745,3 +745,35 @@ async fn partial_shutdown_on_wrong_parent_causes_error() {
 
     assert!(result.is_ok());
 }
+
+#[cfg(unix)]
+#[tokio::test]
+async fn shutdown_through_signal() {
+    use nix::sys::signal::{self, Signal};
+    use nix::unistd::Pid;
+
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("off")).init();
+
+    let subsystem = |subsys: SubsystemHandle| async move {
+        subsys.on_shutdown_requested().await;
+        sleep(Duration::from_millis(200)).await;
+        Ok(())
+    };
+
+    let toplevel = Toplevel::new().catch_signals();
+    tokio::join!(
+        async {
+            sleep(Duration::from_millis(100)).await;
+
+            // Send SIGINT to ourselves.
+            signal::kill(Pid::this(), Signal::SIGINT).unwrap();
+        },
+        async {
+            let result = toplevel
+                .start("subsys", subsystem)
+                .handle_shutdown_requests(Duration::from_millis(400))
+                .await;
+            assert!(result.is_ok());
+        },
+    );
+}
