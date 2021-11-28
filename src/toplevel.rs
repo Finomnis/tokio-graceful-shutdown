@@ -33,7 +33,7 @@ use super::subsystem::SubsystemData;
 ///     Toplevel::new()
 ///         .start("MySubsystem", my_subsystem)
 ///         .catch_signals()
-///         .wait_for_shutdown(Duration::from_millis(1000))
+///         .handle_shutdown_requests(Duration::from_millis(1000))
 ///         .await
 /// }
 /// ```
@@ -164,7 +164,7 @@ impl Toplevel {
     ///
     /// * `shutdown_timeout` - The maximum time that is allowed to pass after a shutdown was initiated.
     ///
-    pub async fn wait_for_shutdown(self, shutdown_timeout: Duration) -> Result<()> {
+    pub async fn handle_shutdown_requests(self, shutdown_timeout: Duration) -> Result<()> {
         self.subsys_handle.on_shutdown_requested().await;
 
         match tokio::time::timeout(shutdown_timeout, self.attempt_clean_shutdown()).await {

@@ -50,6 +50,6 @@ async fn main() -> Result<()> {
     Toplevel::new()
         .start("Hyper", hyper_subsystem)
         .catch_signals()
-        .wait_for_shutdown(Duration::from_millis(4000))
+        .handle_shutdown_requests(Duration::from_millis(4000))
         .await
 }

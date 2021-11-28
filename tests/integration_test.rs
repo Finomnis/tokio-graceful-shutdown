@@ -22,7 +22,9 @@ async fn normal_shutdown() {
             shutdown_token.shutdown();
         },
         async {
-            let result = toplevel.wait_for_shutdown(Duration::from_millis(400)).await;
+            let result = toplevel
+                .handle_shutdown_requests(Duration::from_millis(400))
+                .await;
             assert!(result.is_ok());
         },
     );
@@ -45,7 +47,9 @@ async fn shutdown_timeout_causes_error() {
             shutdown_token.shutdown();
         },
         async {
-            let result = toplevel.wait_for_shutdown(Duration::from_millis(200)).await;
+            let result = toplevel
+                .handle_shutdown_requests(Duration::from_millis(200))
+                .await;
             assert!(result.is_err());
         },
     );
@@ -62,7 +66,9 @@ async fn subsystem_finishes_with_success() {
 
     tokio::join!(
         async {
-            let result = toplevel.wait_for_shutdown(Duration::from_millis(100)).await;
+            let result = toplevel
+                .handle_shutdown_requests(Duration::from_millis(100))
+                .await;
             set_toplevel_finished();
             // Assert Ok(()) returncode properly propagates to Toplevel
             assert!(result.is_ok());
@@ -90,7 +96,9 @@ async fn subsystem_finishes_with_error() {
 
     tokio::join!(
         async {
-            let result = toplevel.wait_for_shutdown(Duration::from_millis(100)).await;
+            let result = toplevel
+                .handle_shutdown_requests(Duration::from_millis(100))
+                .await;
             set_toplevel_finished();
             // Assert Err(()) returncode properly propagates to Toplevel
             assert!(result.is_err());
@@ -116,7 +124,7 @@ async fn subsystem_receives_shutdown() {
 
     let toplevel = Toplevel::new().start("subsys", subsys);
     let shutdown_token = toplevel.get_shutdown_token().clone();
-    let result = tokio::spawn(toplevel.wait_for_shutdown(Duration::from_millis(100)));
+    let result = tokio::spawn(toplevel.handle_shutdown_requests(Duration::from_millis(100)));
 
     sleep(Duration::from_millis(100)).await;
     assert!(!subsys_finished.get());
@@ -152,7 +160,7 @@ async fn nested_subsystem_receives_shutdown() {
 
     let toplevel = Toplevel::new().start("subsys", subsystem);
     let shutdown_token = toplevel.get_shutdown_token().clone();
-    let result = tokio::spawn(toplevel.wait_for_shutdown(Duration::from_millis(100)));
+    let result = tokio::spawn(toplevel.handle_shutdown_requests(Duration::from_millis(100)));
 
     sleep(Duration::from_millis(100)).await;
     assert!(!subsys_finished.get());
@@ -187,7 +195,9 @@ async fn nested_subsystem_error_propagates() {
 
     tokio::join!(
         async {
-            let result = toplevel.wait_for_shutdown(Duration::from_millis(100)).await;
+            let result = toplevel
+                .handle_shutdown_requests(Duration::from_millis(100))
+                .await;
             set_toplevel_finished();
             // Assert Err(()) returncode properly propagates to Toplevel
             assert!(result.is_err());
@@ -220,7 +230,9 @@ async fn panic_gets_handled_correctly() {
 
     tokio::join!(
         async {
-            let result = toplevel.wait_for_shutdown(Duration::from_millis(100)).await;
+            let result = toplevel
+                .handle_shutdown_requests(Duration::from_millis(100))
+                .await;
             set_toplevel_finished();
             // Assert panic causes Error propagation to Toplevel
             assert!(result.is_err());
@@ -255,7 +267,9 @@ async fn subsystem_can_request_shutdown() {
 
     tokio::join!(
         async {
-            let result = toplevel.wait_for_shutdown(Duration::from_millis(100)).await;
+            let result = toplevel
+                .handle_shutdown_requests(Duration::from_millis(100))
+                .await;
             set_toplevel_finished();
 
             // Assert graceful shutdown does not cause an Error code
@@ -296,7 +310,9 @@ async fn shutdown_timeout_causes_cancellation() {
 
     tokio::join!(
         async {
-            let result = toplevel.wait_for_shutdown(Duration::from_millis(200)).await;
+            let result = toplevel
+                .handle_shutdown_requests(Duration::from_millis(200))
+                .await;
             set_toplevel_finished();
 
             // Assert graceful shutdown does not cause an Error code
@@ -350,7 +366,9 @@ async fn spawning_task_during_shutdown_causes_task_to_be_cancelled() {
 
     tokio::join!(
         async {
-            let result = toplevel.wait_for_shutdown(Duration::from_millis(500)).await;
+            let result = toplevel
+                .handle_shutdown_requests(Duration::from_millis(500))
+                .await;
             set_toplevel_finished();
 
             // Assert graceful shutdown does not cause an Error code
@@ -406,7 +424,7 @@ async fn double_panic_does_not_stop_graceful_shutdown() {
 
     let result = Toplevel::new()
         .start("subsys", subsys1)
-        .wait_for_shutdown(Duration::from_millis(500))
+        .handle_shutdown_requests(Duration::from_millis(500))
         .await;
     assert!(result.is_err());
 
@@ -449,7 +467,7 @@ async fn destroying_toplevel_cancels_nested_toplevel_subsystems() {
     let subsys1 = move |_subsys: SubsystemHandle| async move {
         Toplevel::new()
             .start("subsys2", subsys2)
-            .wait_for_shutdown(Duration::from_millis(100))
+            .handle_shutdown_requests(Duration::from_millis(100))
             .await
     };
 

@@ -42,7 +42,7 @@ async fn main() -> Result<()> {
     Toplevel::new()
         .start("Subsys1", subsys1)
         .catch_signals()
-        .wait_for_shutdown(Duration::from_millis(1000))
+        .handle_shutdown_requests(Duration::from_millis(1000))
         .await
 }
 ```
@@ -52,7 +52,7 @@ Subsystems can then be started using the `start()` functionality of the toplevel
 
 The `catch_signals()` method signals the `Toplevel` object to listen for SIGINT/SIGTERM/Ctrl+C and initiate a shutdown thereafter.
 
-`wait_for_shutdown()` is the final and most important method of `Toplevel`. It idles until the program enters the shutdown mode. Then, it collects all the return values of the subsystems and determines the global error state, and makes sure shutdown completes within the given timeout.
+`handle_shutdown_requests()` is the final and most important method of `Toplevel`. It idles until the program enters the shutdown mode. Then, it collects all the return values of the subsystems and determines the global error state, and makes sure shutdown completes within the given timeout.
 Lastly, it returns an error value that can be directly used as a return code for `main()`.
 
 Further examples can be seen in the **examples** folder.
