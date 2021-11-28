@@ -19,6 +19,7 @@ Specifically, it provides:
     - Subsystem panic
 - Clean shutdown procedure with timeout and error propagation
 - Subsystem nesting
+- Partial shutdown of a selected subsystem tree
 
 ## Usage Example
 
