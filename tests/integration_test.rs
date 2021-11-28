@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use tokio::time::{sleep, timeout, Duration};
-use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
+use tokio_graceful_shutdown::{PartialShutdownError, SubsystemHandle, Toplevel};
 
 mod common;
 use common::event::Event;
@@ -541,4 +541,156 @@ async fn partial_shutdown_request_stops_nested_subsystems() {
             shutdown_token.shutdown();
         }
     );
+}
+
+#[tokio::test]
+async fn partial_shutdown_panic_gets_propagated_correctly() {
+    let (nested_started, set_nested_started) = Event::create();
+    let (nested_finished, set_nested_finished) = Event::create();
+
+    let nested_subsys = move |subsys: SubsystemHandle| async move {
+        set_nested_started();
+        subsys.on_shutdown_requested().await;
+        set_nested_finished();
+        panic!("Nested panicked.");
+    };
+
+    let subsys1 = move |mut subsys: SubsystemHandle| async move {
+        let handle = subsys.start("nested", nested_subsys);
+        sleep(Duration::from_millis(100)).await;
+        let result = subsys.perform_partial_shutdown(handle).await;
+
+        assert_eq!(result.err(), Some(PartialShutdownError::SubsystemFailed));
+        assert!(nested_started.get());
+        assert!(nested_finished.get());
+
+        subsys.request_shutdown();
+        Ok(())
+    };
+
+    let result = Toplevel::new()
+        .start("subsys", subsys1)
+        .handle_shutdown_requests(Duration::from_millis(500))
+        .await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn partial_shutdown_error_gets_propagated_correctly() {
+    let (nested_started, set_nested_started) = Event::create();
+    let (nested_finished, set_nested_finished) = Event::create();
+
+    let nested_subsys = move |subsys: SubsystemHandle| async move {
+        set_nested_started();
+        subsys.on_shutdown_requested().await;
+        set_nested_finished();
+        Err(anyhow!("nested failed."))
+    };
+
+    let subsys1 = move |mut subsys: SubsystemHandle| async move {
+        let handle = subsys.start("nested", nested_subsys);
+        sleep(Duration::from_millis(100)).await;
+        let result = subsys.perform_partial_shutdown(handle).await;
+
+        assert_eq!(result.err(), Some(PartialShutdownError::SubsystemFailed));
+        assert!(nested_started.get());
+        assert!(nested_finished.get());
+
+        subsys.request_shutdown();
+        Ok(())
+    };
+
+    let result = Toplevel::new()
+        .start("subsys", subsys1)
+        .handle_shutdown_requests(Duration::from_millis(500))
+        .await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn partial_shutdown_during_program_shutdown_causes_error() {
+    let (nested_started, set_nested_started) = Event::create();
+    let (nested_finished, set_nested_finished) = Event::create();
+
+    let nested_subsys = move |subsys: SubsystemHandle| async move {
+        set_nested_started();
+        subsys.on_shutdown_requested().await;
+        set_nested_finished();
+        Ok(())
+    };
+
+    let subsys1 = move |mut subsys: SubsystemHandle| async move {
+        let handle = subsys.start("nested", nested_subsys);
+        sleep(Duration::from_millis(100)).await;
+
+        subsys.request_shutdown();
+        sleep(Duration::from_millis(100)).await;
+        let result = subsys.perform_partial_shutdown(handle).await;
+
+        assert_eq!(
+            result.err(),
+            Some(PartialShutdownError::AlreadyShuttingDown)
+        );
+
+        sleep(Duration::from_millis(100)).await;
+
+        assert!(nested_started.get());
+        assert!(nested_finished.get());
+
+        Ok(())
+    };
+
+    let result = Toplevel::new()
+        .start("subsys", subsys1)
+        .handle_shutdown_requests(Duration::from_millis(500))
+        .await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn partial_shutdown_on_wrong_parent_causes_error() {
+    let (nested_started, set_nested_started) = Event::create();
+    let (nested_finished, set_nested_finished) = Event::create();
+
+    let nested_subsys = move |subsys: SubsystemHandle| async move {
+        set_nested_started();
+        subsys.on_shutdown_requested().await;
+        set_nested_finished();
+        Ok(())
+    };
+
+    let subsys1 = move |mut subsys: SubsystemHandle| async move {
+        let handle = subsys.start("nested", nested_subsys);
+
+        sleep(Duration::from_millis(100)).await;
+
+        let wrong_parent = |child_subsys: SubsystemHandle| async move {
+            sleep(Duration::from_millis(100)).await;
+            let result = child_subsys.perform_partial_shutdown(handle).await;
+            assert_eq!(result.err(), Some(PartialShutdownError::SubsystemNotFound));
+
+            child_subsys.request_shutdown();
+            sleep(Duration::from_millis(100)).await;
+
+            assert!(nested_started.get());
+            assert!(nested_finished.get());
+
+            Ok(())
+        };
+
+        subsys.start("wrong_parent", wrong_parent);
+        subsys.on_shutdown_requested().await;
+
+        Ok(())
+    };
+
+    let result = Toplevel::new()
+        .start("subsys", subsys1)
+        .handle_shutdown_requests(Duration::from_millis(500))
+        .await;
+
+    assert!(result.is_ok());
 }

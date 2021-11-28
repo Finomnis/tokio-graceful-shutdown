@@ -3,7 +3,7 @@ use std::fmt::Display;
 
 /// This enum contains all the possible errors that a partial shutdown
 /// could cause.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum PartialShutdownError {
     /// At least one subsystem caused an error.
     SubsystemFailed,
