@@ -4,6 +4,8 @@ on:
     branches: [main]
   push:
     branches: [main]
+  release:
+    types: [published]
 
 name: CI
 
@@ -104,3 +106,32 @@ jobs:
         with:
           command: doc
           args: --no-deps
+
+  release:
+    name: Publish version
+    runs-on: ubuntu-latest
+    if: {{ github.event_name == "release" }}
+    needs: build, test, lints, docs
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+
+      - name: Query crate version
+        run: export CRATE_VERSION = $(cargo metadata --format-version=1 --no-deps | python -c "import sys,json; print('v' + json.load(sys.stdin)['packages'][0]['version'])")
+
+      - name: Query release tag version
+        run: export RELEASE_TAG_VERSION = ${{ github.event.release.name }}
+
+      - name: Check matching versions
+        run: [[ "$CRATE_VERSION" == "$RELEASE_TAG_VERSION" ]]
+
+      - name: Publish with cargo
+        run: echo "DUMMY. TODO Implement"
