@@ -161,8 +161,11 @@ jobs:
       - name: Query release tag version
         run: export RELEASE_TAG_VERSION = ${{ github.event.release.name }}
 
+      - name: Print versions
+        run: echo "Crate: $CRATE_VERSION, Release: $RELEASE_TAG_VERSION"
+
       - name: Check matching versions
-        run: echo "$CRATE_VERSION == $RELEASE_TAG_VERSION"
+        run: test $CRATE_VERSION = $RELEASE_TAG_VERSION
 
       - name: Publish with cargo
         run: echo "DUMMY. TODO Implement"
