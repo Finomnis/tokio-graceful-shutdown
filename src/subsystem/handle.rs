@@ -7,6 +7,7 @@ use super::NestedSubsystem;
 use super::SubsystemData;
 use super::SubsystemHandle;
 use crate::runner::SubsystemRunner;
+use crate::PartialShutdownError;
 use crate::ShutdownToken;
 
 #[cfg(doc)]
@@ -168,8 +169,11 @@ impl SubsystemHandle {
     /// # Returns
     ///
     /// TBD
-    pub async fn perform_partial_shutdown(&self, subsystem: NestedSubsystem) {
-        self.data.perform_partial_shutdown(subsystem).await;
+    pub async fn perform_partial_shutdown(
+        &self,
+        subsystem: NestedSubsystem,
+    ) -> Result<(), PartialShutdownError> {
+        self.data.perform_partial_shutdown(subsystem).await
     }
 
     /// Provides access to the process-wide parent shutdown token.

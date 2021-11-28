@@ -1,12 +1,13 @@
 use std::sync::Arc;
 use tokio::sync::MutexGuard;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use async_recursion::async_recursion;
 use futures::future::join;
 use futures::future::join_all;
 use std::sync::Mutex;
 
+use super::partial_shutdown_errors::PartialShutdownError;
 use super::NestedSubsystem;
 use super::SubsystemData;
 use super::SubsystemDescriptor;
@@ -170,16 +171,16 @@ impl SubsystemData {
     pub async fn perform_partial_shutdown(
         &self,
         subsystem_handle: NestedSubsystem,
-    ) -> Result<Result<()>> {
+    ) -> Result<(), PartialShutdownError> {
         let subsystem = {
             let mut subsystems_mutex = self.subsystems.lock().unwrap();
-            let subsystems = subsystems_mutex.as_mut().ok_or(anyhow!(
-                "Unable to perform partial shutdown, system is already shutting down!"
-            ))?;
+            let subsystems = subsystems_mutex
+                .as_mut()
+                .ok_or(PartialShutdownError::AlreadyShuttingDown)?;
             let position = subsystems
                 .iter()
                 .position(|elem| elem.id == subsystem_handle.id)
-                .ok_or(anyhow! {"Cannot find nested subsystem in given subsystem!"})?;
+                .ok_or(PartialShutdownError::SubsystemNotFound)?;
             subsystems.swap_remove(position)
         };
 
@@ -205,9 +206,9 @@ impl SubsystemData {
             log::debug!("    {}", formatted_exit_code);
         }
 
-        Ok(match result {
+        match result {
             Ok(_) => Ok(()),
-            Err(_) => Err(anyhow::anyhow!("Subsytem errors occurred.")),
-        })
+            Err(_) => Err(PartialShutdownError::SubsystemFailed),
+        }
     }
 }

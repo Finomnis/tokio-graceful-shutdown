@@ -91,5 +91,6 @@ mod toplevel;
 
 pub use shutdown_token::ShutdownToken;
 pub use subsystem::NestedSubsystem;
+pub use subsystem::PartialShutdownError;
 pub use subsystem::SubsystemHandle;
 pub use toplevel::Toplevel;

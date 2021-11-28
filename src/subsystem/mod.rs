@@ -1,6 +1,7 @@
 mod data;
 mod handle;
 mod identifier;
+mod partial_shutdown_errors;
 
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -9,6 +10,8 @@ use crate::runner::SubsystemRunner;
 use crate::shutdown_token::ShutdownToken;
 
 use self::identifier::SubsystemIdentifier;
+
+pub use partial_shutdown_errors::PartialShutdownError;
 
 /// The data stored per subsystem, like name or nested subsystems
 pub struct SubsystemData {

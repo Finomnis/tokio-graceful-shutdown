@@ -35,7 +35,7 @@ async fn subsys1(mut subsys: SubsystemHandle) -> Result<()> {
         _ = subsys.on_shutdown_requested() => (),
         _ = sleep(Duration::from_secs(5)) => {
             log::info!("Shutting down nested subsystem ...");
-            subsys.perform_partial_shutdown(nested_subsys).await;
+            subsys.perform_partial_shutdown(nested_subsys).await?;
             log::info!("Nested subsystem shut down.");
             subsys.on_shutdown_requested().await;
         }

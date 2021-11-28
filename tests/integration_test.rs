@@ -508,7 +508,10 @@ async fn partial_shutdown_request_stops_nested_subsystems() {
         set_subsys1_started();
         let nested_subsys = subsys.start("subsys2", subsys2);
         sleep(Duration::from_millis(200)).await;
-        subsys.perform_partial_shutdown(nested_subsys).await;
+        subsys
+            .perform_partial_shutdown(nested_subsys)
+            .await
+            .unwrap();
         set_subsys1_shutdown_performed();
         subsys.on_shutdown_requested().await;
         set_subsys1_finished();
