@@ -27,3 +27,5 @@ struct SubsystemDescriptor {
     data: Arc<SubsystemData>,
     subsystem_runner: SubsystemRunner,
 }
+
+pub struct NestedSubsystem {}

@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 
+use super::NestedSubsystem;
 use super::SubsystemData;
 use super::SubsystemHandle;
 use crate::runner::SubsystemRunner;
@@ -53,7 +54,7 @@ impl SubsystemHandle {
         &mut self,
         name: &'static str,
         subsystem: S,
-    ) -> &mut Self {
+    ) -> NestedSubsystem {
         let name = {
             if !self.data.name.is_empty() {
                 self.data.name.clone() + "/" + name
@@ -82,7 +83,7 @@ impl SubsystemHandle {
         // Store subsystem data
         self.data.add_subsystem(new_subsystem, subsystem_runner);
 
-        self
+        NestedSubsystem {}
     }
 
     /// Wait for the shutdown mode to be triggered.
@@ -156,6 +157,21 @@ impl SubsystemHandle {
     /// ```
     pub fn request_shutdown(&self) {
         self.data.global_shutdown_token.shutdown()
+    }
+
+    /// Preforms a partial shutdown of the given nested subsystem.
+    ///
+    /// # Arguments
+    ///
+    /// * `subsystem` - The nested subsystem that should be shut down
+    ///
+    /// # Returns
+    ///
+    /// TBD
+    pub async fn perform_partial_shutdown(&self, subsystem: NestedSubsystem) {
+        // TODO shut down nested tasks
+        // TODO wait for nested tasks to be shut down
+        // TODO remove nested tasks from subtask tree (unless failed)
     }
 
     /// Provides access to the process-wide parent shutdown token.

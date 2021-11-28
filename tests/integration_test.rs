@@ -479,3 +479,63 @@ async fn destroying_toplevel_cancels_nested_toplevel_subsystems() {
     assert!(subsys_started.get());
     assert!(!subsys_finished.get());
 }
+
+#[tokio::test]
+async fn partial_shutdown_request_stops_nested_subsystems() {
+    let (subsys1_started, set_subsys1_started) = Event::create();
+    let (subsys1_finished, set_subsys1_finished) = Event::create();
+    let (subsys2_started, set_subsys2_started) = Event::create();
+    let (subsys2_finished, set_subsys2_finished) = Event::create();
+    let (subsys3_started, set_subsys3_started) = Event::create();
+    let (subsys3_finished, set_subsys3_finished) = Event::create();
+    let (subsys1_shutdown_performed, set_subsys1_shutdown_performed) = Event::create();
+
+    let subsys3 = move |subsys: SubsystemHandle| async move {
+        set_subsys3_started();
+        subsys.on_shutdown_requested().await;
+        set_subsys3_finished();
+        Ok(())
+    };
+    let subsys2 = move |mut subsys: SubsystemHandle| async move {
+        set_subsys2_started();
+        subsys.start("subsys3", subsys3);
+        subsys.on_shutdown_requested().await;
+        set_subsys2_finished();
+        Ok(())
+    };
+
+    let subsys1 = move |mut subsys: SubsystemHandle| async move {
+        set_subsys1_started();
+        let nested_subsys = subsys.start("subsys2", subsys2);
+        sleep(Duration::from_millis(200)).await;
+        subsys.perform_partial_shutdown(nested_subsys).await;
+        set_subsys1_shutdown_performed();
+        subsys.on_shutdown_requested().await;
+        set_subsys1_finished();
+        Ok(())
+    };
+
+    let toplevel = Toplevel::new();
+    let shutdown_token = toplevel.get_shutdown_token().clone();
+
+    tokio::join!(
+        async {
+            let result = toplevel
+                .start("subsys", subsys1)
+                .handle_shutdown_requests(Duration::from_millis(500))
+                .await;
+            assert!(result.is_ok());
+        },
+        async {
+            sleep(Duration::from_millis(300)).await;
+            assert!(subsys1_started.get());
+            assert!(subsys2_started.get());
+            assert!(subsys3_started.get());
+            assert!(!subsys1_finished.get());
+            assert!(subsys2_finished.get());
+            assert!(subsys3_finished.get());
+            assert!(subsys1_shutdown_performed.get());
+            shutdown_token.shutdown();
+        }
+    );
+}
