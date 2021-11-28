@@ -62,11 +62,11 @@
 //!
 //! For one, the [`Toplevel`] object represents the root object of the subsystem tree
 //! and is the main entry point of how to interact with this crate.
-//! Subsystems can then be started using the `start()` functionality of the toplevel object.
+//! Subsystems can then be started using the [`start()`](Toplevel::start) functionality of the toplevel object.
 //!
-//! The `catch_signals()` method signals the `Toplevel` object to listen for SIGINT/SIGTERM/Ctrl+C and initiate a shutdown thereafter.
+//! The [`catch_signals()`](Toplevel::catch_signals) method signals the `Toplevel` object to listen for SIGINT/SIGTERM/Ctrl+C and initiate a shutdown thereafter.
 //!
-//! `handle_shutdown_requests()` is the final and most important method of `Toplevel`. It idles until the program enters the shutdown mode. Then, it collects all the return values of the subsystems and determines the global error state, and makes sure shutdown happens within the given timeout.
+//! [`handle_shutdown_requests()`](Toplevel::handle_shutdown_requests) is the final and most important method of `Toplevel`. It idles until the program enters the shutdown mode. Then, it collects all the return values of the subsystems and determines the global error state, and makes sure shutdown happens within the given timeout.
 //! Lastly, it returns an error value that can be directly used as a return code for `main()`.
 //!
 //! Further, the way to register and start a new submodule ist to provide
