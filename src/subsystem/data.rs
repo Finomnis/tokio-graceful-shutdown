@@ -152,7 +152,6 @@ impl SubsystemData {
     /// Returns the collected subsystem exit states.
     ///
     /// This function can handle cancellation.
-    #[async_recursion]
     pub async fn perform_shutdown(&self) -> ShutdownResults {
         let mut subsystems = self.prepare_shutdown().await;
 
