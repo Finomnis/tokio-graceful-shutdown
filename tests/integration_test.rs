@@ -752,7 +752,7 @@ async fn shutdown_through_signal() {
     use nix::sys::signal::{self, Signal};
     use nix::unistd::Pid;
 
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("off")).init();
+    setup();
 
     let subsystem = |subsys: SubsystemHandle| async move {
         subsys.on_shutdown_requested().await;
