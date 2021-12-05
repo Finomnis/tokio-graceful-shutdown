@@ -102,7 +102,9 @@ impl SubsystemData {
         let joinhandles_finished = join_all(
             subsystem_runners
                 .iter_mut()
-                .map(|(name, subsystem_runner)| async { (name, subsystem_runner.join().await) }),
+                .map(
+                    |(name, subsystem_runner)| async move { (name, subsystem_runner.join().await) },
+                ),
         );
         let subsystems_finished = join_all(
             subsystem_data
