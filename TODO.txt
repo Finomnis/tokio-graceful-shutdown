@@ -1,0 +1,1 @@
+Write manual section about decoupling & partial shutdowns
