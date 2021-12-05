@@ -4,25 +4,24 @@ use tokio_util::sync::CancellationToken;
 #[doc(hidden)]
 pub struct ShutdownToken {
     token: CancellationToken,
+    is_toplevel: bool,
 }
 
 pub fn create_shutdown_token() -> ShutdownToken {
     ShutdownToken {
         token: CancellationToken::new(),
+        is_toplevel: true,
     }
 }
 
 impl ShutdownToken {
     pub fn shutdown(&self) {
         if !self.token.is_cancelled() {
-            log::info!("Initiating shutdown ...");
-            self.token.cancel()
-        }
-    }
-
-    pub fn partial_shutdown(&self) {
-        if !self.token.is_cancelled() {
-            log::debug!("Initiating partial shutdown ...");
+            if self.is_toplevel {
+                log::info!("Initiating shutdown ...");
+            } else {
+                log::debug!("Initiating partial shutdown ...");
+            }
             self.token.cancel()
         }
     }
@@ -38,6 +37,7 @@ impl ShutdownToken {
     pub fn child_token(&self) -> Self {
         Self {
             token: self.token.child_token(),
+            is_toplevel: false,
         }
     }
 }
@@ -82,7 +82,7 @@ mod tests {
     async fn triggers_correctly_on_partial() {
         let finished = AtomicBool::new(false);
 
-        let token1 = create_shutdown_token();
+        let token1 = create_shutdown_token().child_token();
         let token2 = token1.clone();
 
         let stoppee = async {
@@ -96,7 +96,7 @@ mod tests {
             assert!(!token1.is_shutting_down());
             assert!(!token2.is_shutting_down());
 
-            token1.partial_shutdown();
+            token1.shutdown();
             sleep(Duration::from_millis(100)).await;
 
             assert!(finished.load(Ordering::SeqCst));
@@ -110,12 +110,12 @@ mod tests {
     #[tokio::test]
     async fn double_shutdown_causes_no_error() {
         let token1 = create_shutdown_token();
-        let token2 = create_shutdown_token();
+        let token2 = create_shutdown_token().child_token();
 
         token1.shutdown();
         token1.shutdown();
-        token2.partial_shutdown();
-        token2.partial_shutdown();
+        token2.shutdown();
+        token2.shutdown();
 
         assert!(token1.is_shutting_down());
         assert!(token2.is_shutting_down());

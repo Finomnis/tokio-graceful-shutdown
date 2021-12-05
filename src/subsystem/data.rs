@@ -186,7 +186,7 @@ impl SubsystemData {
         };
 
         // Initiate shutdown
-        subsystem.data.local_shutdown_token.partial_shutdown();
+        subsystem.data.local_shutdown_token.shutdown();
 
         // Wait for shutdown to finish
         let mut subsystem_vec = vec![subsystem];
