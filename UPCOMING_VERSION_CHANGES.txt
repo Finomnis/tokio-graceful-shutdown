@@ -1,5 +1,0 @@
-- Rename `Toplevel::wait_for_shutdown`` to Toplevel::handle_shutdown_requests` to make it clearer what the purpose of this function is
-- Implement partial shutdown mechanism
-    - Change return value of `SubsystemHandle::create()` to NestedSubsystem
-    - Add `SubsystemHandle::perform_partial_shutdown(NestedSubsystem)`
-    - Add `NestedSubsystem` struct and `PartialShutdownError` enum
