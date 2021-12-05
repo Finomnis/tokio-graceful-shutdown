@@ -1,7 +1,8 @@
-//! This example demonstrates how to perform a partial shutdown of the system.
+//! This example demonstrates how an error during partial shutdown behaves.
 //!
-//! Subsys1 will perform a partial shutdown after 5 seconds, which will in turn
-//! shut down Subsys2 and Subsys3, leaving Subsys1 running.
+//! If an error during partial a shutdown happens, it will not cause a global
+//! shutdown, but instead it will be delivered to the task that initiated
+//! the partial shutdown.
 
 use anyhow::Result;
 use env_logger::{Builder, Env};
