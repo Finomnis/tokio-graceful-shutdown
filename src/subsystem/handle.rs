@@ -99,6 +99,92 @@ impl SubsystemHandle {
         NestedSubsystem { id }
     }
 
+    /// Starts a nested subsystem, similar to [`SubsystemHandle::start`].
+    ///
+    /// The big difference to [`SubsystemHandle::start`] is that the subsystem will be
+    /// decoupled from its parent.
+    /// This means that if an error occurs in the newly created subsystem or one of its children,
+    /// it will only cause a partial shutdown.
+    /// It therefore 'decouples' errors from the rest of the system.
+    ///
+    /// This is especially useful in combination with [`SubsystemHandle::perform_partial_shutdown`]
+    /// and [`SubsystemHandle::join_nested_subsystem`], as it allows the creation of independent
+    /// subsystem trees that cannot influence the main program.
+    ///
+    /// Once called, the subsystem will be started immediately, similar to [`tokio::spawn`].
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the subsystem
+    /// * `subsystem` - The subsystem to be started
+    ///
+    /// # Returns
+    ///
+    /// A [`NestedSubsystem`] that can be used to perform a partial shutdown
+    /// on the created submodule.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use anyhow::Result;
+    /// use tokio_graceful_shutdown::SubsystemHandle;
+    ///
+    /// async fn nested_subsystem(subsys: SubsystemHandle) -> Result<()> {
+    ///     subsys.on_shutdown_requested().await;
+    ///     Ok(())
+    /// }
+    ///
+    /// async fn my_subsystem(mut subsys: SubsystemHandle) -> Result<()> {
+    ///     // start a decoupled nested subsystem
+    ///     subsys.start_decoupled("Nested", nested_subsystem);
+    ///
+    ///     subsys.on_shutdown_requested().await;
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    pub fn start_decoupled<
+        Fut: 'static + Future<Output = Result<()>> + Send,
+        S: 'static + FnOnce(SubsystemHandle) -> Fut + Send,
+    >(
+        &mut self,
+        name: &'static str,
+        subsystem: S,
+    ) -> NestedSubsystem {
+        let name = {
+            if !self.data.name.is_empty() {
+                self.data.name.clone() + "/" + name
+            } else {
+                name.to_string()
+            }
+        };
+
+        let new_toplevel_token = self.local_shutdown_token().child_token();
+
+        // Create subsystem data structure
+        let new_subsystem = Arc::new(SubsystemData::new(
+            &name,
+            new_toplevel_token.clone(),
+            new_toplevel_token,
+        ));
+
+        // Create handle
+        let subsystem_handle = SubsystemHandle::new(new_subsystem.clone());
+
+        // Spawn new task
+        let subsystem_runner = SubsystemRunner::new(
+            name,
+            subsystem_handle.global_shutdown_token().clone(),
+            subsystem_handle.local_shutdown_token().clone(),
+            subsystem(subsystem_handle),
+        );
+
+        // Store subsystem data
+        let id = self.data.add_subsystem(new_subsystem, subsystem_runner);
+
+        NestedSubsystem { id }
+    }
+
     /// Wait for the shutdown mode to be triggered.
     ///
     /// Once the shutdown mode is entered, all existing calls to this
