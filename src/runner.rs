@@ -24,6 +24,7 @@ impl SubsystemRunner {
     async fn handle_subsystem(
         mut inner_joinhandle: JoinHandle<Result<()>>,
         shutdown_token: ShutdownToken,
+        local_shutdown_token: ShutdownToken,
         name: String,
         cancellation_requested: Event,
     ) -> Result<Result<(), ()>, JoinError> {
@@ -34,12 +35,16 @@ impl SubsystemRunner {
                         Ok(Ok(())) => {Ok(Ok(()))},
                         Ok(Err(e)) => {
                             log::error!("Error in subsystem '{}': {:?}", name, e);
-                            shutdown_token.shutdown();
+                            if !local_shutdown_token.is_shutting_down() {
+                                shutdown_token.shutdown();
+                            }
                             Ok(Err(()))
                         },
                         Err(e) => {
                             log::error!("Error in subsystem '{}': {}", name, e);
-                            shutdown_token.shutdown();
+                            if !local_shutdown_token.is_shutting_down() {
+                                shutdown_token.shutdown();
+                            }
                             Err(e)
                         }
                     }
@@ -61,6 +66,7 @@ impl SubsystemRunner {
     pub fn new<Fut: 'static + Future<Output = Result<()>> + Send>(
         name: String,
         shutdown_token: ShutdownToken,
+        local_shutdown_token: ShutdownToken,
         subsystem_future: Fut,
     ) -> Self {
         let (cancellation_requested, request_cancellation) = Event::create();
@@ -71,6 +77,7 @@ impl SubsystemRunner {
         let outer_joinhandle = tokio::spawn(Self::handle_subsystem(
             inner_joinhandle,
             shutdown_token,
+            local_shutdown_token,
             name,
             cancellation_requested,
         ));

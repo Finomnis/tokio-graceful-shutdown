@@ -608,6 +608,7 @@ async fn partial_shutdown_panic_gets_propagated_correctly() {
         assert_eq!(result.err(), Some(PartialShutdownError::SubsystemFailed));
         assert!(nested_started.get());
         assert!(nested_finished.get());
+        assert!(!subsys.local_shutdown_token().is_shutting_down());
 
         subsys.request_shutdown();
         Ok(())
@@ -643,6 +644,7 @@ async fn partial_shutdown_error_gets_propagated_correctly() {
         assert_eq!(result.err(), Some(PartialShutdownError::SubsystemFailed));
         assert!(nested_started.get());
         assert!(nested_finished.get());
+        assert!(!subsys.local_shutdown_token().is_shutting_down());
 
         subsys.request_shutdown();
         Ok(())

@@ -83,6 +83,7 @@ impl SubsystemHandle {
         let subsystem_runner = SubsystemRunner::new(
             name,
             subsystem_handle.global_shutdown_token().clone(),
+            new_subsystem.local_shutdown_token.clone(),
             subsystem(subsystem_handle),
         );
 
