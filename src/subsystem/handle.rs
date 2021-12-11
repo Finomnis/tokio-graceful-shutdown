@@ -260,6 +260,10 @@ impl SubsystemHandle {
 
     /// Preforms a partial shutdown of the given nested subsystem.
     ///
+    /// This triggers all [`on_shutdown_requested()`] functions of
+    /// the nested subsystem and its children and removes it from the
+    /// parent's subsystem tree.
+    ///
     /// # Arguments
     ///
     /// * `subsystem` - The nested subsystem that should be shut down
@@ -297,6 +301,61 @@ impl SubsystemHandle {
     /// }
     /// ```
     pub async fn perform_partial_shutdown(
+        &self,
+        subsystem: NestedSubsystem,
+    ) -> Result<(), PartialShutdownError> {
+        self.data.perform_partial_shutdown(subsystem).await
+    }
+
+    /// Waits for a nested subsystem tree to finish shutdown.
+    ///
+    /// Similar to [`SubsystemHandle::perform_partial_shutdown`], just without
+    /// actually initiating the shutdown.
+    ///
+    /// Like [`SubsystemHandle::perform_partial_shutdown`], this will remove the given
+    /// nested subsystem and its children from the parent's subsystem tree.
+    /// This also means that this function can only be called once per nested subsystem,
+    /// as this function takes ownership of the nested subsystem.
+    ///
+    /// Cancelling this call will cancel the nested subsystem and all its children.
+    ///
+    /// # Arguments
+    ///
+    /// * `subsystem` - The nested subsystem that should be joined
+    ///
+    /// # Returns
+    ///
+    /// A [`PartialShutdownError`] on failure.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use anyhow::Result;
+    /// use tokio::time::{sleep, Duration};
+    /// use tokio_graceful_shutdown::SubsystemHandle;
+    ///
+    /// async fn nested_subsystem(subsys: SubsystemHandle) -> Result<()> {
+    ///     // This subsystem does nothing but wait for the shutdown to happen
+    ///     subsys.on_shutdown_requested().await;
+    ///     Ok(())
+    /// }
+    ///
+    /// async fn subsystem(mut subsys: SubsystemHandle) -> Result<()> {
+    ///     // This subsystem waits for one second and then performs a partial shutdown
+    ///
+    ///     // Spawn nested subsystem
+    ///     let nested = subsys.start("nested", nested_subsystem);
+    ///
+    ///     // Wait for a second
+    ///     sleep(Duration::from_millis(1000)).await;
+    ///
+    ///     // Perform a partial shutdown of the nested subsystem
+    ///     subsys.perform_partial_shutdown(nested).await?;
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn join_nested_subsystem(
         &self,
         subsystem: NestedSubsystem,
     ) -> Result<(), PartialShutdownError> {
