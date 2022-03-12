@@ -12,7 +12,7 @@ use env_logger::{Builder, Env};
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 
-async fn subsys1(mut subsys: SubsystemHandle) -> Result<()> {
+async fn subsys1(subsys: SubsystemHandle) -> Result<()> {
     subsys.start("Subsys2", subsys2);
     subsys.start("Subsys3", subsys3);
     log::info!("Subsystem1 started.");

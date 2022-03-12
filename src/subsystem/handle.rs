@@ -44,7 +44,7 @@ impl SubsystemHandle {
     ///     Ok(())
     /// }
     ///
-    /// async fn my_subsystem(mut subsys: SubsystemHandle) -> Result<()> {
+    /// async fn my_subsystem(subsys: SubsystemHandle) -> Result<()> {
     ///     // start a nested subsystem
     ///     subsys.start("Nested", nested_subsystem);
     ///
@@ -57,7 +57,7 @@ impl SubsystemHandle {
         Fut: 'static + Future<Output = Result<()>> + Send,
         S: 'static + FnOnce(SubsystemHandle) -> Fut + Send,
     >(
-        &mut self,
+        &self,
         name: &'static str,
         subsystem: S,
     ) -> NestedSubsystem {
@@ -189,7 +189,7 @@ impl SubsystemHandle {
     ///     Ok(())
     /// }
     ///
-    /// async fn subsystem(mut subsys: SubsystemHandle) -> Result<()> {
+    /// async fn subsystem(subsys: SubsystemHandle) -> Result<()> {
     ///     // This subsystem waits for one second and then performs a partial shutdown
     ///
     ///     // Spawn nested subsystem

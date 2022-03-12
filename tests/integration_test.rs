@@ -177,7 +177,7 @@ async fn nested_subsystem_receives_shutdown() {
         Ok(())
     };
 
-    let subsystem = |mut subsys: SubsystemHandle| async move {
+    let subsystem = |subsys: SubsystemHandle| async move {
         subsys.start("nested", nested_subsystem);
         subsys.on_shutdown_requested().await;
         Ok(())
@@ -209,7 +209,7 @@ async fn nested_subsystem_error_propagates() {
 
     let nested_subsystem = |_subsys: SubsystemHandle| async move { Err(anyhow!("Error!")) };
 
-    let subsystem = move |mut subsys: SubsystemHandle| async move {
+    let subsystem = move |subsys: SubsystemHandle| async move {
         subsys.start("nested", nested_subsystem);
         subsys.on_shutdown_requested().await;
         Ok(())
@@ -246,7 +246,7 @@ async fn panic_gets_handled_correctly() {
         panic!("Error!");
     };
 
-    let subsystem = move |mut subsys: SubsystemHandle| async move {
+    let subsystem = move |subsys: SubsystemHandle| async move {
         subsys.start("nested", nested_subsystem);
         subsys.on_shutdown_requested().await;
         Ok(())
@@ -386,7 +386,7 @@ async fn spawning_task_during_shutdown_causes_task_to_be_cancelled() {
         Ok(())
     };
 
-    let subsystem = move |mut subsys: SubsystemHandle| async move {
+    let subsystem = move |subsys: SubsystemHandle| async move {
         subsys.on_shutdown_requested().await;
         sleep(Duration::from_millis(100)).await;
         subsys.start("Nested", nested);
@@ -451,7 +451,7 @@ async fn double_panic_does_not_stop_graceful_shutdown() {
         panic!("Subsystem2 panicked!")
     };
 
-    let subsys1 = move |mut subsys: SubsystemHandle| async move {
+    let subsys1 = move |subsys: SubsystemHandle| async move {
         subsys.start("Subsys2", subsys2);
         subsys.start("Subsys3", subsys3);
         subsys.on_shutdown_requested().await;
@@ -539,7 +539,7 @@ async fn partial_shutdown_request_stops_nested_subsystems() {
         set_subsys3_finished();
         Ok(())
     };
-    let subsys2 = move |mut subsys: SubsystemHandle| async move {
+    let subsys2 = move |subsys: SubsystemHandle| async move {
         set_subsys2_started();
         subsys.start("subsys3", subsys3);
         subsys.on_shutdown_requested().await;
@@ -547,7 +547,7 @@ async fn partial_shutdown_request_stops_nested_subsystems() {
         Ok(())
     };
 
-    let subsys1 = move |mut subsys: SubsystemHandle| async move {
+    let subsys1 = move |subsys: SubsystemHandle| async move {
         set_subsys1_started();
         let nested_subsys = subsys.start("subsys2", subsys2);
         sleep(Duration::from_millis(200)).await;
@@ -600,7 +600,7 @@ async fn partial_shutdown_panic_gets_propagated_correctly() {
         panic!("Nested panicked.");
     };
 
-    let subsys1 = move |mut subsys: SubsystemHandle| async move {
+    let subsys1 = move |subsys: SubsystemHandle| async move {
         let handle = subsys.start("nested", nested_subsys);
         sleep(Duration::from_millis(100)).await;
         let result = subsys.perform_partial_shutdown(handle).await;
@@ -636,7 +636,7 @@ async fn partial_shutdown_error_gets_propagated_correctly() {
         Err(anyhow!("nested failed."))
     };
 
-    let subsys1 = move |mut subsys: SubsystemHandle| async move {
+    let subsys1 = move |subsys: SubsystemHandle| async move {
         let handle = subsys.start("nested", nested_subsys);
         sleep(Duration::from_millis(100)).await;
         let result = subsys.perform_partial_shutdown(handle).await;
@@ -672,7 +672,7 @@ async fn partial_shutdown_during_program_shutdown_causes_error() {
         Ok(())
     };
 
-    let subsys1 = move |mut subsys: SubsystemHandle| async move {
+    let subsys1 = move |subsys: SubsystemHandle| async move {
         let handle = subsys.start("nested", nested_subsys);
         sleep(Duration::from_millis(100)).await;
 
@@ -715,7 +715,7 @@ async fn partial_shutdown_on_wrong_parent_causes_error() {
         Ok(())
     };
 
-    let subsys1 = move |mut subsys: SubsystemHandle| async move {
+    let subsys1 = move |subsys: SubsystemHandle| async move {
         let handle = subsys.start("nested", nested_subsys);
 
         sleep(Duration::from_millis(100)).await;
