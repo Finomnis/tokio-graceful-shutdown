@@ -15,7 +15,7 @@ async fn subsys3(subsys: SubsystemHandle) -> Result<()> {
     Ok(())
 }
 
-async fn subsys2(mut subsys: SubsystemHandle) -> Result<()> {
+async fn subsys2(subsys: SubsystemHandle) -> Result<()> {
     log::info!("Subsys2 started.");
     subsys.start("Subsys3", subsys3);
     subsys.on_shutdown_requested().await;
@@ -23,7 +23,7 @@ async fn subsys2(mut subsys: SubsystemHandle) -> Result<()> {
     Ok(())
 }
 
-async fn subsys1(mut subsys: SubsystemHandle) -> Result<()> {
+async fn subsys1(subsys: SubsystemHandle) -> Result<()> {
     // This subsystem shuts down the nested subsystem after 5 seconds.
     log::info!("Subsys1 started.");
 
