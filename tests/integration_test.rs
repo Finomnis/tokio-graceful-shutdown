@@ -748,6 +748,68 @@ async fn partial_shutdown_on_wrong_parent_causes_error() {
     assert!(result.is_ok());
 }
 
+#[tokio::test]
+async fn cloned_handles_can_spawn_nested_subsystems() {
+    setup();
+
+    let (toplevel_finished, set_toplevel_finished) = Event::create();
+    let (subsys_finished, set_subsys_finished) = Event::create();
+    let (nested1_finished, set_nested1_finished) = Event::create();
+    let (nested2_finished, set_nested2_finished) = Event::create();
+
+    let nested_subsystem1 = |subsys: SubsystemHandle| async move {
+        subsys.on_shutdown_requested().await;
+        set_nested1_finished();
+        Ok(())
+    };
+
+    let nested_subsystem2 = |subsys: SubsystemHandle| async move {
+        subsys.on_shutdown_requested().await;
+        set_nested2_finished();
+        Ok(())
+    };
+
+    let subsystem = move |subsys: SubsystemHandle| async move {
+        let subsys_clone = subsys.clone();
+        subsys.start("nested1", nested_subsystem1);
+        subsys_clone.start("nested2", nested_subsystem2);
+        subsys_clone.on_shutdown_requested().await;
+        set_subsys_finished();
+        Ok(())
+    };
+
+    let toplevel = Toplevel::new().start("subsys", subsystem);
+    let shutdown_token = toplevel.get_shutdown_token().clone();
+
+    tokio::join!(
+        async {
+            let result = toplevel
+                .handle_shutdown_requests(Duration::from_millis(200))
+                .await;
+            set_toplevel_finished();
+            // Assert panic causes Error propagation to Toplevel
+            assert!(result.is_ok());
+        },
+        async {
+            // Assert that subsystems don't shut down prematurely
+            sleep(Duration::from_millis(100)).await;
+            assert!(!subsys_finished.get());
+            assert!(!nested1_finished.get());
+            assert!(!nested2_finished.get());
+            assert!(!toplevel_finished.get());
+
+            shutdown_token.shutdown();
+            sleep(Duration::from_millis(100)).await;
+            // Assert subsystems did shut down properly
+            assert!(subsys_finished.get());
+            assert!(nested1_finished.get());
+            assert!(nested2_finished.get());
+            assert!(toplevel_finished.get());
+            assert!(shutdown_token.is_shutting_down());
+        },
+    );
+}
+
 #[cfg(unix)]
 #[tokio::test]
 async fn shutdown_through_signal() {
