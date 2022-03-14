@@ -89,7 +89,8 @@ impl Toplevel {
     /// * `subsystem` - The subsystem to be started
     ///
     pub fn start<
-        Fut: 'static + Future<Output = Result<()>> + Send,
+        Err: Into<anyhow::Error>,
+        Fut: 'static + Future<Output = core::result::Result<(), Err>> + Send,
         S: 'static + FnOnce(SubsystemHandle) -> Fut + Send,
     >(
         self,
