@@ -18,6 +18,9 @@ fn setup() {
     });
 }
 
+/// Wrapper function to simplify lambdas
+type AnyhowResult = Result<(), anyhow::Error>;
+
 #[tokio::test]
 async fn normal_shutdown() {
     setup();
@@ -25,7 +28,7 @@ async fn normal_shutdown() {
     let subsystem = |subsys: SubsystemHandle| async move {
         subsys.on_shutdown_requested().await;
         sleep(Duration::from_millis(200)).await;
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let toplevel = Toplevel::new().start("subsys", subsystem);
@@ -52,7 +55,7 @@ async fn shutdown_timeout_causes_error() {
     let subsystem = |subsys: SubsystemHandle| async move {
         subsys.on_shutdown_requested().await;
         sleep(Duration::from_millis(400)).await;
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let toplevel = Toplevel::new().start("subsys", subsystem);
@@ -76,7 +79,7 @@ async fn shutdown_timeout_causes_error() {
 async fn subsystem_finishes_with_success() {
     setup();
 
-    let subsystem = |_| async { Ok(()) };
+    let subsystem = |_| async { AnyhowResult::Ok(()) };
 
     let (toplevel_finished, set_toplevel_finished) = Event::create();
 
@@ -142,7 +145,7 @@ async fn subsystem_receives_shutdown() {
     let subsys = |subsys: SubsystemHandle| async move {
         subsys.on_shutdown_requested().await;
         set_subsys_finished();
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let toplevel = Toplevel::new().start("subsys", subsys);
@@ -174,13 +177,13 @@ async fn nested_subsystem_receives_shutdown() {
     let nested_subsystem = |subsys: SubsystemHandle| async move {
         subsys.on_shutdown_requested().await;
         set_subsys_finished();
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let subsystem = |subsys: SubsystemHandle| async move {
         subsys.start("nested", nested_subsystem);
         subsys.on_shutdown_requested().await;
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let toplevel = Toplevel::new().start("subsys", subsystem);
@@ -212,7 +215,7 @@ async fn nested_subsystem_error_propagates() {
     let subsystem = move |subsys: SubsystemHandle| async move {
         subsys.start("nested", nested_subsystem);
         subsys.on_shutdown_requested().await;
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let (toplevel_finished, set_toplevel_finished) = Event::create();
@@ -247,9 +250,9 @@ async fn panic_gets_handled_correctly() {
     };
 
     let subsystem = move |subsys: SubsystemHandle| async move {
-        subsys.start("nested", nested_subsystem);
+        subsys.start::<anyhow::Error, _, _>("nested", nested_subsystem);
         subsys.on_shutdown_requested().await;
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let (toplevel_finished, set_toplevel_finished) = Event::create();
@@ -288,7 +291,7 @@ async fn subsystem_can_request_shutdown() {
         subsys.request_shutdown();
         subsys.on_shutdown_requested().await;
         set_subsys_finished();
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let (toplevel_finished, set_toplevel_finished) = Event::create();
@@ -333,7 +336,7 @@ async fn shutdown_timeout_causes_cancellation() {
         subsys.on_shutdown_requested().await;
         sleep(Duration::from_millis(300)).await;
         set_subsys_finished();
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let (toplevel_finished, set_toplevel_finished) = Event::create();
@@ -383,7 +386,7 @@ async fn spawning_task_during_shutdown_causes_task_to_be_cancelled() {
     let nested = |_: SubsystemHandle| async move {
         sleep(Duration::from_millis(100)).await;
         set_nested_finished();
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let subsystem = move |subsys: SubsystemHandle| async move {
@@ -391,7 +394,7 @@ async fn spawning_task_during_shutdown_causes_task_to_be_cancelled() {
         sleep(Duration::from_millis(100)).await;
         subsys.start("Nested", nested);
         set_subsys_finished();
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let (toplevel_finished, set_toplevel_finished) = Event::create();
@@ -443,7 +446,7 @@ async fn double_panic_does_not_stop_graceful_shutdown() {
         subsys.on_shutdown_requested().await;
         sleep(Duration::from_millis(400)).await;
         set_subsys_finished();
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let subsys2 = |_subsys: SubsystemHandle| async move {
@@ -452,15 +455,15 @@ async fn double_panic_does_not_stop_graceful_shutdown() {
     };
 
     let subsys1 = move |subsys: SubsystemHandle| async move {
-        subsys.start("Subsys2", subsys2);
-        subsys.start("Subsys3", subsys3);
+        subsys.start::<anyhow::Error, _, _>("Subsys2", subsys2);
+        subsys.start::<anyhow::Error, _, _>("Subsys3", subsys3);
         subsys.on_shutdown_requested().await;
         sleep(Duration::from_millis(100)).await;
         panic!("Subsystem1 panicked!")
     };
 
     let result = Toplevel::new()
-        .start("subsys", subsys1)
+        .start::<anyhow::Error, _, _>("subsys", subsys1)
         .handle_shutdown_requests(Duration::from_millis(500))
         .await;
     assert!(result.is_err());
@@ -479,7 +482,7 @@ async fn destroying_toplevel_cancels_subsystems() {
         set_subsys_started();
         sleep(Duration::from_millis(100)).await;
         set_subsys_finished();
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     {
@@ -502,7 +505,7 @@ async fn destroying_toplevel_cancels_nested_toplevel_subsystems() {
         set_subsys_started();
         sleep(Duration::from_millis(100)).await;
         set_subsys_finished();
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let subsys1 = move |_subsys: SubsystemHandle| async move {
@@ -537,14 +540,14 @@ async fn partial_shutdown_request_stops_nested_subsystems() {
         set_subsys3_started();
         subsys.on_shutdown_requested().await;
         set_subsys3_finished();
-        Ok(())
+        AnyhowResult::Ok(())
     };
     let subsys2 = move |subsys: SubsystemHandle| async move {
         set_subsys2_started();
         subsys.start("subsys3", subsys3);
         subsys.on_shutdown_requested().await;
         set_subsys2_finished();
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let subsys1 = move |subsys: SubsystemHandle| async move {
@@ -558,7 +561,7 @@ async fn partial_shutdown_request_stops_nested_subsystems() {
         set_subsys1_shutdown_performed();
         subsys.on_shutdown_requested().await;
         set_subsys1_finished();
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let toplevel = Toplevel::new();
@@ -601,7 +604,7 @@ async fn partial_shutdown_panic_gets_propagated_correctly() {
     };
 
     let subsys1 = move |subsys: SubsystemHandle| async move {
-        let handle = subsys.start("nested", nested_subsys);
+        let handle = subsys.start::<anyhow::Error, _, _>("nested", nested_subsys);
         sleep(Duration::from_millis(100)).await;
         let result = subsys.perform_partial_shutdown(handle).await;
 
@@ -611,7 +614,7 @@ async fn partial_shutdown_panic_gets_propagated_correctly() {
         assert!(!subsys.local_shutdown_token().is_shutting_down());
 
         subsys.request_shutdown();
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let result = Toplevel::new()
@@ -647,7 +650,7 @@ async fn partial_shutdown_error_gets_propagated_correctly() {
         assert!(!subsys.local_shutdown_token().is_shutting_down());
 
         subsys.request_shutdown();
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let result = Toplevel::new()
@@ -669,7 +672,7 @@ async fn partial_shutdown_during_program_shutdown_causes_error() {
         set_nested_started();
         subsys.on_shutdown_requested().await;
         set_nested_finished();
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let subsys1 = move |subsys: SubsystemHandle| async move {
@@ -690,7 +693,7 @@ async fn partial_shutdown_during_program_shutdown_causes_error() {
         assert!(nested_started.get());
         assert!(nested_finished.get());
 
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let result = Toplevel::new()
@@ -712,7 +715,7 @@ async fn partial_shutdown_on_wrong_parent_causes_error() {
         set_nested_started();
         subsys.on_shutdown_requested().await;
         set_nested_finished();
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let subsys1 = move |subsys: SubsystemHandle| async move {
@@ -731,13 +734,13 @@ async fn partial_shutdown_on_wrong_parent_causes_error() {
             assert!(nested_started.get());
             assert!(nested_finished.get());
 
-            Ok(())
+            AnyhowResult::Ok(())
         };
 
         subsys.start("wrong_parent", wrong_parent);
         subsys.on_shutdown_requested().await;
 
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let result = Toplevel::new()
@@ -760,13 +763,13 @@ async fn cloned_handles_can_spawn_nested_subsystems() {
     let nested_subsystem1 = |subsys: SubsystemHandle| async move {
         subsys.on_shutdown_requested().await;
         set_nested1_finished();
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let nested_subsystem2 = |subsys: SubsystemHandle| async move {
         subsys.on_shutdown_requested().await;
         set_nested2_finished();
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let subsystem = move |subsys: SubsystemHandle| async move {
@@ -775,7 +778,7 @@ async fn cloned_handles_can_spawn_nested_subsystems() {
         subsys_clone.start("nested2", nested_subsystem2);
         subsys_clone.on_shutdown_requested().await;
         set_subsys_finished();
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let toplevel = Toplevel::new().start("subsys", subsystem);
@@ -821,7 +824,7 @@ async fn shutdown_through_signal() {
     let subsystem = |subsys: SubsystemHandle| async move {
         subsys.on_shutdown_requested().await;
         sleep(Duration::from_millis(200)).await;
-        Ok(())
+        AnyhowResult::Ok(())
     };
 
     let toplevel = Toplevel::new().catch_signals();
