@@ -54,7 +54,8 @@ impl SubsystemHandle {
     /// ```
     ///
     pub fn start<
-        Fut: 'static + Future<Output = Result<()>> + Send,
+        Err: Into<anyhow::Error>,
+        Fut: 'static + Future<Output = core::result::Result<(), Err>> + Send,
         S: 'static + FnOnce(SubsystemHandle) -> Fut + Send,
     >(
         &self,
@@ -79,12 +80,18 @@ impl SubsystemHandle {
         // Create handle
         let subsystem_handle = SubsystemHandle::new(new_subsystem.clone());
 
+        // Shutdown token
+        let shutdown_token = subsystem_handle.global_shutdown_token().clone();
+
+        // Future
+        let subsystem_future = async { subsystem(subsystem_handle).await.map_err(|e| e.into()) };
+
         // Spawn new task
         let subsystem_runner = SubsystemRunner::new(
             name,
-            subsystem_handle.global_shutdown_token().clone(),
+            shutdown_token,
             new_subsystem.local_shutdown_token.clone(),
-            subsystem(subsystem_handle),
+            subsystem_future,
         );
 
         // Store subsystem data
