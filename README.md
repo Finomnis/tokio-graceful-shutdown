@@ -63,7 +63,7 @@ Further examples can be seen in the [**examples**](https://github.com/Finomnis/t
 To use this library in your project, add the following to the `[dependencies]` section of `Cargo.toml`:
 ```toml
 [dependencies]
-tokio-graceful-shutdown = "0.4"
+tokio-graceful-shutdown = "0.5"
 ```
 
 To run one of the examples (here `01_normal_shutdown.rs`), simply enter the repository folder and execute:
