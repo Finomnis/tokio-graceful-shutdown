@@ -71,7 +71,7 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-          components: rustfmt, clippy
+          components: clippy
 
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
@@ -154,7 +154,7 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-          components: rustfmt, clippy
+          components: clippy
 
       - name: Query crate version
         run: echo "crate_version=$(cargo metadata --format-version=1 --no-deps | python -c "import sys,json; print('v' + json.load(sys.stdin)['packages'][0]['version'])")" >> $GITHUB_ENV
