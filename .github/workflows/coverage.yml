@@ -27,7 +27,7 @@ jobs:
         uses: actions-rs/install@v0.1
         with:
           crate: cargo-llvm-cov
-          version: 0.1.12
+          version: 0.2.3
           use-tool-cache: true
       - name: Coverage
         env:
