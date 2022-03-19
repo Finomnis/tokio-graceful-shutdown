@@ -4,7 +4,7 @@
 use anyhow::Result;
 use env_logger::{Builder, Env};
 use tokio::time::{sleep, Duration};
-use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
+use tokio_graceful_shutdown::{Error, SubsystemHandle, Toplevel};
 
 struct Subsystem1 {
     arg: u32,
@@ -22,7 +22,7 @@ impl Subsystem1 {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Error> {
     // Init logging
     Builder::from_env(Env::default().default_filter_or("debug")).init();
 

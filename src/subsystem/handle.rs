@@ -54,7 +54,7 @@ impl SubsystemHandle {
     /// ```
     ///
     pub fn start<
-        Err: Into<anyhow::Error>,
+        Err: Into<crate::Error>,
         Fut: 'static + Future<Output = core::result::Result<(), Err>> + Send,
         S: 'static + FnOnce(SubsystemHandle) -> Fut + Send,
     >(

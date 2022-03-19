@@ -18,17 +18,16 @@ use super::subsystem::SubsystemData;
 /// # Examples
 ///
 /// ```
-/// use anyhow::Result;
 /// use tokio::time::Duration;
-/// use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
+/// use tokio_graceful_shutdown::{Error, SubsystemHandle, Toplevel};
 ///
-/// async fn my_subsystem(subsys: SubsystemHandle) -> Result<()> {
+/// async fn my_subsystem(subsys: SubsystemHandle) -> Result<(), Error> {
 ///     subsys.request_shutdown();
 ///     Ok(())
 /// }
 ///
 /// #[tokio::main]
-/// async fn main() -> Result<()> {
+/// async fn main() -> Result<(), Error> {
 ///     // Create toplevel
 ///     Toplevel::new()
 ///         .start("MySubsystem", my_subsystem)
@@ -89,7 +88,7 @@ impl Toplevel {
     /// * `subsystem` - The subsystem to be started
     ///
     pub fn start<
-        Err: Into<anyhow::Error>,
+        Err: Into<crate::Error>,
         Fut: 'static + Future<Output = core::result::Result<(), Err>> + Send,
         S: 'static + FnOnce(SubsystemHandle) -> Fut + Send,
     >(
@@ -126,7 +125,7 @@ impl Toplevel {
 
     /// Wait for all subsystems to finish.
     /// Then return and print all of their exit codes.
-    async fn attempt_clean_shutdown(&self) -> Result<()> {
+    async fn attempt_clean_shutdown(&self) -> Result<(), crate::Error> {
         let result = self.subsys_data.perform_shutdown().await;
 
         // Print subsystem exit states
@@ -146,7 +145,7 @@ impl Toplevel {
 
         match result {
             Ok(_) => Ok(()),
-            Err(_) => Err(anyhow::anyhow!("Subsytem errors occurred.")),
+            Err(_) => Err(anyhow::anyhow!("Subsytem errors occurred.").into()),
         }
     }
 
@@ -165,7 +164,7 @@ impl Toplevel {
     ///
     /// * `shutdown_timeout` - The maximum time that is allowed to pass after a shutdown was initiated.
     ///
-    pub async fn handle_shutdown_requests(self, shutdown_timeout: Duration) -> Result<()> {
+    pub async fn handle_shutdown_requests(self, shutdown_timeout: Duration) -> Result<(), crate::Error> {
         self.subsys_handle.on_shutdown_requested().await;
 
         match tokio::time::timeout(shutdown_timeout, self.attempt_clean_shutdown()).await {

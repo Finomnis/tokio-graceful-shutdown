@@ -22,7 +22,7 @@ impl Drop for SubsystemRunner {
 
 impl SubsystemRunner {
     async fn handle_subsystem(
-        mut inner_joinhandle: JoinHandle<Result<()>>,
+        mut inner_joinhandle: JoinHandle<Result<(), crate::Error>>,
         shutdown_token: ShutdownToken,
         local_shutdown_token: ShutdownToken,
         name: String,
@@ -63,7 +63,7 @@ impl SubsystemRunner {
         }
     }
 
-    pub fn new<Fut: 'static + Future<Output = Result<()>> + Send>(
+    pub fn new<Fut: 'static + Future<Output = Result<(), crate::Error>> + Send>(
         name: String,
         shutdown_token: ShutdownToken,
         local_shutdown_token: ShutdownToken,
