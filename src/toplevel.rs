@@ -169,10 +169,10 @@ impl Toplevel {
     ///
     /// An [`GracefulShutdownError`] if an error occurred.
     ///
-    pub async fn handle_shutdown_requests(
+    pub async fn handle_shutdown_requests<ErrType: From<GracefulShutdownError>>(
         self,
         shutdown_timeout: Duration,
-    ) -> Result<(), GracefulShutdownError> {
+    ) -> Result<(), ErrType> {
         self.subsys_handle.on_shutdown_requested().await;
 
         match tokio::time::timeout(shutdown_timeout, self.attempt_clean_shutdown()).await {
@@ -186,6 +186,7 @@ impl Toplevel {
                     .or(Err(GracefulShutdownError::ShutdownTimeout))
             }
         }
+        .map_err(GracefulShutdownError::into)
     }
 
     #[doc(hidden)]

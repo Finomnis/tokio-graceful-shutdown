@@ -37,7 +37,5 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .start("Subsys1", subsys1)
         .catch_signals()
         .handle_shutdown_requests(Duration::from_millis(1000))
-        .await?;
-
-    Ok(())
+        .await
 }
