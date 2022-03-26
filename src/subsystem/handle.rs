@@ -1,8 +1,6 @@
 use std::future::Future;
 use std::sync::Arc;
 
-use anyhow::Result;
-
 use super::NestedSubsystem;
 use super::SubsystemData;
 use super::SubsystemHandle;

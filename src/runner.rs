@@ -2,7 +2,6 @@ use crate::{
     event::{Event, EventTrigger},
     BoxedError, ShutdownToken,
 };
-use anyhow::Result;
 use std::future::Future;
 use tokio::task::{JoinError, JoinHandle};
 
