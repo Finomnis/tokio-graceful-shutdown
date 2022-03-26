@@ -2,7 +2,7 @@ use thiserror::Error;
 
 /// This enum contains all the possible errors that a partial shutdown
 /// could cause.
-#[derive(Debug, Error)]
+#[derive(Debug, Error, PartialEq)]
 pub enum PartialShutdownError {
     /// At least one subsystem caused an error.
     #[error("at least one subsystem returned an error")]

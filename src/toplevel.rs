@@ -3,6 +3,7 @@ use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::errors::GracefulShutdownError;
 use crate::exit_state::prettify_exit_states;
 use crate::shutdown_token::create_shutdown_token;
 use crate::signal_handling::wait_for_signal;
@@ -125,7 +126,7 @@ impl Toplevel {
 
     /// Wait for all subsystems to finish.
     /// Then return and print all of their exit codes.
-    async fn attempt_clean_shutdown(&self) -> Result<(), crate::Error> {
+    async fn attempt_clean_shutdown(&self) -> Result<(), GracefulShutdownError> {
         let result = self.subsys_data.perform_shutdown().await;
 
         // Print subsystem exit states
@@ -145,7 +146,7 @@ impl Toplevel {
 
         match result {
             Ok(_) => Ok(()),
-            Err(_) => Err(anyhow::anyhow!("Subsytem errors occurred.").into()),
+            Err(_) => Err(GracefulShutdownError::SubsystemFailed),
         }
     }
 
@@ -164,7 +165,14 @@ impl Toplevel {
     ///
     /// * `shutdown_timeout` - The maximum time that is allowed to pass after a shutdown was initiated.
     ///
-    pub async fn handle_shutdown_requests(self, shutdown_timeout: Duration) -> Result<(), crate::Error> {
+    /// # Returns
+    ///
+    /// An [`GracefulShutdownError`] if an error occurred.
+    ///
+    pub async fn handle_shutdown_requests(
+        self,
+        shutdown_timeout: Duration,
+    ) -> Result<(), GracefulShutdownError> {
         self.subsys_handle.on_shutdown_requested().await;
 
         match tokio::time::timeout(shutdown_timeout, self.attempt_clean_shutdown()).await {
@@ -172,7 +180,10 @@ impl Toplevel {
             Err(_) => {
                 log::error!("Shutdown timed out. Attempting to cleanup stale subsystems ...");
                 self.subsys_data.cancel_all_subsystems().await;
-                tokio::time::timeout(shutdown_timeout, self.attempt_clean_shutdown()).await?
+                tokio::time::timeout(shutdown_timeout, self.attempt_clean_shutdown())
+                    .await
+                    .unwrap() // Should never happen, all subsystems should shut down quickly after cancel_all_subsystems()
+                    .or(Err(GracefulShutdownError::ShutdownTimeout))
             }
         }
     }

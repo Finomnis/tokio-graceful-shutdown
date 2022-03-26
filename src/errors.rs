@@ -2,7 +2,7 @@ use thiserror::Error;
 
 /// This enum contains all the possible errors that could be returned
 /// by [`handle_shutdown_requests()`](Toplevel::handle_shutdown_requests).
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum GracefulShutdownError {
     /// At least one subsystem caused an error.
     #[error("at least one subsystem returned an error")]

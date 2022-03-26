@@ -1,7 +1,9 @@
 use anyhow::anyhow;
 use env_logger;
 use tokio::time::{sleep, timeout, Duration};
-use tokio_graceful_shutdown::{PartialShutdownError, SubsystemHandle, Toplevel};
+use tokio_graceful_shutdown::{
+    GracefulShutdownError, PartialShutdownError, SubsystemHandle, Toplevel,
+};
 
 mod common;
 use common::event::Event;
@@ -71,6 +73,7 @@ async fn shutdown_timeout_causes_error() {
                 .handle_shutdown_requests(Duration::from_millis(200))
                 .await;
             assert!(result.is_err());
+            assert_eq!(result, Err(GracefulShutdownError::ShutdownTimeout))
         },
     );
 }

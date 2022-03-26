@@ -22,6 +22,7 @@ exclude = [
 # Error propagation
 anyhow = "1.0"
 thiserror = "1.0"
+miette = "4.2"
 
 # For async utilities
 tokio = { version = "1", default-features = false, features = ["signal", "rt", "macros", "time"] }
