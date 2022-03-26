@@ -19,8 +19,9 @@ exclude = [
 ]
 
 [dependencies]
-# Result propagation
+# Error propagation
 anyhow = "1.0"
+thiserror = "1.0"
 
 # For async utilities
 tokio = { version = "1", default-features = false, features = ["signal", "rt", "macros", "time"] }
