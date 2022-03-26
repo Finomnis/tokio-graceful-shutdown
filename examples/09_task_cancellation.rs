@@ -5,9 +5,10 @@
 //! tasks once one of them finishes. This can be used to cancel
 //! tasks once the shutdown was initiated.
 
+use anyhow::Result;
 use env_logger::{Builder, Env};
 use tokio::time::{sleep, Duration};
-use tokio_graceful_shutdown::{Error, SubsystemHandle, Toplevel};
+use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 
 struct CountdownSubsystem {}
 impl CountdownSubsystem {
@@ -22,7 +23,7 @@ impl CountdownSubsystem {
         }
     }
 
-    async fn run(self, subsys: SubsystemHandle) -> Result<(), Error> {
+    async fn run(self, subsys: SubsystemHandle) -> Result<()> {
         log::info!("Starting countdown ...");
 
         tokio::select! {
@@ -39,7 +40,7 @@ impl CountdownSubsystem {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn main() -> Result<()> {
     // Init logging
     Builder::from_env(Env::default().default_filter_or("debug")).init();
 

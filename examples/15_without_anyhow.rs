@@ -1,11 +1,11 @@
 //! This example shows how to use this library with std::error::Error instead of anyhow::Error
 
 use env_logger::{Builder, Env};
-use std::error::Error as StdError;
+use std::error::Error;
 use std::fmt;
 use std::result::Result;
 use tokio::time::{sleep, Duration};
-use tokio_graceful_shutdown::{Error, SubsystemHandle, Toplevel};
+use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 
 #[derive(Debug, Clone)]
 struct MyError;
@@ -16,7 +16,7 @@ impl fmt::Display for MyError {
     }
 }
 
-impl StdError for MyError {}
+impl Error for MyError {}
 
 async fn subsys1(_subsys: SubsystemHandle) -> Result<(), MyError> {
     log::info!("Subsystem1 started.");
@@ -28,7 +28,7 @@ async fn subsys1(_subsys: SubsystemHandle) -> Result<(), MyError> {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn main() -> Result<(), Box<dyn Error>> {
     // Init logging
     Builder::from_env(Env::default().default_filter_or("debug")).init();
 
