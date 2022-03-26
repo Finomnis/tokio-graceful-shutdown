@@ -184,8 +184,8 @@ impl Toplevel {
                 self.subsys_data.cancel_all_subsystems().await;
                 tokio::time::timeout(shutdown_timeout, self.attempt_clean_shutdown())
                     .await
-                    .unwrap() // Should never happen, all subsystems should shut down quickly after cancel_all_subsystems()
-                    .or(Err(GracefulShutdownError::ShutdownTimeout))
+                    .or(Err(GracefulShutdownError::ShutdownTimeout))? // Happens if second shutdown times out as well
+                    .or(Err(GracefulShutdownError::ShutdownTimeout)) // Happens in all other cases, as cancellation always forces an error in cancelled subsystems
             }
         }
         .map_err(GracefulShutdownError::into)
