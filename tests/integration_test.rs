@@ -843,7 +843,7 @@ async fn shutdown_through_signal() {
             signal::kill(Pid::this(), Signal::SIGINT).unwrap();
         },
         async {
-            let result = toplevel
+            let result: BoxedResult = toplevel
                 .start("subsys", subsystem)
                 .handle_shutdown_requests(Duration::from_millis(400))
                 .await;
