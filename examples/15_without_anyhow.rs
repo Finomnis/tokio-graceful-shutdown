@@ -3,7 +3,6 @@
 use env_logger::{Builder, Env};
 use std::error::Error;
 use std::fmt;
-use std::result::Result;
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 

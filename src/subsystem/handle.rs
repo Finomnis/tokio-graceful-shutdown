@@ -54,7 +54,7 @@ impl SubsystemHandle {
     ///
     pub fn start<
         Err: Into<BoxedError>,
-        Fut: 'static + Future<Output = core::result::Result<(), Err>> + Send,
+        Fut: 'static + Future<Output = Result<(), Err>> + Send,
         S: 'static + FnOnce(SubsystemHandle) -> Fut + Send,
     >(
         &self,
