@@ -7,6 +7,7 @@ use crate::errors::GracefulShutdownError;
 use crate::exit_state::prettify_exit_states;
 use crate::shutdown_token::create_shutdown_token;
 use crate::signal_handling::wait_for_signal;
+use crate::BoxedError;
 use crate::{ShutdownToken, SubsystemHandle};
 
 use super::subsystem::SubsystemData;
@@ -89,7 +90,7 @@ impl Toplevel {
     /// * `subsystem` - The subsystem to be started
     ///
     pub fn start<
-        Err: Into<crate::Error>,
+        Err: Into<BoxedError>,
         Fut: 'static + Future<Output = core::result::Result<(), Err>> + Send,
         S: 'static + FnOnce(SubsystemHandle) -> Fut + Send,
     >(

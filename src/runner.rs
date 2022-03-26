@@ -1,6 +1,6 @@
 use crate::{
     event::{Event, EventTrigger},
-    ShutdownToken,
+    BoxedError, ShutdownToken,
 };
 use anyhow::Result;
 use std::future::Future;
@@ -22,7 +22,7 @@ impl Drop for SubsystemRunner {
 
 impl SubsystemRunner {
     async fn handle_subsystem(
-        mut inner_joinhandle: JoinHandle<Result<(), crate::Error>>,
+        mut inner_joinhandle: JoinHandle<Result<(), BoxedError>>,
         shutdown_token: ShutdownToken,
         local_shutdown_token: ShutdownToken,
         name: String,
@@ -63,7 +63,7 @@ impl SubsystemRunner {
         }
     }
 
-    pub fn new<Fut: 'static + Future<Output = Result<(), crate::Error>> + Send>(
+    pub fn new<Fut: 'static + Future<Output = Result<(), BoxedError>> + Send>(
         name: String,
         shutdown_token: ShutdownToken,
         local_shutdown_token: ShutdownToken,

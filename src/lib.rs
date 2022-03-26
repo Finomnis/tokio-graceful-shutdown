@@ -20,7 +20,8 @@
 //! During the countdown, the program will react to Ctrl-C/SIGINT/SIGTERM and will cancel the countdown task accordingly.
 //!
 //! ```
-//! use tokio_graceful_shutdown::{Error, SubsystemHandle, Toplevel};
+//! use anyhow::Result;
+//! use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 //! use env_logger::{Builder, Env};
 //! use tokio::time::{sleep, Duration};
 //!
@@ -31,7 +32,7 @@
 //!     }
 //! }
 //!
-//! async fn countdown_subsystem(subsys: SubsystemHandle) -> Result<(), Error> {
+//! async fn countdown_subsystem(subsys: SubsystemHandle) -> Result<()> {
 //!     tokio::select! {
 //!         _ = subsys.on_shutdown_requested() => {
 //!             log::info!("Countdown cancelled.");
@@ -45,7 +46,7 @@
 //! }
 //!
 //! #[tokio::main]
-//! async fn main() -> Result<(), Error> {
+//! async fn main() -> Result<()> {
 //!     // Init logging
 //!     Builder::from_env(Env::default().default_filter_or("debug")).init();
 //!
@@ -87,7 +88,7 @@
     test(attr(allow(dead_code)))
 )]
 
-pub type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
+type BoxedError = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 mod errors;
 mod event;
