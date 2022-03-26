@@ -20,16 +20,17 @@ use super::subsystem::SubsystemData;
 /// # Examples
 ///
 /// ```
+/// use anyhow::Result;
 /// use tokio::time::Duration;
-/// use tokio_graceful_shutdown::{Error, SubsystemHandle, Toplevel};
+/// use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 ///
-/// async fn my_subsystem(subsys: SubsystemHandle) -> Result<(), Error> {
+/// async fn my_subsystem(subsys: SubsystemHandle) -> Result<()> {
 ///     subsys.request_shutdown();
 ///     Ok(())
 /// }
 ///
 /// #[tokio::main]
-/// async fn main() -> Result<(), Error> {
+/// async fn main() -> Result<()> {
 ///     // Create toplevel
 ///     Toplevel::new()
 ///         .start("MySubsystem", my_subsystem)
