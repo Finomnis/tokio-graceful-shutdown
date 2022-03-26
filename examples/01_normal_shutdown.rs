@@ -7,11 +7,12 @@
 //! If custom arguments for the subsystem coroutines are required,
 //! a struct has to be used instead, as seen in other examples.
 
+use anyhow::Result;
 use env_logger::{Builder, Env};
 use tokio::time::{sleep, Duration};
-use tokio_graceful_shutdown::{Error, SubsystemHandle, Toplevel};
+use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 
-async fn subsys1(subsys: SubsystemHandle) -> Result<(), Error> {
+async fn subsys1(subsys: SubsystemHandle) -> Result<()> {
     log::info!("Subsystem1 started.");
     subsys.on_shutdown_requested().await;
     log::info!("Shutting down Subsystem1 ...");
@@ -20,7 +21,7 @@ async fn subsys1(subsys: SubsystemHandle) -> Result<(), Error> {
     Ok(())
 }
 
-async fn subsys2(subsys: SubsystemHandle) -> Result<(), Error> {
+async fn subsys2(subsys: SubsystemHandle) -> Result<()> {
     log::info!("Subsystem2 started.");
     subsys.on_shutdown_requested().await;
     log::info!("Shutting down Subsystem2 ...");
@@ -30,7 +31,7 @@ async fn subsys2(subsys: SubsystemHandle) -> Result<(), Error> {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn main() -> Result<()> {
     // Init logging
     Builder::from_env(Env::default().default_filter_or("debug")).init();
 

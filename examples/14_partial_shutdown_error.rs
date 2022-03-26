@@ -4,17 +4,18 @@
 //! shutdown, but instead it will be delivered to the task that initiated
 //! the partial shutdown.
 
+use anyhow::Result;
 use env_logger::{Builder, Env};
 use tokio::time::{sleep, Duration};
-use tokio_graceful_shutdown::{Error, SubsystemHandle, Toplevel};
+use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 
-async fn subsys3(subsys: SubsystemHandle) -> Result<(), Error> {
+async fn subsys3(subsys: SubsystemHandle) -> Result<()> {
     log::info!("Subsys3 started.");
     subsys.on_shutdown_requested().await;
     panic!("Subsystem3 threw an error!")
 }
 
-async fn subsys2(subsys: SubsystemHandle) -> Result<(), Error> {
+async fn subsys2(subsys: SubsystemHandle) -> Result<()> {
     log::info!("Subsys2 started.");
     subsys.start("Subsys3", subsys3);
     subsys.on_shutdown_requested().await;
@@ -22,7 +23,7 @@ async fn subsys2(subsys: SubsystemHandle) -> Result<(), Error> {
     Ok(())
 }
 
-async fn subsys1(subsys: SubsystemHandle) -> Result<(), Error> {
+async fn subsys1(subsys: SubsystemHandle) -> Result<()> {
     // This subsystem shuts down the nested subsystem after 5 seconds.
     log::info!("Subsys1 started.");
 
@@ -48,7 +49,7 @@ async fn subsys1(subsys: SubsystemHandle) -> Result<(), Error> {
 }
 
 #[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<(), Error> {
+async fn main() -> Result<()> {
     // Init logging
     Builder::from_env(Env::default().default_filter_or("debug")).init();
 

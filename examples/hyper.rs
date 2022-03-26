@@ -3,9 +3,10 @@
 //!
 //! This example closely follows hyper's "hello" example.
 
+use anyhow::{anyhow, Result};
 use env_logger::{Builder, Env};
 use tokio::time::Duration;
-use tokio_graceful_shutdown::{Error, SubsystemHandle, Toplevel};
+use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 
 use std::convert::Infallible;
 
@@ -16,7 +17,7 @@ async fn hello(_: Request<Body>) -> Result<Response<Body>, Infallible> {
     Ok(Response::new(Body::from("Hello World!")))
 }
 
-async fn hyper_subsystem(subsys: SubsystemHandle) -> Result<(), Error> {
+async fn hyper_subsystem(subsys: SubsystemHandle) -> Result<()> {
     // For every connection, we must make a `Service` to handle all
     // incoming HTTP requests on said connection.
     let make_svc = make_service_fn(|_conn| {
@@ -37,11 +38,11 @@ async fn hyper_subsystem(subsys: SubsystemHandle) -> Result<(), Error> {
     server
         .with_graceful_shutdown(subsys.on_shutdown_requested())
         .await
-        .or_else(|err| Err(err.into()))
+        .or_else(|err| Err(anyhow! {err}))
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn main() -> Result<()> {
     // Init logging
     Builder::from_env(Env::default().default_filter_or("debug")).init();
 
