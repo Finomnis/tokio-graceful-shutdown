@@ -2,11 +2,11 @@ use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::errors::GracefulShutdownError;
 use crate::exit_state::prettify_exit_states;
 use crate::shutdown_token::create_shutdown_token;
 use crate::signal_handling::wait_for_signal;
 use crate::BoxedError;
+use crate::GracefulShutdownError;
 use crate::{ShutdownToken, SubsystemHandle};
 
 use super::subsystem::SubsystemData;
