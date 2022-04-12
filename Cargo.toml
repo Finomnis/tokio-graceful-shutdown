@@ -34,9 +34,7 @@ log = "0.4"
 [dev-dependencies]
 # Error propagation
 anyhow = "1.0"
-# TODO: Move miette back to official upstream once a version > 4.3 is released
-#miette = { version = "4.4", features = ["fancy"] }
-miette = { git = "https://github.com/zkat/miette", features = ["fancy"], rev = "37cda4a3a456060050e42a199a68ab86ee679f79" }
+miette = { version = "4.4", features = ["fancy"] }
 
 # Logging
 env_logger = "0.9"
