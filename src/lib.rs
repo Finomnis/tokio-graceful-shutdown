@@ -88,6 +88,9 @@
     test(attr(allow(dead_code)))
 )]
 
+type BoxedError = Box<dyn std::error::Error + Send + Sync + 'static>;
+
+mod errors;
 mod event;
 mod exit_state;
 mod runner;
@@ -96,6 +99,7 @@ mod signal_handling;
 mod subsystem;
 mod toplevel;
 
+pub use errors::GracefulShutdownError;
 pub use shutdown_token::ShutdownToken;
 pub use subsystem::NestedSubsystem;
 pub use subsystem::PartialShutdownError;

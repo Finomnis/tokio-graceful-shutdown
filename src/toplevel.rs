@@ -1,4 +1,3 @@
-use anyhow::Result;
 use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
@@ -6,6 +5,8 @@ use std::time::Duration;
 use crate::exit_state::prettify_exit_states;
 use crate::shutdown_token::create_shutdown_token;
 use crate::signal_handling::wait_for_signal;
+use crate::BoxedError;
+use crate::GracefulShutdownError;
 use crate::{ShutdownToken, SubsystemHandle};
 
 use super::subsystem::SubsystemData;
@@ -89,8 +90,8 @@ impl Toplevel {
     /// * `subsystem` - The subsystem to be started
     ///
     pub fn start<
-        Err: Into<anyhow::Error>,
-        Fut: 'static + Future<Output = core::result::Result<(), Err>> + Send,
+        Err: Into<BoxedError>,
+        Fut: 'static + Future<Output = Result<(), Err>> + Send,
         S: 'static + FnOnce(SubsystemHandle) -> Fut + Send,
     >(
         self,
@@ -126,7 +127,7 @@ impl Toplevel {
 
     /// Wait for all subsystems to finish.
     /// Then return and print all of their exit codes.
-    async fn attempt_clean_shutdown(&self) -> Result<()> {
+    async fn attempt_clean_shutdown(&self) -> Result<(), GracefulShutdownError> {
         let result = self.subsys_data.perform_shutdown().await;
 
         // Print subsystem exit states
@@ -146,7 +147,7 @@ impl Toplevel {
 
         match result {
             Ok(_) => Ok(()),
-            Err(_) => Err(anyhow::anyhow!("Subsytem errors occurred.")),
+            Err(_) => Err(GracefulShutdownError::SubsystemFailed),
         }
     }
 
@@ -165,7 +166,15 @@ impl Toplevel {
     ///
     /// * `shutdown_timeout` - The maximum time that is allowed to pass after a shutdown was initiated.
     ///
-    pub async fn handle_shutdown_requests(self, shutdown_timeout: Duration) -> Result<()> {
+    /// # Returns
+    ///
+    /// An error of type [`GracefulShutdownError`] if an error occurred.
+    /// An implicit `.into()` will be performed to convert it to the desired error wrapping type.
+    ///
+    pub async fn handle_shutdown_requests<ErrType: From<GracefulShutdownError>>(
+        self,
+        shutdown_timeout: Duration,
+    ) -> Result<(), ErrType> {
         self.subsys_handle.on_shutdown_requested().await;
 
         match tokio::time::timeout(shutdown_timeout, self.attempt_clean_shutdown()).await {
@@ -173,9 +182,13 @@ impl Toplevel {
             Err(_) => {
                 log::error!("Shutdown timed out. Attempting to cleanup stale subsystems ...");
                 self.subsys_data.cancel_all_subsystems().await;
-                tokio::time::timeout(shutdown_timeout, self.attempt_clean_shutdown()).await?
+                tokio::time::timeout(shutdown_timeout, self.attempt_clean_shutdown())
+                    .await
+                    .or(Err(GracefulShutdownError::ShutdownTimeout))? // Happens if second shutdown times out as well
+                    .or(Err(GracefulShutdownError::ShutdownTimeout)) // Happens in all other cases, as cancellation always forces an error in cancelled subsystems
             }
         }
+        .map_err(GracefulShutdownError::into)
     }
 
     #[doc(hidden)]

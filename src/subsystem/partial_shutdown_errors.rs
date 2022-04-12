@@ -1,35 +1,20 @@
-use std::error::Error;
-use std::fmt::Display;
+use thiserror::Error;
 
 /// This enum contains all the possible errors that a partial shutdown
 /// could cause.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Error, PartialEq)]
 pub enum PartialShutdownError {
     /// At least one subsystem caused an error.
+    #[error("at least one subsystem returned an error")]
     SubsystemFailed,
     /// The given nested subsystem does not seem to be a child of
     /// the parent subsystem.
+    #[error("unable to find nested subsystem in given subsystem")]
     SubsystemNotFound,
     /// A partial shutdown can not be performed because the entire program
     /// is already shutting down.
+    #[error("unable to perform partial shutdown, the program is already shutting down")]
     AlreadyShuttingDown,
-}
-
-impl Error for PartialShutdownError {}
-impl Display for PartialShutdownError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                PartialShutdownError::SubsystemFailed => "at least one subsystem returned an error",
-                PartialShutdownError::SubsystemNotFound =>
-                    "unable to find nested subsystem in given subsystem",
-                PartialShutdownError::AlreadyShuttingDown =>
-                    "unable to perform partial shutdown, the program is already shutting down",
-            }
-        )
-    }
 }
 
 #[cfg(test)]

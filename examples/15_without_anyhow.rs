@@ -3,7 +3,6 @@
 use env_logger::{Builder, Env};
 use std::error::Error;
 use std::fmt;
-use std::result::Result;
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 
@@ -37,7 +36,5 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .start("Subsys1", subsys1)
         .catch_signals()
         .handle_shutdown_requests(Duration::from_millis(1000))
-        .await?;
-
-    Ok(())
+        .await
 }

@@ -19,8 +19,8 @@ exclude = [
 ]
 
 [dependencies]
-# Result propagation
-anyhow = "1.0"
+# Error definitions
+thiserror = "1.0"
 
 # For async utilities
 tokio = { version = "1", default-features = false, features = ["signal", "rt", "macros", "time"] }
@@ -32,6 +32,10 @@ async-recursion = "1.0"
 log = "0.4"
 
 [dev-dependencies]
+# Error propagation
+anyhow = "1.0"
+miette = { version = "4.4", features = ["fancy"] }
+
 # Logging
 env_logger = "0.9"
 
