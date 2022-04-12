@@ -85,7 +85,7 @@ impl SubsystemData {
     /// This function can handle cancellation.
     #[async_recursion]
     async fn perform_shutdown_on_subsystems(
-        subsystems: &mut Vec<SubsystemDescriptor>,
+        subsystems: &mut [SubsystemDescriptor],
     ) -> ShutdownResults {
         let mut subsystem_runners = vec![];
         let mut subsystem_data = vec![];
