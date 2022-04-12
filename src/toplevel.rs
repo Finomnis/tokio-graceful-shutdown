@@ -169,7 +169,7 @@ impl Toplevel {
     /// # Returns
     ///
     /// An error of type [`GracefulShutdownError`] if an error occurred.
-    /// An implicit `.into()` will be performed based on the desired error wrapping type.
+    /// An implicit `.into()` will be performed to convert it to the desired error wrapping type.
     ///
     pub async fn handle_shutdown_requests<ErrType: From<GracefulShutdownError>>(
         self,
