@@ -1,0 +1,85 @@
+//! This is the official tokio "echo server" example with added graceful shutdown.
+//!
+//! For more information, visit https://github.com/tokio-rs/tokio/blob/master/examples/echo.rs.
+
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpListener;
+
+use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
+
+use std::env;
+use std::error::Error;
+use std::time::Duration;
+
+async fn connection_handler(subsys: SubsystemHandle) ->  Result<(), Box<dyn Error + Send + Sync>>{
+        // And this is where much of the magic of this server happens. We
+        // crucially want all clients to make progress concurrently, rather than
+        // blocking one on completion of another. To achieve this we use the
+        // `tokio::spawn` function to execute the work in the background.
+        //
+        // Essentially here we're executing a new task to run concurrently,
+        // which will allow all of our clients to be processed concurrently.
+
+        let subsys = subsys.clone();
+        subsys.start()
+        tokio::spawn( async move {
+            let mut buf = vec![0; 1024];
+
+            // In a loop, read data from the socket and write the data back.
+            loop {
+                let n = socket
+                    .read(&mut buf)
+                    .await
+                    .expect("failed to read data from socket");
+
+                if n == 0 {
+                    return;
+                }
+
+                socket
+                    .write_all(&buf[0..n])
+                    .await
+                    .expect("failed to write data to socket");
+            }
+        });
+}
+
+async fn connection_listener(subsys: SubsystemHandle) -> Result<(), Box<dyn Error + Send + Sync>> {
+    // Allow passing an address to listen on as the first argument of this
+    // program, but otherwise we'll just set up our TCP listener on
+    // 127.0.0.1:8080 for connections.
+    let addr = env::args()
+        .nth(1)
+        .unwrap_or_else(|| "127.0.0.1:8080".to_string());
+
+    // Next up we create a TCP listener which will listen for incoming
+    // connections. This TCP listener is bound to the address we determined
+    // above and must be associated with an event loop.
+    let listener = TcpListener::bind(&addr).await?;
+    println!("Listening on: {}", addr);
+
+    loop {
+        // Asynchronously wait for an inbound socket.
+        let (mut socket, _) = tokio::select! {
+            socket = listener.accept() => socket?,
+            _ = subsys.on_shutdown_requested() => break,
+        };
+
+    }
+
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    // Init logging
+    use env_logger::{Builder, Env};
+    Builder::from_env(Env::default().default_filter_or("debug")).init();
+
+    // Spawn toplevel subsystem
+    Toplevel::new()
+        .start("connection_listener", connection_listener)
+        .catch_signals()
+        .handle_shutdown_requests(Duration::from_secs(2))
+        .await
+}
