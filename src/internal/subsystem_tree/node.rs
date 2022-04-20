@@ -14,6 +14,15 @@
     - then, collect them in class (for nested) or forward them to handle (for detached)
 
 - prevent child spawning when subsystem is finished
+
+
+- use atomic counter for consistency enforcement
+    - only allow spawning if counter is != 0
+    - every subsystem counts as 1
+    - the lambda itself also counts as 1
+    - class should allow awaiting for 0
+    - reduce 1 every time a subsystem stops
+    - reduce by 1 when lambda finishes
 */
 
 use std::{
@@ -66,7 +75,7 @@ pub struct SubsystemTreeNode {
 
 impl Hash for SubsystemTreeNode {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        (&self).hash(state);
+        std::ptr::hash(&self, state);
     }
 }
 
@@ -74,7 +83,7 @@ impl Eq for SubsystemTreeNode {}
 
 impl PartialEq for SubsystemTreeNode {
     fn eq(&self, other: &Self) -> bool {
-        &self == &other
+        std::ptr::eq(&self, &other)
     }
 }
 
@@ -195,7 +204,7 @@ impl SubsystemTreeNode {
                 self_reference.child_errors.lock().unwrap().push(e);
             }
 
-            self_reference.children.lock().unwrap().remove(&node);
+            //self_reference.children.lock().unwrap().remove(&node);
 
             // TODO: check if the subsystem is now finished and disable spawning of new subsystems
         });
@@ -268,18 +277,53 @@ mod tests {
     }
 
     mod error_propagation {
+        use std::time::Duration;
+
         use super::*;
 
         #[tokio::test]
-        async fn ok() {
-            async fn subsys() -> Result<(), Box<dyn Error + Send + Sync>> {
-                Ok(())
+        async fn detached() {
+            async fn subsys(_subsys: SubsystemHandle) -> Result<(), Box<dyn Error + Send + Sync>> {
+                Err("TragicError".into())
             }
 
             let node = create_node();
-            let result = node.execute(subsys()).await;
+            let child_handle = node.spawn_child("ChildSubsys".into(), subsys, node.clone(), true);
 
-            assert!(matches!(result, Ok(())));
+            let result = child_handle.result.unwrap().await.unwrap();
+
+            if let Err(SubsystemError::Failed(name, e)) = result {
+                assert_eq!(name, "ChildSubsys");
+                assert_eq!(format!("{}", e), "TragicError");
+            } else {
+                assert!(false, "Result is incorrect.");
+            }
+        }
+
+        #[tokio::test]
+        async fn nested() {
+            async fn subsys(_subsys: SubsystemHandle) -> Result<(), Box<dyn Error + Send + Sync>> {
+                Err("TragicError".into())
+            }
+
+            let node = create_node();
+            let child_handle = node.spawn_child("ChildSubsys".into(), subsys, node.clone(), false);
+
+            assert!(child_handle.result.is_none());
+
+            tokio::time::sleep(Duration::from_millis(100)).await;
+
+            let child_errors = node.child_errors.lock().unwrap();
+
+            assert_eq!(child_errors.len(), 1);
+            let result = child_errors.get(0).unwrap();
+
+            if let SubsystemError::Failed(name, e) = result {
+                assert_eq!(name, "ChildSubsys");
+                assert_eq!(format!("{}", e), "TragicError");
+            } else {
+                assert!(false, "Result is incorrect.");
+            }
         }
     }
 
