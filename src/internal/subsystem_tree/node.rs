@@ -19,6 +19,7 @@
 use std::{
     collections::HashSet,
     error::Error,
+    hash::Hash,
     sync::{Arc, Mutex},
 };
 
@@ -61,6 +62,20 @@ pub struct SubsystemTreeNode {
     shutdown_token_local: ShutdownToken,
     shutdown_token_group: ShutdownToken,
     shutdown_token_global: ShutdownToken,
+}
+
+impl Hash for SubsystemTreeNode {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        (&self).hash(state);
+    }
+}
+
+impl Eq for SubsystemTreeNode {}
+
+impl PartialEq for SubsystemTreeNode {
+    fn eq(&self, other: &Self) -> bool {
+        &self == &other
+    }
 }
 
 impl SubsystemTreeNode {
@@ -160,9 +175,8 @@ impl SubsystemTreeNode {
         // we are inside of a member function here.
         tokio::spawn(async move {
             // Spawn child process
-            let child_future = node
-                .clone()
-                .execute(async { child_lambda(subsys_handle).await.map_err(|e| e.into()) });
+            let child_future =
+                node.execute(async { child_lambda(subsys_handle).await.map_err(|e| e.into()) });
 
             let result = child_future.await;
 
@@ -181,7 +195,7 @@ impl SubsystemTreeNode {
                 self_reference.child_errors.lock().unwrap().push(e);
             }
 
-            self_reference.children.lock().unwrap().remove(node);
+            self_reference.children.lock().unwrap().remove(&node);
 
             // TODO: check if the subsystem is now finished and disable spawning of new subsystems
         });
@@ -240,21 +254,37 @@ mod tests {
 
     use super::*;
 
-    mod returnvalues {
+    fn create_node() -> Arc<SubsystemTreeNode> {
+        let parent = Box::new(DummyParent {});
+        let shutdown_token = create_shutdown_token();
+
+        SubsystemTreeNode::new(
+            "MyGreatSubsystem",
+            parent,
+            shutdown_token.clone(),
+            shutdown_token.clone(),
+            shutdown_token,
+        )
+    }
+
+    mod error_propagation {
         use super::*;
 
-        fn create_node() -> Arc<SubsystemTreeNode> {
-            let parent = Box::new(DummyParent {});
-            let shutdown_token = create_shutdown_token();
+        #[tokio::test]
+        async fn ok() {
+            async fn subsys() -> Result<(), Box<dyn Error + Send + Sync>> {
+                Ok(())
+            }
 
-            SubsystemTreeNode::new(
-                "MyGreatSubsystem",
-                parent,
-                shutdown_token.clone(),
-                shutdown_token.clone(),
-                shutdown_token,
-            )
+            let node = create_node();
+            let result = node.execute(subsys()).await;
+
+            assert!(matches!(result, Ok(())));
         }
+    }
+
+    mod return_values {
+        use super::*;
 
         #[tokio::test]
         async fn ok() {
