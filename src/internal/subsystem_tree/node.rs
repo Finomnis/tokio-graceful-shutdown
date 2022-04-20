@@ -12,6 +12,8 @@
 - question: where will errors be propagated?
     - into callback
     - then, collect them in class (for nested) or forward them to handle (for detached)
+
+- prevent child spawning when subsystem is finished
 */
 
 use std::{
@@ -20,11 +22,13 @@ use std::{
 };
 
 use futures::Future;
+use tokio::sync::oneshot::{self, Receiver};
 use tokio::task::JoinError;
 
 use miette::Result;
 
 use crate::{
+    api::subsystem_handle::SubsystemHandle,
     errors::SubsystemError,
     internal::{
         subsystem_tree::parent::SubsystemTreeParent,
@@ -36,9 +40,16 @@ use crate::{
     BoxedError,
 };
 
+use super::parent::DummyParent;
+
+struct ChildHandle {
+    child: Arc<SubsystemTreeNode>,
+    result: Option<oneshot::Receiver<Result<(), SubsystemError>>>,
+}
+
 pub struct SubsystemTreeNode {
     name: String,
-    parent: Box<dyn SubsystemTreeParent>,
+    parent: Box<dyn SubsystemTreeParent + Send + Sync>,
     children: Mutex<Vec<Arc<SubsystemTreeNode>>>,
     child_errors: Mutex<Vec<(String, SubsystemError)>>,
     /// Indicates that the subsystem and all its children are finished
@@ -54,15 +65,15 @@ pub struct SubsystemTreeNode {
 impl SubsystemTreeNode {
     pub fn new(
         name: &str,
-        parent: Box<dyn SubsystemTreeParent>,
+        parent: Box<dyn SubsystemTreeParent + Send + Sync>,
         shutdown_token_global: ShutdownToken,
         shutdown_token_group: ShutdownToken,
         shutdown_token_local: ShutdownToken,
-    ) -> Self {
+    ) -> Arc<Self> {
         let (abort_requested, set_abort_requested) = Event::create();
         let (finished, set_finished) = Event::create();
 
-        Self {
+        let node = Arc::new(Self {
             name: name.to_string(),
             parent,
             abort_requested,
@@ -74,10 +85,85 @@ impl SubsystemTreeNode {
             shutdown_token_local,
             children: Mutex::new(Vec::new()),
             child_errors: Mutex::new(Vec::new()),
-        }
+        });
+
+        node
     }
 
-    //fn create_child(&self, detached: bool) -> ChildHandle {}
+    /// Spawns a child node.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the child node
+    /// * `child_lambda` - The child subsystem function
+    /// * `self_reference` - A `Arc` reference to self, that will be used to keep the
+    ///                      current node alive while the child exists
+    /// * `detached` - Whether or not child node will be a detached node.
+    ///                Detached nodes don't propagate errors upwards, but instead
+    ///                only shut down a local subtree on error or panic.
+    ///                Errors will have to be handled by the caller of this function.
+    pub fn spawn_child<
+        Err: Into<BoxedError>,
+        Fut: 'static + Future<Output = Result<(), Err>> + Send,
+        S: 'static + FnOnce(SubsystemHandle) -> Fut + Send,
+    >(
+        &self,
+        name: &str,
+        child_lambda: S,
+        self_reference: Arc<Self>,
+        detached: bool,
+    ) -> ChildHandle {
+        // Create shutdown tokens for the child.
+        // If child is detached, start a new shutdown group.
+        let shutdown_token_child = self.shutdown_token_local.child_token();
+        let shutdown_token_child_group = if detached {
+            shutdown_token_child.clone()
+        } else {
+            self.shutdown_token_group.clone()
+        };
+
+        // TODO: Synchronize child spawning with set_finished, so that a finished subsystem can never be unfinished again.
+        // TODO: replace dummy parent with weak pointer to actual parent
+        let node = SubsystemTreeNode::new(
+            name,
+            Box::new(DummyParent {}),
+            self.shutdown_token_global.clone(),
+            shutdown_token_child_group,
+            shutdown_token_child,
+        );
+
+        // Create SubsystemHandle
+        let subsys_handle = SubsystemHandle {};
+
+        // Spawn child process
+        let child_future =
+            node.execute(async { child_lambda(subsys_handle).await.map_err(|e| e.into()) });
+
+        // Store child in array of children
+        self.children.lock().unwrap().push(node.clone());
+
+        // Create child handle for further processing of the spawned child
+        let child_handle = ChildHandle {
+            child: node.clone(),
+            result: None,
+        };
+
+        // Handle child process return values
+        // For that, we need a strong pointer to the current node.
+        // Create it from the weak pointer we have stored.
+        // It is trivially provable that the weak pointer is valid, because
+        // we are inside of a member function here.
+        tokio::spawn(async move {
+            let result = child_future.await;
+
+            match result {
+                Ok(_) => todo!(),
+                Err(_) => todo!(),
+            }
+        });
+
+        child_handle
+    }
 
     /// Executes the subsystem future.
     ///
