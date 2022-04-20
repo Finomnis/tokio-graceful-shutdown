@@ -1,1 +1,16 @@
 Write manual section about decoupling & partial shutdowns
+
+
+Decoupling Ideas:
+
+- start_decoupled returns DecoupledSubsystem that needs to be awaited otherwise errors would get lost
+- decoupledSubsystem does not propagate errors up to the top, instead it catches errors and returns them from the future
+- every handle needs three cancellationtokens: global, group, local
+- refactor using interfaces where appropriate
+
+- maybe don't mix external and internal interfaces
+
+Thoughts from train:
+    - await subs
+    - remove subs after stop
+    - stop toplevel when all finished
