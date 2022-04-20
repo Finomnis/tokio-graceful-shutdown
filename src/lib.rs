@@ -1,3 +1,4 @@
+mod errors;
 pub mod internal;
 //mod api;
 

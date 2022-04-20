@@ -16,16 +16,16 @@
 
 use std::{
     error::Error,
-    fmt,
     sync::{Arc, Mutex},
 };
 
 use futures::Future;
 use tokio::task::JoinError;
 
-use miette::{Diagnostic, Result};
+use miette::Result;
 
 use crate::{
+    errors::SubsystemError,
     internal::{
         subsystem_tree::parent::SubsystemTreeParent,
         utils::{
@@ -36,33 +36,12 @@ use crate::{
     BoxedError,
 };
 
-#[derive(thiserror::Error)]
-#[error(transparent)]
-pub struct BoxedJoinError(JoinError);
-impl fmt::Debug for BoxedJoinError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&self.0, f)
-    }
-}
-impl Diagnostic for BoxedJoinError {}
-
-#[derive(thiserror::Error, Debug, Diagnostic)]
-pub enum SubsystemError {
-    #[error("Error in subsystem {0}")]
-    #[diagnostic(code(tokio_graceful_shutdown::subsystem::failed))]
-    Failed(String, #[source] Box<dyn Error + Send + Sync>),
-    #[error("Subsystem {0} was aborted")]
-    #[diagnostic(code(tokio_graceful_shutdown::subsystem::aborted))]
-    Cancelled(String),
-    #[error("Subsystem {0} panicked")]
-    #[diagnostic(code(tokio_graceful_shutdown::subsystem::panicked))]
-    Panicked(String),
-}
-
 pub struct SubsystemTreeNode {
     name: String,
     parent: Box<dyn SubsystemTreeParent>,
     children: Mutex<Vec<Arc<SubsystemTreeNode>>>,
+    child_errors: Mutex<Vec<(String, SubsystemError)>>,
+    /// Indicates that the subsystem and all its children are finished
     finished: Event,
     set_finished: EventTrigger,
     abort_requested: Event,
@@ -70,7 +49,6 @@ pub struct SubsystemTreeNode {
     shutdown_token_local: ShutdownToken,
     shutdown_token_group: ShutdownToken,
     shutdown_token_global: ShutdownToken,
-    errors: Mutex<Vec<(String, SubsystemError)>>,
 }
 
 impl SubsystemTreeNode {
@@ -95,19 +73,24 @@ impl SubsystemTreeNode {
             shutdown_token_group,
             shutdown_token_local,
             children: Mutex::new(Vec::new()),
-            errors: Mutex::new(Vec::new()),
+            child_errors: Mutex::new(Vec::new()),
         }
     }
 
     //fn create_child(&self, detached: bool) -> ChildHandle {}
 
+    /// Executes the subsystem future.
+    ///
+    /// This function will block and must therefore most likely be wrapped in a tokio::spawn.
     pub async fn execute<Fut: 'static + Future<Output = Result<(), BoxedError>> + Send>(
         &self,
         subsystem_future: Fut,
     ) -> Result<(), SubsystemError> {
+        // Run tokio::spawn internally again. This one is to catch and process panics.
         let mut joinhandle = tokio::spawn(subsystem_future);
         let joinhandle_ref = &mut joinhandle;
 
+        /// Maps the complicated return value of the subsystem joinhandle to an appropriate error
         fn handle_subsystem_outcome(
             obj: &SubsystemTreeNode,
             child: Result<Result<(), Box<dyn Error + Sync + Send>>, JoinError>,
@@ -134,7 +117,9 @@ impl SubsystemTreeNode {
         }
     }
 
-    //fn abort(&self) ->
+    pub fn abort(&self) {
+        self.set_abort_requested.set();
+    }
 }
 
 #[cfg(test)]
@@ -145,35 +130,79 @@ mod tests {
 
     use super::*;
 
-    use std::sync::atomic::{AtomicBool, Ordering};
-    use tokio::time::{sleep, Duration};
+    mod returnvalues {
+        use super::*;
 
-    #[tokio::test]
-    async fn dummy() {
-        async fn dummy_subsys() -> Result<(), Box<dyn Error + Send + Sync>> {
-            println!("Dummy subsys");
-            panic!("AAAAA");
+        fn create_node() -> SubsystemTreeNode {
+            let parent = Box::new(DummyParent {});
+            let shutdown_token = create_shutdown_token();
+
+            SubsystemTreeNode::new(
+                "MyGreatSubsystem",
+                parent,
+                shutdown_token.clone(),
+                shutdown_token.clone(),
+                shutdown_token,
+            )
         }
 
-        let parent = Box::new(DummyParent {});
+        #[tokio::test]
+        async fn ok() {
+            async fn subsys() -> Result<(), Box<dyn Error + Send + Sync>> {
+                Ok(())
+            }
 
-        let shutdown_token = create_shutdown_token();
+            let node = create_node();
+            let result = node.execute(subsys()).await;
 
-        let node = SubsystemTreeNode::new(
-            "aaa",
-            parent,
-            shutdown_token.clone(),
-            shutdown_token.clone(),
-            shutdown_token,
-        );
-
-        let result = node.execute(dummy_subsys()).await;
-
-        match result {
-            Ok(()) => println!("Ok."),
-            Err(e) => println!("Error: {:?}", e),
+            assert!(matches!(result, Ok(())));
         }
 
-        //assert!(false);
+        #[tokio::test]
+        async fn error() {
+            async fn subsys() -> Result<(), Box<dyn Error + Send + Sync>> {
+                Err("ErrorText".into())
+            }
+
+            let node = create_node();
+            let result = node.execute(subsys()).await;
+
+            if let Err(SubsystemError::Failed(name, e)) = result {
+                assert_eq!(name, "MyGreatSubsystem");
+                assert_eq!(format!("{}", e), "ErrorText");
+            } else {
+                assert!(false, "Result is incorrect.");
+            }
+        }
+
+        #[tokio::test]
+        async fn panic() {
+            async fn subsys() -> Result<(), Box<dyn Error + Send + Sync>> {
+                panic!();
+            }
+
+            let node = create_node();
+            let result = node.execute(subsys()).await;
+
+            if let Err(SubsystemError::Panicked(name)) = result {
+                assert_eq!(name, "MyGreatSubsystem");
+            } else {
+                assert!(false, "Result is incorrect.");
+            }
+        }
+
+        #[tokio::test]
+        async fn cancelled() {
+            let node = create_node();
+            node.abort();
+
+            let result = node.execute(std::future::pending()).await;
+
+            if let Err(SubsystemError::Cancelled(name)) = result {
+                assert_eq!(name, "MyGreatSubsystem");
+            } else {
+                assert!(false, "Result is incorrect.");
+            }
+        }
     }
 }
