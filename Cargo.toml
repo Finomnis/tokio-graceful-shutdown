@@ -34,6 +34,7 @@ log = "0.4"
 [dev-dependencies]
 # Error propagation
 anyhow = "1.0"
+eyre = "0.6"
 miette = { version = "4.4", features = ["fancy"] }
 
 # Logging
