@@ -17,12 +17,13 @@
 */
 
 use std::{
+    collections::HashSet,
     error::Error,
     sync::{Arc, Mutex},
 };
 
 use futures::Future;
-use tokio::sync::oneshot::{self, Receiver};
+use tokio::sync::oneshot;
 use tokio::task::JoinError;
 
 use miette::Result;
@@ -42,7 +43,7 @@ use crate::{
 
 use super::parent::DummyParent;
 
-struct ChildHandle {
+pub struct ChildHandle {
     child: Arc<SubsystemTreeNode>,
     result: Option<oneshot::Receiver<Result<(), SubsystemError>>>,
 }
@@ -50,8 +51,8 @@ struct ChildHandle {
 pub struct SubsystemTreeNode {
     name: String,
     parent: Box<dyn SubsystemTreeParent + Send + Sync>,
-    children: Mutex<Vec<Arc<SubsystemTreeNode>>>,
-    child_errors: Mutex<Vec<(String, SubsystemError)>>,
+    children: Mutex<HashSet<Arc<SubsystemTreeNode>>>,
+    child_errors: Mutex<Vec<SubsystemError>>,
     /// Indicates that the subsystem and all its children are finished
     finished: Event,
     set_finished: EventTrigger,
@@ -83,7 +84,7 @@ impl SubsystemTreeNode {
             shutdown_token_global,
             shutdown_token_group,
             shutdown_token_local,
-            children: Mutex::new(Vec::new()),
+            children: Mutex::new(HashSet::new()),
             child_errors: Mutex::new(Vec::new()),
         });
 
@@ -135,17 +136,21 @@ impl SubsystemTreeNode {
         // Create SubsystemHandle
         let subsys_handle = SubsystemHandle {};
 
-        // Spawn child process
-        let child_future =
-            node.execute(async { child_lambda(subsys_handle).await.map_err(|e| e.into()) });
-
         // Store child in array of children
-        self.children.lock().unwrap().push(node.clone());
+        self.children.lock().unwrap().insert(node.clone());
+
+        // Set up connection to transfer subsystem result
+        let (result_sender, result_receiver) = if detached {
+            let (sender, receiver) = oneshot::channel();
+            (Some(sender), Some(receiver))
+        } else {
+            (None, None)
+        };
 
         // Create child handle for further processing of the spawned child
         let child_handle = ChildHandle {
             child: node.clone(),
-            result: None,
+            result: result_receiver,
         };
 
         // Handle child process return values
@@ -154,12 +159,31 @@ impl SubsystemTreeNode {
         // It is trivially provable that the weak pointer is valid, because
         // we are inside of a member function here.
         tokio::spawn(async move {
+            // Spawn child process
+            let child_future = node
+                .clone()
+                .execute(async { child_lambda(subsys_handle).await.map_err(|e| e.into()) });
+
             let result = child_future.await;
 
-            match result {
-                Ok(_) => todo!(),
-                Err(_) => todo!(),
+            // Attempt to send the result to the oneshot pipe
+            let result = if let Some(sender) = result_sender {
+                match sender.send(result) {
+                    Err(e) => e,
+                    Ok(()) => Ok(()),
+                }
+            } else {
+                result
+            };
+
+            // If it failed, store the error in the local error list
+            if let Err(e) = result {
+                self_reference.child_errors.lock().unwrap().push(e);
             }
+
+            self_reference.children.lock().unwrap().remove(node);
+
+            // TODO: check if the subsystem is now finished and disable spawning of new subsystems
         });
 
         child_handle
@@ -219,7 +243,7 @@ mod tests {
     mod returnvalues {
         use super::*;
 
-        fn create_node() -> SubsystemTreeNode {
+        fn create_node() -> Arc<SubsystemTreeNode> {
             let parent = Box::new(DummyParent {});
             let shutdown_token = create_shutdown_token();
 
