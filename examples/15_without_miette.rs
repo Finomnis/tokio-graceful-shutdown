@@ -1,4 +1,4 @@
-//! This example shows how to use this library with std::error::Error instead of anyhow::Error
+//! This example shows how to use this library with std::error::Error instead of miette::Error
 
 use env_logger::{Builder, Env};
 use std::error::Error;

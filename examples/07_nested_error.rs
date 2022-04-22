@@ -2,8 +2,8 @@
 //! a graceful shutdown is performed and other subsystems get the chance
 //! to clean up.
 
-use anyhow::{anyhow, Result};
 use env_logger::{Builder, Env};
+use miette::{miette, Result};
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 
@@ -21,7 +21,7 @@ async fn subsys2(_subsys: SubsystemHandle) -> Result<()> {
     log::info!("Subsystem2 started.");
     sleep(Duration::from_millis(500)).await;
 
-    Err(anyhow!("Subsystem2 threw an error."))
+    Err(miette!("Subsystem2 threw an error."))
 }
 
 #[tokio::main]

@@ -4,8 +4,8 @@
 //! This isn't really a usecase related to this library, but seems to be used regularly,
 //! so I included it anyway.
 
-use anyhow::Result;
 use env_logger::{Builder, Env};
+use miette::Result;
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 

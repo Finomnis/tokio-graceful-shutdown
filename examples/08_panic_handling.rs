@@ -4,8 +4,8 @@
 //! A normal program shutdown is performed, and other subsystems get the
 //! chance to clean up their work.
 
-use anyhow::Result;
 use env_logger::{Builder, Env};
+use miette::Result;
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 

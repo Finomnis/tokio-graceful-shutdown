@@ -35,7 +35,7 @@ impl SubsystemHandle {
     /// # Examples
     ///
     /// ```
-    /// use anyhow::Result;
+    /// use miette::Result;
     /// use tokio_graceful_shutdown::SubsystemHandle;
     ///
     /// async fn nested_subsystem(subsys: SubsystemHandle) -> Result<()> {
@@ -114,7 +114,7 @@ impl SubsystemHandle {
     /// # Examples
     ///
     /// ```
-    /// use anyhow::Result;
+    /// use miette::Result;
     /// use tokio::time::{sleep, Duration};
     /// use tokio_graceful_shutdown::SubsystemHandle;
     ///
@@ -154,7 +154,7 @@ impl SubsystemHandle {
     /// # Examples
     ///
     /// ```
-    /// use anyhow::Result;
+    /// use miette::Result;
     /// use tokio::time::{sleep, Duration};
     /// use tokio_graceful_shutdown::SubsystemHandle;
     ///
@@ -187,7 +187,7 @@ impl SubsystemHandle {
     /// # Examples
     ///
     /// ```
-    /// use anyhow::Result;
+    /// use miette::Result;
     /// use tokio::time::{sleep, Duration};
     /// use tokio_graceful_shutdown::SubsystemHandle;
     ///

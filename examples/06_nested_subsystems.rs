@@ -1,8 +1,8 @@
 //! This example demonstrates how one subsystem can launch another
 //! nested subsystem.
 
-use anyhow::Result;
 use env_logger::{Builder, Env};
+use miette::Result;
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 

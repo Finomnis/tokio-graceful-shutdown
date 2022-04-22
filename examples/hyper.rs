@@ -3,8 +3,8 @@
 //!
 //! This example closely follows hyper's "hello" example.
 
-use anyhow::{anyhow, Result};
 use env_logger::{Builder, Env};
+use miette::{miette, Result};
 use tokio::time::Duration;
 use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 
@@ -38,7 +38,7 @@ async fn hyper_subsystem(subsys: SubsystemHandle) -> Result<()> {
     server
         .with_graceful_shutdown(subsys.on_shutdown_requested())
         .await
-        .or_else(|err| Err(anyhow! {err}))
+        .or_else(|err| Err(miette! {err}))
 }
 
 #[tokio::main]

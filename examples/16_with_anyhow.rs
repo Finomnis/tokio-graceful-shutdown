@@ -1,9 +1,9 @@
-//! This example shows how to use this library with miette instead of anyhow
+//! This example shows how to use this library with anyhow instead of miette
 
+use anyhow::{anyhow, Result};
 use env_logger::{Builder, Env};
-use miette::{miette, IntoDiagnostic, Result};
 use tokio::time::{sleep, Duration};
-use tokio_graceful_shutdown::{GracefulShutdownError, SubsystemHandle, Toplevel};
+use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 
 async fn subsys1(_subsys: SubsystemHandle) -> Result<()> {
     log::info!("Subsystem1 started.");
@@ -11,7 +11,7 @@ async fn subsys1(_subsys: SubsystemHandle) -> Result<()> {
     log::info!("Subsystem1 stopped.");
 
     // Task ends with an error. This should cause the main program to shutdown.
-    Err(miette!("Subsystem1 threw an error."))
+    Err(anyhow!("Subsystem1 threw an error."))
 }
 
 #[tokio::main]
@@ -23,7 +23,6 @@ async fn main() -> Result<()> {
     Toplevel::new()
         .start("Subsys1", subsys1)
         .catch_signals()
-        .handle_shutdown_requests::<GracefulShutdownError>(Duration::from_millis(1000))
+        .handle_shutdown_requests(Duration::from_millis(1000))
         .await
-        .into_diagnostic()
 }

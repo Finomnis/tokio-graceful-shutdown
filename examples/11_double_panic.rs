@@ -7,8 +7,8 @@
 //! There is no real programming knowledge to be gained here, this example is just
 //! to demonstrate the robustness of the system.
 
-use anyhow::Result;
 use env_logger::{Builder, Env};
+use miette::Result;
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 

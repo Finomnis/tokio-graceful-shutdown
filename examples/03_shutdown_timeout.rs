@@ -4,8 +4,8 @@
 //! so the subsystem gets cancelled and the program returns an appropriate
 //! error code.
 
-use anyhow::Result;
 use env_logger::{Builder, Env};
+use miette::Result;
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 

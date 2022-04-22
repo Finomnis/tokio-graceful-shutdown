@@ -23,7 +23,7 @@ use super::subsystem::SubsystemData;
 /// # Examples
 ///
 /// ```
-/// use anyhow::Result;
+/// use miette::Result;
 /// use tokio::time::Duration;
 /// use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 ///

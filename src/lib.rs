@@ -20,7 +20,7 @@
 //! During the countdown, the program will react to Ctrl-C/SIGINT/SIGTERM and will cancel the countdown task accordingly.
 //!
 //! ```
-//! use anyhow::Result;
+//! use miette::Result;
 //! use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 //! use env_logger::{Builder, Env};
 //! use tokio::time::{sleep, Duration};

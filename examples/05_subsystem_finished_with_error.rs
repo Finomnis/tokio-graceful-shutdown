@@ -6,8 +6,8 @@
 //! As expected, this is a graceful shutdown, giving other subsystems
 //! the chance to also shut down gracefully.
 
-use anyhow::{anyhow, Result};
 use env_logger::{Builder, Env};
+use miette::{miette, Result};
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 
@@ -17,7 +17,7 @@ async fn subsys1(_subsys: SubsystemHandle) -> Result<()> {
     log::info!("Subsystem1 stopped.");
 
     // Task ends with an error. This should cause the main program to shutdown.
-    Err(anyhow!("Subsystem1 threw an error."))
+    Err(miette!("Subsystem1 threw an error."))
 }
 
 #[tokio::main]
