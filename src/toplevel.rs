@@ -128,26 +128,34 @@ impl Toplevel {
     /// Wait for all subsystems to finish.
     /// Then return and print all of their exit codes.
     async fn attempt_clean_shutdown(&self) -> Result<(), GracefulShutdownError> {
-        let result = self.subsys_data.perform_shutdown().await;
+        let exit_states = self.subsys_data.perform_shutdown().await;
+
+        // Prettify exit states
+        let formatted_exit_states = prettify_exit_states(&exit_states);
+
+        // Collect failed subsystems
+        let failed_subsystems = exit_states
+            .into_iter()
+            .filter_map(|exit_state| match exit_state.raw_result {
+                Ok(()) => None,
+                Err(e) => Some(e),
+            })
+            .collect::<Vec<_>>();
 
         // Print subsystem exit states
-        let exit_codes = match &result {
-            Ok(codes) => {
-                log::debug!("Shutdown successful. Subsystem states:");
-                codes
-            }
-            Err(codes) => {
-                log::debug!("Some subsystems failed. Subsystem states:");
-                codes
-            }
+        if failed_subsystems.is_empty() {
+            log::debug!("Shutdown successful. Subsystem states:");
+        } else {
+            log::debug!("Some subsystems failed. Subsystem states:");
         };
-        for formatted_exit_code in prettify_exit_states(exit_codes) {
-            log::debug!("    {}", formatted_exit_code);
+        for formatted_exit_state in formatted_exit_states {
+            log::debug!("    {}", formatted_exit_state);
         }
 
-        match result {
-            Ok(_) => Ok(()),
-            Err(_) => Err(GracefulShutdownError::SubsystemFailed),
+        if failed_subsystems.is_empty() {
+            Ok(())
+        } else {
+            Err(GracefulShutdownError::SubsystemsFailed(failed_subsystems))
         }
     }
 

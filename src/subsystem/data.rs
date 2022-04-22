@@ -116,29 +116,22 @@ impl SubsystemData {
                 let joinhandles_finished = joinhandles_finished.await;
 
                 let join_results = joinhandles_finished
-                    .iter()
+                    .into_iter()
                     .map(|(name, result)| match result {
-                        Ok(Ok(())) => Ok((name, "OK".to_string())),
-                        Ok(Err(())) => Err((name, "Failed".to_string())),
-                        Err(e) => Err((name, format!("Internal error: {}", e))),
+                        Ok(()) => (name, "OK".to_string(), result),
+                        Err(e) => (name, "Failed".to_string(), Err(e)),
                     })
                     .collect::<Vec<_>>();
 
                 let exit_states = join_results
-                    .iter()
-                    .map(|e| {
-                        let (name, msg) = match e {
-                            Ok(msg) => msg,
-                            Err(msg) => msg,
-                        };
-                        SubprocessExitState::new(name, msg)
+                    .into_iter()
+                    .map(|join_result| {
+                        let (name, msg, e) = join_result;
+                        SubprocessExitState::new(name, &msg, e)
                     })
                     .collect::<Vec<_>>();
 
-                match join_results.into_iter().collect::<Result<Vec<_>, _>>() {
-                    Ok(_) => Ok(exit_states),
-                    Err(_) => Err(exit_states),
-                }
+                exit_states
             },
             subsystems_finished,
         )
@@ -189,26 +182,34 @@ impl SubsystemData {
 
         // Wait for shutdown to finish
         let mut subsystem_vec = vec![subsystem];
-        let result = SubsystemData::perform_shutdown_on_subsystems(&mut subsystem_vec).await;
+        let exit_states = SubsystemData::perform_shutdown_on_subsystems(&mut subsystem_vec).await;
+
+        // Prettify exit states
+        let formatted_exit_states = prettify_exit_states(&exit_states);
+
+        // Collect failed subsystems
+        let failed_subsystems = exit_states
+            .into_iter()
+            .filter_map(|exit_state| match exit_state.raw_result {
+                Ok(()) => None,
+                Err(e) => Some(e),
+            })
+            .collect::<Vec<_>>();
 
         // Print subsystem exit states
-        let exit_codes = match &result {
-            Ok(codes) => {
-                log::debug!("Partial shutdown successful. Subsystem states:");
-                codes
-            }
-            Err(codes) => {
-                log::debug!("Some subsystems during partial shutdown failed. Subsystem states:");
-                codes
-            }
+        if failed_subsystems.is_empty() {
+            log::debug!("Partial shutdown successful. Subsystem states:");
+        } else {
+            log::debug!("Some subsystems during partial shutdown failed. Subsystem states:");
         };
-        for formatted_exit_code in prettify_exit_states(exit_codes) {
-            log::debug!("    {}", formatted_exit_code);
+        for formatted_exit_state in formatted_exit_states {
+            log::debug!("    {}", formatted_exit_state);
         }
 
-        match result {
-            Ok(_) => Ok(()),
-            Err(_) => Err(PartialShutdownError::SubsystemFailed),
+        if failed_subsystems.is_empty() {
+            Ok(())
+        } else {
+            Err(PartialShutdownError::SubsystemsFailed(failed_subsystems))
         }
     }
 }

@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use env_logger;
 use tokio::time::{sleep, timeout, Duration};
 use tokio_graceful_shutdown::{
-    GracefulShutdownError, PartialShutdownError, SubsystemHandle, Toplevel,
+    GracefulShutdownError, PartialShutdownError, SubsystemError, SubsystemHandle, Toplevel,
 };
 
 mod common;
@@ -620,7 +620,7 @@ async fn partial_shutdown_panic_gets_propagated_correctly() {
 
         assert!(matches!(
             result.err(),
-            Some(PartialShutdownError::SubsystemFailed)
+            Some(PartialShutdownError::SubsystemsFailed(_))
         ));
         assert!(nested_started.get());
         assert!(nested_finished.get());
@@ -659,7 +659,7 @@ async fn partial_shutdown_error_gets_propagated_correctly() {
 
         assert!(matches!(
             result.err(),
-            Some(PartialShutdownError::SubsystemFailed)
+            Some(PartialShutdownError::SubsystemsFailed(_))
         ));
         assert!(nested_started.get());
         assert!(nested_finished.get());
@@ -830,6 +830,60 @@ async fn cloned_handles_can_spawn_nested_subsystems() {
             assert!(shutdown_token.is_shutting_down());
         },
     );
+}
+
+#[tokio::test]
+async fn subsystem_errors_get_propagated_to_user() {
+    setup();
+
+    let nested_subsystem1 = |_: SubsystemHandle| async {
+        panic!("Subsystem panicked!");
+    };
+
+    let nested_subsystem2 = |_: SubsystemHandle| async { BoxedResult::Err("MyGreatError".into()) };
+
+    let nested_subsystem3 = |_: SubsystemHandle| async { std::future::pending().await };
+
+    let subsystem = move |subsys: SubsystemHandle| async move {
+        subsys.start::<anyhow::Error, _, _>("nested1", nested_subsystem1);
+        subsys.start("nested2", nested_subsystem2);
+        subsys.start::<anyhow::Error, _, _>("nested3", nested_subsystem3);
+        subsys.request_shutdown();
+        BoxedResult::Ok(())
+    };
+
+    let toplevel = Toplevel::new().start("subsys", subsystem);
+    let result = toplevel
+        .handle_shutdown_requests::<GracefulShutdownError>(Duration::from_millis(200))
+        .await;
+
+    if let Err(GracefulShutdownError::SubsystemsFailed(mut errors)) = result {
+        assert_eq!(3, errors.len());
+
+        errors.sort_by_key(|el| el.name().to_string());
+
+        let mut iter = errors.into_iter();
+
+        let el = iter.next().unwrap();
+        assert!(matches!(el, SubsystemError::Panicked(_)));
+        assert_eq!("subsys/nested1", el.name());
+
+        let el = iter.next().unwrap();
+        if let SubsystemError::Failed(name, e) = &el {
+            assert_eq!("subsys/nested2", name);
+            assert_eq!("MyGreatError", format!("{}", e));
+        } else {
+            assert!(false, "Incorrect error type!");
+        }
+        assert!(matches!(el, SubsystemError::Failed(_, _)));
+        assert_eq!("subsys/nested2", el.name());
+
+        let el = iter.next().unwrap();
+        assert!(matches!(el, SubsystemError::Cancelled(_)));
+        assert_eq!("subsys/nested3", el.name());
+    } else {
+        assert!(false, "Incorrect return value!");
+    }
 }
 
 #[cfg(unix)]
