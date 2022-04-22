@@ -1,26 +1,27 @@
+use miette::Diagnostic;
 use thiserror::Error;
 
 use crate::BoxedError;
 
 /// This enum contains all the possible errors that could be returned
 /// by [`handle_shutdown_requests()`](crate::Toplevel::handle_shutdown_requests).
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Diagnostic)]
 pub enum GracefulShutdownError {
     /// At least one subsystem caused an error.
     #[error("at least one subsystem returned an error")]
-    SubsystemsFailed(Vec<SubsystemError>),
+    SubsystemsFailed(#[related] Vec<SubsystemError>),
     /// The shutdown did not finish within the given timeout.
     #[error("shutdown timed out")]
-    ShutdownTimeout(Vec<SubsystemError>),
+    ShutdownTimeout(#[related] Vec<SubsystemError>),
 }
 
 /// This enum contains all the possible errors that a partial shutdown
 /// could cause.
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Diagnostic)]
 pub enum PartialShutdownError {
     /// At least one subsystem caused an error.
     #[error("at least one subsystem returned an error")]
-    SubsystemsFailed(Vec<SubsystemError>),
+    SubsystemsFailed(#[related] Vec<SubsystemError>),
     /// The given nested subsystem does not seem to be a child of
     /// the parent subsystem.
     #[error("unable to find nested subsystem in given subsystem")]
@@ -35,7 +36,7 @@ pub enum PartialShutdownError {
 /// could cause.
 ///
 /// Every error carries the name of the subsystem as the first argument.
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Diagnostic)]
 pub enum SubsystemError {
     /// The subsystem returned an error value. Carries the actual error as the second argument.
     #[error("Error in subsystem '{0}'")]

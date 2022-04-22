@@ -21,6 +21,7 @@ exclude = [
 [dependencies]
 # Error definitions
 thiserror = "1.0"
+miette = "4.4"
 
 # For async utilities
 tokio = { version = "1", default-features = false, features = ["signal", "rt", "macros", "time"] }
@@ -48,7 +49,7 @@ hyper = { version = "0.14", features = ["full"] }
 
 # For testing unix signals
 [target.'cfg(unix)'.dev-dependencies]
-nix = "0.23"
+nix = "0.24"
 
 # Make leak sanitizer more reliable
 [profile.dev]
