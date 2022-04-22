@@ -100,8 +100,8 @@ mod subsystem;
 mod toplevel;
 
 pub use errors::GracefulShutdownError;
+pub use errors::PartialShutdownError;
 pub use shutdown_token::ShutdownToken;
 pub use subsystem::NestedSubsystem;
-pub use subsystem::PartialShutdownError;
 pub use subsystem::SubsystemHandle;
 pub use toplevel::Toplevel;

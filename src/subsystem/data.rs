@@ -6,8 +6,8 @@ use futures::future::join;
 use futures::future::join_all;
 use std::sync::Mutex;
 
-use super::partial_shutdown_errors::PartialShutdownError;
 use super::NestedSubsystem;
+use super::PartialShutdownError;
 use super::SubsystemData;
 use super::SubsystemDescriptor;
 use super::SubsystemIdentifier;
