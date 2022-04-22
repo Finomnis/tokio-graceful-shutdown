@@ -75,7 +75,10 @@ async fn shutdown_timeout_causes_error() {
                 .handle_shutdown_requests(Duration::from_millis(200))
                 .await;
             assert!(result.is_err());
-            assert_eq!(result, Err(GracefulShutdownError::ShutdownTimeout))
+            assert!(matches!(
+                result,
+                Err(GracefulShutdownError::ShutdownTimeout)
+            ))
         },
     );
 }
@@ -615,7 +618,10 @@ async fn partial_shutdown_panic_gets_propagated_correctly() {
         sleep(Duration::from_millis(100)).await;
         let result = subsys.perform_partial_shutdown(handle).await;
 
-        assert_eq!(result.err(), Some(PartialShutdownError::SubsystemFailed));
+        assert!(matches!(
+            result.err(),
+            Some(PartialShutdownError::SubsystemFailed)
+        ));
         assert!(nested_started.get());
         assert!(nested_finished.get());
         assert!(!subsys.local_shutdown_token().is_shutting_down());
@@ -651,7 +657,10 @@ async fn partial_shutdown_error_gets_propagated_correctly() {
         sleep(Duration::from_millis(100)).await;
         let result = subsys.perform_partial_shutdown(handle).await;
 
-        assert_eq!(result.err(), Some(PartialShutdownError::SubsystemFailed));
+        assert!(matches!(
+            result.err(),
+            Some(PartialShutdownError::SubsystemFailed)
+        ));
         assert!(nested_started.get());
         assert!(nested_finished.get());
         assert!(!subsys.local_shutdown_token().is_shutting_down());
@@ -690,10 +699,10 @@ async fn partial_shutdown_during_program_shutdown_causes_error() {
         sleep(Duration::from_millis(100)).await;
         let result = subsys.perform_partial_shutdown(handle).await;
 
-        assert_eq!(
+        assert!(matches!(
             result.err(),
             Some(PartialShutdownError::AlreadyShuttingDown)
-        );
+        ));
 
         sleep(Duration::from_millis(100)).await;
 
@@ -733,7 +742,10 @@ async fn partial_shutdown_on_wrong_parent_causes_error() {
         let wrong_parent = |child_subsys: SubsystemHandle| async move {
             sleep(Duration::from_millis(100)).await;
             let result = child_subsys.perform_partial_shutdown(handle).await;
-            assert_eq!(result.err(), Some(PartialShutdownError::SubsystemNotFound));
+            assert!(matches!(
+                result.err(),
+                Some(PartialShutdownError::SubsystemNotFound)
+            ));
 
             child_subsys.request_shutdown();
             sleep(Duration::from_millis(100)).await;

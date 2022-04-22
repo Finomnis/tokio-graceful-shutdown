@@ -2,7 +2,7 @@ use thiserror::Error;
 
 /// This enum contains all the possible errors that could be returned
 /// by [`handle_shutdown_requests()`](crate::Toplevel::handle_shutdown_requests).
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Debug)]
 pub enum GracefulShutdownError {
     /// At least one subsystem caused an error.
     #[error("at least one subsystem returned an error")]
@@ -14,7 +14,7 @@ pub enum GracefulShutdownError {
 
 /// This enum contains all the possible errors that a partial shutdown
 /// could cause.
-#[derive(Debug, Error, PartialEq)]
+#[derive(Debug, Error)]
 pub enum PartialShutdownError {
     /// At least one subsystem caused an error.
     #[error("at least one subsystem returned an error")]
