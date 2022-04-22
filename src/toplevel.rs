@@ -1,6 +1,10 @@
 use std::future::Future;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
+
+use tokio_util::sync::CancellationToken;
 
 use crate::exit_state::prettify_exit_states;
 use crate::shutdown_token::create_shutdown_token;
@@ -53,11 +57,13 @@ impl Toplevel {
         // On the top-level, the global and local shutdown token are identical
         let global_shutdown_token = create_shutdown_token();
         let local_shutdown_token = global_shutdown_token.clone();
+        let cancellation_token = CancellationToken::new();
 
         let subsys_data = Arc::new(SubsystemData::new(
             "",
             global_shutdown_token,
             local_shutdown_token,
+            cancellation_token,
         ));
         let subsys_handle = SubsystemHandle::new(subsys_data.clone());
         Self {
@@ -185,18 +191,36 @@ impl Toplevel {
     ) -> Result<(), ErrType> {
         self.subsys_handle.on_shutdown_requested().await;
 
-        match tokio::time::timeout(shutdown_timeout, self.attempt_clean_shutdown()).await {
-            Ok(val) => val,
-            Err(_) => {
+        let timeout_occurred = AtomicBool::new(false);
+
+        let result = tokio::select!(
+            _ = async{
+                tokio::time::sleep(shutdown_timeout).await;
                 log::error!("Shutdown timed out. Attempting to cleanup stale subsystems ...");
-                self.subsys_data.cancel_all_subsystems().await;
-                tokio::time::timeout(shutdown_timeout, self.attempt_clean_shutdown())
-                    .await
-                    .or(Err(GracefulShutdownError::ShutdownTimeout))? // Happens if second shutdown times out as well
-                    .or(Err(GracefulShutdownError::ShutdownTimeout)) // Happens in all other cases, as cancellation always forces an error in cancelled subsystems
-            }
-        }
-        .map_err(GracefulShutdownError::into)
+                timeout_occurred.store(true, Ordering::SeqCst);
+                self.subsys_data.cancel_all_subsystems();
+                tokio::time::sleep(shutdown_timeout).await;
+                log::error!("Cleanup timed out.");
+            } => Err(GracefulShutdownError::ShutdownTimeout(vec![])),
+            result = self.attempt_clean_shutdown() => result,
+        );
+
+        // Overwrite return value with "ShutdownTimeout" if a timeout occurred
+        let result = if timeout_occurred.load(Ordering::SeqCst) {
+            Err(match result {
+                Ok(()) => GracefulShutdownError::ShutdownTimeout(vec![]),
+                Err(GracefulShutdownError::ShutdownTimeout(errs)) => {
+                    GracefulShutdownError::ShutdownTimeout(errs)
+                }
+                Err(GracefulShutdownError::SubsystemsFailed(errs)) => {
+                    GracefulShutdownError::ShutdownTimeout(errs)
+                }
+            })
+        } else {
+            result
+        };
+
+        result.map_err(GracefulShutdownError::into)
     }
 
     #[doc(hidden)]

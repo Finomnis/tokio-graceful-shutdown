@@ -5,6 +5,8 @@ mod identifier;
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use tokio_util::sync::CancellationToken;
+
 use crate::runner::SubsystemRunner;
 use crate::shutdown_token::ShutdownToken;
 
@@ -19,6 +21,7 @@ pub struct SubsystemData {
     shutdown_subsystems: tokio::sync::Mutex<Vec<SubsystemDescriptor>>,
     local_shutdown_token: ShutdownToken,
     global_shutdown_token: ShutdownToken,
+    cancellation_token: CancellationToken,
 }
 
 /// The handle given to each subsystem through which the subsystem can interact with this crate.

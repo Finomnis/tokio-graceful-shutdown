@@ -91,7 +91,6 @@
 type BoxedError = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 mod errors;
-mod event;
 mod exit_state;
 mod runner;
 mod shutdown_token;

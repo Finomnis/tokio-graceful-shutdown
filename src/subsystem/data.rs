@@ -5,6 +5,7 @@ use async_recursion::async_recursion;
 use futures::future::join;
 use futures::future::join_all;
 use std::sync::Mutex;
+use tokio_util::sync::CancellationToken;
 
 use super::NestedSubsystem;
 use super::PartialShutdownError;
@@ -21,12 +22,14 @@ impl SubsystemData {
         name: &str,
         global_shutdown_token: ShutdownToken,
         local_shutdown_token: ShutdownToken,
+        cancellation_token: CancellationToken,
     ) -> Self {
         Self {
             name: name.to_string(),
             subsystems: Mutex::new(Some(Vec::new())),
             global_shutdown_token,
             local_shutdown_token,
+            cancellation_token,
             shutdown_subsystems: tokio::sync::Mutex::new(Vec::new()),
         }
     }
@@ -152,13 +155,8 @@ impl SubsystemData {
         SubsystemData::perform_shutdown_on_subsystems(&mut subsystems).await
     }
 
-    #[async_recursion]
-    pub async fn cancel_all_subsystems(&self) {
-        let subsystems = self.prepare_shutdown().await;
-        for subsystem in subsystems.iter() {
-            subsystem.subsystem_runner.abort();
-            subsystem.data.cancel_all_subsystems().await;
-        }
+    pub fn cancel_all_subsystems(&self) {
+        self.cancellation_token.cancel();
     }
 
     pub async fn perform_partial_shutdown(

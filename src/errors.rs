@@ -11,7 +11,7 @@ pub enum GracefulShutdownError {
     SubsystemsFailed(Vec<SubsystemError>),
     /// The shutdown did not finish within the given timeout.
     #[error("shutdown timed out")]
-    ShutdownTimeout,
+    ShutdownTimeout(Vec<SubsystemError>),
 }
 
 /// This enum contains all the possible errors that a partial shutdown

@@ -77,7 +77,7 @@ async fn shutdown_timeout_causes_error() {
             assert!(result.is_err());
             assert!(matches!(
                 result,
-                Err(GracefulShutdownError::ShutdownTimeout)
+                Err(GracefulShutdownError::ShutdownTimeout(_))
             ))
         },
     );
@@ -833,21 +833,30 @@ async fn cloned_handles_can_spawn_nested_subsystems() {
 }
 
 #[tokio::test]
-async fn subsystem_errors_get_propagated_to_user() {
+async fn subsystem_errors_get_propagated_to_user_timeout() {
     setup();
 
     let nested_subsystem1 = |_: SubsystemHandle| async {
+        sleep(Duration::from_millis(100)).await;
         panic!("Subsystem panicked!");
     };
 
-    let nested_subsystem2 = |_: SubsystemHandle| async { BoxedResult::Err("MyGreatError".into()) };
+    let nested_subsystem2 = |_: SubsystemHandle| async {
+        sleep(Duration::from_millis(100)).await;
+        BoxedResult::Err("MyGreatError".into())
+    };
 
-    let nested_subsystem3 = |_: SubsystemHandle| async { std::future::pending().await };
+    let nested_subsystem3 = |_: SubsystemHandle| async {
+        sleep(Duration::from_millis(10000)).await;
+        Ok(())
+    };
 
     let subsystem = move |subsys: SubsystemHandle| async move {
         subsys.start::<anyhow::Error, _, _>("nested1", nested_subsystem1);
         subsys.start("nested2", nested_subsystem2);
         subsys.start::<anyhow::Error, _, _>("nested3", nested_subsystem3);
+
+        sleep(Duration::from_millis(100)).await;
         subsys.request_shutdown();
         BoxedResult::Ok(())
     };
@@ -857,7 +866,7 @@ async fn subsystem_errors_get_propagated_to_user() {
         .handle_shutdown_requests::<GracefulShutdownError>(Duration::from_millis(200))
         .await;
 
-    if let Err(GracefulShutdownError::SubsystemsFailed(mut errors)) = result {
+    if let Err(GracefulShutdownError::ShutdownTimeout(mut errors)) = result {
         assert_eq!(3, errors.len());
 
         errors.sort_by_key(|el| el.name().to_string());
@@ -881,6 +890,59 @@ async fn subsystem_errors_get_propagated_to_user() {
         let el = iter.next().unwrap();
         assert!(matches!(el, SubsystemError::Cancelled(_)));
         assert_eq!("subsys/nested3", el.name());
+    } else {
+        assert!(false, "Incorrect return value!");
+    }
+}
+
+#[tokio::test]
+async fn subsystem_errors_get_propagated_to_user() {
+    setup();
+
+    let nested_subsystem1 = |_: SubsystemHandle| async {
+        sleep(Duration::from_millis(100)).await;
+        panic!("Subsystem panicked!");
+    };
+
+    let nested_subsystem2 = |_: SubsystemHandle| async {
+        sleep(Duration::from_millis(100)).await;
+        BoxedResult::Err("MyGreatError".into())
+    };
+
+    let subsystem = move |subsys: SubsystemHandle| async move {
+        subsys.start::<anyhow::Error, _, _>("nested1", nested_subsystem1);
+        subsys.start("nested2", nested_subsystem2);
+
+        sleep(Duration::from_millis(100)).await;
+        subsys.request_shutdown();
+        BoxedResult::Ok(())
+    };
+
+    let toplevel = Toplevel::new().start("subsys", subsystem);
+    let result = toplevel
+        .handle_shutdown_requests::<GracefulShutdownError>(Duration::from_millis(200))
+        .await;
+
+    if let Err(GracefulShutdownError::SubsystemsFailed(mut errors)) = result {
+        assert_eq!(2, errors.len());
+
+        errors.sort_by_key(|el| el.name().to_string());
+
+        let mut iter = errors.into_iter();
+
+        let el = iter.next().unwrap();
+        assert!(matches!(el, SubsystemError::Panicked(_)));
+        assert_eq!("subsys/nested1", el.name());
+
+        let el = iter.next().unwrap();
+        if let SubsystemError::Failed(name, e) = &el {
+            assert_eq!("subsys/nested2", name);
+            assert_eq!("MyGreatError", format!("{}", e));
+        } else {
+            assert!(false, "Incorrect error type!");
+        }
+        assert!(matches!(el, SubsystemError::Failed(_, _)));
+        assert_eq!("subsys/nested2", el.name());
     } else {
         assert!(false, "Incorrect return value!");
     }

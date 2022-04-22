@@ -1,15 +1,12 @@
-use crate::{
-    errors::SubsystemError,
-    event::{Event, EventTrigger},
-    BoxedError, ShutdownToken,
-};
+use crate::{errors::SubsystemError, BoxedError, ShutdownToken};
 use std::future::Future;
 use tokio::task::{JoinError, JoinHandle};
+use tokio_util::sync::CancellationToken;
 
 pub struct SubsystemRunner {
     name: String,
     outer_joinhandle: JoinHandle<Result<(), SubsystemError>>,
-    request_cancellation: EventTrigger,
+    cancellation_token: CancellationToken,
 }
 
 /// Dropping the SubsystemRunner cancels the task.
@@ -27,7 +24,7 @@ impl SubsystemRunner {
         shutdown_token: ShutdownToken,
         local_shutdown_token: ShutdownToken,
         name: String,
-        cancellation_requested: Event,
+        cancellation_token: CancellationToken,
     ) -> Result<(), SubsystemError> {
         /// Maps the complicated return value of the subsystem joinhandle to an appropriate error
         fn map_subsystem_result(
@@ -50,7 +47,7 @@ impl SubsystemRunner {
             result = joinhandle_ref => {
                 map_subsystem_result(&name, result)
             },
-            _ = cancellation_requested.wait() => {
+            _ = cancellation_token.cancelled() => {
                 inner_joinhandle.abort();
                 map_subsystem_result(&name, inner_joinhandle.await)
             }
@@ -79,10 +76,9 @@ impl SubsystemRunner {
         name: String,
         shutdown_token: ShutdownToken,
         local_shutdown_token: ShutdownToken,
+        cancellation_token: CancellationToken,
         subsystem_future: Fut,
     ) -> Self {
-        let (cancellation_requested, request_cancellation) = Event::create();
-
         // Spawn to nested tasks.
         // This enables us to catch panics, as panics get returned through a JoinHandle.
         let inner_joinhandle = tokio::spawn(subsystem_future);
@@ -91,13 +87,13 @@ impl SubsystemRunner {
             shutdown_token,
             local_shutdown_token,
             name.clone(),
-            cancellation_requested,
+            cancellation_token.clone(),
         ));
 
         Self {
             name,
             outer_joinhandle,
-            request_cancellation,
+            cancellation_token,
         }
     }
 
@@ -113,6 +109,6 @@ impl SubsystemRunner {
     }
 
     pub fn abort(&self) {
-        self.request_cancellation.set();
+        self.cancellation_token.cancel();
     }
 }
