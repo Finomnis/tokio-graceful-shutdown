@@ -16,6 +16,7 @@ use crate::exit_state::prettify_exit_states;
 use crate::exit_state::{join_shutdown_results, ShutdownResults, SubprocessExitState};
 use crate::runner::SubsystemRunner;
 use crate::shutdown_token::ShutdownToken;
+use crate::SubsystemError;
 
 impl SubsystemData {
     pub fn new(
@@ -120,9 +121,18 @@ impl SubsystemData {
 
                 let join_results = joinhandles_finished
                     .into_iter()
-                    .map(|(name, result)| match result {
-                        Ok(()) => (name, "OK".to_string(), result),
-                        Err(e) => (name, "Failed".to_string(), Err(e)),
+                    .map(|(name, result)| {
+                        (
+                            name,
+                            match &result {
+                                Ok(()) => "OK",
+                                Err(SubsystemError::Cancelled(_)) => "Cancelled",
+                                Err(SubsystemError::Failed(_, _)) => "Failed",
+                                Err(SubsystemError::Panicked(_)) => "Panicked",
+                            }
+                            .to_string(),
+                            result,
+                        )
                     })
                     .collect::<Vec<_>>();
 
