@@ -9,7 +9,7 @@
 use anyhow::{anyhow, Result};
 use env_logger::{Builder, Env};
 use tokio::time::{sleep, Duration};
-use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
+use tokio_graceful_shutdown::{GracefulShutdownError, SubsystemHandle, Toplevel};
 
 async fn subsys1(_subsys: SubsystemHandle) -> Result<()> {
     log::info!("Subsystem1 started.");
@@ -21,7 +21,7 @@ async fn subsys1(_subsys: SubsystemHandle) -> Result<()> {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), GracefulShutdownError> {
     // Init logging
     Builder::from_env(Env::default().default_filter_or("debug")).init();
 

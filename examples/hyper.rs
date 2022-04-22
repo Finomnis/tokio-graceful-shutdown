@@ -6,7 +6,7 @@
 use anyhow::{anyhow, Result};
 use env_logger::{Builder, Env};
 use tokio::time::Duration;
-use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
+use tokio_graceful_shutdown::{GracefulShutdownError, SubsystemHandle, Toplevel};
 
 use std::convert::Infallible;
 
@@ -42,7 +42,7 @@ async fn hyper_subsystem(subsys: SubsystemHandle) -> Result<()> {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), GracefulShutdownError> {
     // Init logging
     Builder::from_env(Env::default().default_filter_or("debug")).init();
 
