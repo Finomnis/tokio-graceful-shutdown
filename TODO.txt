@@ -1,0 +1,34 @@
+Prepation:
+    - Rework errors
+    -
+
+- Add global_shutdown token to tokens
+- Add cancellation_token to tokens
+
+Every subsysten has not tokens:
+- global_shutdown
+- group_shutdown
+- local_shutdown
+- cancellation
+
+Now, nested toplevel is possible:
+- global -> global
+- local.child -> group
+              -> local
+- cancellation.child -> cancellation
+
+Otherwise, for non-nested:
+- global -> global
+- group -> group
+- local.child -> local
+- cancellation.child -> cancellation
+
+- Require Toplevel / Nested toplevel to be consumed
+
+Naming:
+    - SubsystemHandle::create_decoupled_toplevel() -> NestedToplevel
+
+More knowledge:
+    - "Subsystem finished" only needs to be propagated to toplevel (if toplevel should auto-stop)
+
+Problem: Errors never get propagated up. (Is that desired?) (I don't think so, whether people handle errors at the top or at a nested tokio::spawn shouldn't matter)
