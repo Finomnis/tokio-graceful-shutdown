@@ -185,10 +185,10 @@ impl Toplevel {
     /// An error of type [`GracefulShutdownError`] if an error occurred.
     /// An implicit `.into()` will be performed to convert it to the desired error wrapping type.
     ///
-    pub async fn handle_shutdown_requests(
+    pub async fn handle_shutdown_requests<ErrType: From<GracefulShutdownError>>(
         self,
         shutdown_timeout: Duration,
-    ) -> Result<(), GracefulShutdownError> {
+    ) -> Result<(), ErrType> {
         self.subsys_handle.on_shutdown_requested().await;
 
         let timeout_occurred = AtomicBool::new(false);
@@ -206,7 +206,7 @@ impl Toplevel {
         );
 
         // Overwrite return value with "ShutdownTimeout" if a timeout occurred
-        if timeout_occurred.load(Ordering::SeqCst) {
+        let result = if timeout_occurred.load(Ordering::SeqCst) {
             Err(match result {
                 Ok(()) => GracefulShutdownError::ShutdownTimeout(vec![]),
                 Err(GracefulShutdownError::ShutdownTimeout(errs)) => {
@@ -218,7 +218,9 @@ impl Toplevel {
             })
         } else {
             result
-        }
+        };
+
+        result.map_err(GracefulShutdownError::into)
     }
 
     #[doc(hidden)]
