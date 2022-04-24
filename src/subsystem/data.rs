@@ -119,32 +119,21 @@ impl SubsystemData {
             async {
                 let joinhandles_finished = joinhandles_finished.await;
 
-                let join_results = joinhandles_finished
+                joinhandles_finished
                     .into_iter()
                     .map(|(name, result)| {
-                        (
+                        SubprocessExitState::new(
                             name,
                             match &result {
                                 Ok(()) => "OK",
                                 Err(SubsystemError::Cancelled(_)) => "Cancelled",
                                 Err(SubsystemError::Failed(_, _)) => "Failed",
                                 Err(SubsystemError::Panicked(_)) => "Panicked",
-                            }
-                            .to_string(),
+                            },
                             result,
                         )
                     })
-                    .collect::<Vec<_>>();
-
-                let exit_states = join_results
-                    .into_iter()
-                    .map(|join_result| {
-                        let (name, msg, e) = join_result;
-                        SubprocessExitState::new(name, &msg, e)
-                    })
-                    .collect::<Vec<_>>();
-
-                exit_states
+                    .collect()
             },
             subsystems_finished,
         )
