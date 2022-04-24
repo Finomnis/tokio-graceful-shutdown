@@ -75,9 +75,9 @@ impl SubsystemData {
     async fn prepare_shutdown(&self) -> MutexGuard<'_, Vec<SubsystemDescriptor>> {
         let mut shutdown_subsystems = self.shutdown_subsystems.lock().await;
         let mut subsystems = self.subsystems.lock().unwrap();
-        if let Some(e) = subsystems.take() {
-            shutdown_subsystems.extend(e.into_iter())
-        };
+        subsystems
+            .take()
+            .map(|e| shutdown_subsystems.extend(e.into_iter()));
         shutdown_subsystems
     }
 
