@@ -5,7 +5,7 @@
 //! so I included it anyway.
 
 use env_logger::{Builder, Env};
-use miette::Result;
+use miette::{IntoDiagnostic, Result};
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 
@@ -40,7 +40,7 @@ async fn subsys1_with_autorestart(subsys: SubsystemHandle) -> Result<()> {
                     }
             },
             _ = subsys.on_shutdown_requested() => {
-                return joinhandle.await?;
+                return joinhandle.await.into_diagnostic()?;
             }
         };
     }
