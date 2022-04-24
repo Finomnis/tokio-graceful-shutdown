@@ -193,6 +193,12 @@ impl Toplevel {
 
         let timeout_occurred = AtomicBool::new(false);
 
+        async fn wait_forever() -> ! {
+            loop {
+                std::future::pending::<()>().await;
+            }
+        }
+
         let cancel_on_timeout = async {
             // Wait for the timeout to happen
             tokio::time::sleep(shutdown_timeout).await;
@@ -201,7 +207,7 @@ impl Toplevel {
             self.subsys_data.cancel_all_subsystems();
             // Await forever, because we don't want to cancel the attempt_clean_shutdown.
             // Resolving this arm of the tokio::select would cancel the other side.
-            std::future::pending::<()>().await;
+            wait_forever().await;
         };
 
         let result = tokio::select! {
