@@ -15,6 +15,16 @@ pub enum GracefulShutdownError {
     ShutdownTimeout(#[related] Vec<SubsystemError>),
 }
 
+impl GracefulShutdownError {
+    #[doc(hidden)]
+    pub fn into_related(self) -> Vec<SubsystemError> {
+        match self {
+            GracefulShutdownError::SubsystemsFailed(rel) => rel,
+            GracefulShutdownError::ShutdownTimeout(rel) => rel,
+        }
+    }
+}
+
 /// This enum contains all the possible errors that a partial shutdown
 /// could cause.
 #[derive(Debug, Error, Diagnostic)]

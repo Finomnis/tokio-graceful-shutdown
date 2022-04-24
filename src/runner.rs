@@ -4,7 +4,6 @@ use tokio::task::{JoinError, JoinHandle};
 use tokio_util::sync::CancellationToken;
 
 pub struct SubsystemRunner {
-    name: String,
     outer_joinhandle: JoinHandle<Result<(), SubsystemError>>,
     cancellation_token: CancellationToken,
 }
@@ -86,12 +85,11 @@ impl SubsystemRunner {
             inner_joinhandle,
             shutdown_token,
             local_shutdown_token,
-            name.clone(),
+            name,
             cancellation_token.clone(),
         ));
 
         Self {
-            name,
             outer_joinhandle,
             cancellation_token,
         }

@@ -207,15 +207,9 @@ impl Toplevel {
 
         // Overwrite return value with "ShutdownTimeout" if a timeout occurred
         let result = if timeout_occurred.load(Ordering::SeqCst) {
-            Err(match result {
-                Ok(()) => GracefulShutdownError::ShutdownTimeout(vec![]),
-                Err(GracefulShutdownError::ShutdownTimeout(errs)) => {
-                    GracefulShutdownError::ShutdownTimeout(errs)
-                }
-                Err(GracefulShutdownError::SubsystemsFailed(errs)) => {
-                    GracefulShutdownError::ShutdownTimeout(errs)
-                }
-            })
+            Err(GracefulShutdownError::ShutdownTimeout(
+                result.err().map_or(vec![], |e| e.into_related()),
+            ))
         } else {
             result
         };
