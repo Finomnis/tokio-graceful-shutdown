@@ -117,7 +117,7 @@ jobs:
       - name: Build
         uses: actions-rs/cargo@v1
         env:
-          RUSTFLAGS: "-Z sanitizer=leak"
+          RUSTFLAGS: "-Z sanitizer=address"
         with:
           command: build
           args: --target x86_64-unknown-linux-gnu --tests
@@ -125,7 +125,7 @@ jobs:
       - name: Run tests with leak sanitizer
         uses: actions-rs/cargo@v1
         env:
-          RUSTFLAGS: "-Z sanitizer=leak"
+          RUSTFLAGS: "-Z sanitizer=address"
           RUST_TEST_THREADS: "1"
         with:
           command: test
