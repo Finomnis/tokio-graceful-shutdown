@@ -202,7 +202,6 @@ impl Toplevel {
             // Await forever, because we don't want to cancel the attempt_clean_shutdown.
             // Resolving this arm of the tokio::select would cancel the other side.
             std::future::pending::<()>().await;
-            unreachable!();
         };
 
         let result = tokio::select! {
