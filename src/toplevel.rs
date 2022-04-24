@@ -201,11 +201,12 @@ impl Toplevel {
             self.subsys_data.cancel_all_subsystems();
             // Await forever, because we don't want to cancel the attempt_clean_shutdown.
             // Resolving this arm of the tokio::select would cancel the other side.
-            std::future::pending()
+            std::future::pending::<()>().await;
+            unreachable!();
         };
 
         let result = tokio::select! {
-            _ = cancel_on_timeout.await => unreachable!(),
+            _ = cancel_on_timeout => unreachable!(),
             result = self.attempt_clean_shutdown() => result
         };
 
