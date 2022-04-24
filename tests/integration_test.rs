@@ -833,7 +833,60 @@ async fn cloned_handles_can_spawn_nested_subsystems() {
 }
 
 #[tokio::test]
-async fn subsystem_errors_get_propagated_to_user_timeout() {
+async fn subsystem_errors_get_propagated_to_user() {
+    setup();
+
+    let nested_subsystem1 = |_: SubsystemHandle| async {
+        sleep(Duration::from_millis(100)).await;
+        panic!("Subsystem panicked!");
+    };
+
+    let nested_subsystem2 = |_: SubsystemHandle| async {
+        sleep(Duration::from_millis(100)).await;
+        BoxedResult::Err("MyGreatError".into())
+    };
+
+    let subsystem = move |subsys: SubsystemHandle| async move {
+        subsys.start::<anyhow::Error, _, _>("nested1", nested_subsystem1);
+        subsys.start("nested2", nested_subsystem2);
+
+        sleep(Duration::from_millis(100)).await;
+        subsys.request_shutdown();
+        BoxedResult::Ok(())
+    };
+
+    let toplevel = Toplevel::new().start("subsys", subsystem);
+    let result = toplevel
+        .handle_shutdown_requests::<GracefulShutdownError>(Duration::from_millis(200))
+        .await;
+
+    if let Err(GracefulShutdownError::SubsystemsFailed(mut errors)) = result {
+        assert_eq!(2, errors.len());
+
+        errors.sort_by_key(|el| el.name().to_string());
+
+        let mut iter = errors.into_iter();
+
+        let el = iter.next().unwrap();
+        assert!(matches!(el, SubsystemError::Panicked(_)));
+        assert_eq!("subsys/nested1", el.name());
+
+        let el = iter.next().unwrap();
+        if let SubsystemError::Failed(name, e) = &el {
+            assert_eq!("subsys/nested2", name);
+            assert_eq!("MyGreatError", format!("{}", e));
+        } else {
+            assert!(false, "Incorrect error type!");
+        }
+        assert!(matches!(el, SubsystemError::Failed(_, _)));
+        assert_eq!("subsys/nested2", el.name());
+    } else {
+        assert!(false, "Incorrect return value!");
+    }
+}
+
+#[tokio::test]
+async fn subsystem_errors_get_propagated_to_user_when_timeout() {
     setup();
 
     let nested_subsystem1 = |_: SubsystemHandle| async {
@@ -890,59 +943,6 @@ async fn subsystem_errors_get_propagated_to_user_timeout() {
         let el = iter.next().unwrap();
         assert!(matches!(el, SubsystemError::Cancelled(_)));
         assert_eq!("subsys/nested3", el.name());
-    } else {
-        assert!(false, "Incorrect return value!");
-    }
-}
-
-#[tokio::test]
-async fn subsystem_errors_get_propagated_to_user() {
-    setup();
-
-    let nested_subsystem1 = |_: SubsystemHandle| async {
-        sleep(Duration::from_millis(100)).await;
-        panic!("Subsystem panicked!");
-    };
-
-    let nested_subsystem2 = |_: SubsystemHandle| async {
-        sleep(Duration::from_millis(100)).await;
-        BoxedResult::Err("MyGreatError".into())
-    };
-
-    let subsystem = move |subsys: SubsystemHandle| async move {
-        subsys.start::<anyhow::Error, _, _>("nested1", nested_subsystem1);
-        subsys.start("nested2", nested_subsystem2);
-
-        sleep(Duration::from_millis(100)).await;
-        subsys.request_shutdown();
-        BoxedResult::Ok(())
-    };
-
-    let toplevel = Toplevel::new().start("subsys", subsystem);
-    let result = toplevel
-        .handle_shutdown_requests::<GracefulShutdownError>(Duration::from_millis(200))
-        .await;
-
-    if let Err(GracefulShutdownError::SubsystemsFailed(mut errors)) = result {
-        assert_eq!(2, errors.len());
-
-        errors.sort_by_key(|el| el.name().to_string());
-
-        let mut iter = errors.into_iter();
-
-        let el = iter.next().unwrap();
-        assert!(matches!(el, SubsystemError::Panicked(_)));
-        assert_eq!("subsys/nested1", el.name());
-
-        let el = iter.next().unwrap();
-        if let SubsystemError::Failed(name, e) = &el {
-            assert_eq!("subsys/nested2", name);
-            assert_eq!("MyGreatError", format!("{}", e));
-        } else {
-            assert!(false, "Incorrect error type!");
-        }
-        assert!(matches!(el, SubsystemError::Failed(_, _)));
-        assert_eq!("subsys/nested2", el.name());
     } else {
         assert!(false, "Incorrect return value!");
     }
