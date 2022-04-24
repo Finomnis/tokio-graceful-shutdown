@@ -107,6 +107,10 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2
 
+      - name: Install llvm
+        # Required to resolve symbols in sanitizer output
+        run: sudo apt-get install -y llvm
+
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
