@@ -73,3 +73,16 @@ impl SubsystemError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use miette::Result;
+
+    use super::*;
+
+    #[test]
+    fn errors_can_be_converted_to_diagnostic() {
+        assert!(Result::<()>::Err(GracefulShutdownError::ShutdownTimeout(vec![]).into()).is_err());
+        assert!(Result::<()>::Err(GracefulShutdownError::SubsystemsFailed(vec![]).into()).is_err());
+    }
+}
