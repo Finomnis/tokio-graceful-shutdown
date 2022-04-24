@@ -76,13 +76,20 @@ impl SubsystemError {
 
 #[cfg(test)]
 mod tests {
-    use miette::Result;
-
     use super::*;
+
+    fn examine_report(report: miette::Report) {
+        println!("{}", report);
+        println!("{:?}", report);
+        // Convert to std::error::Error
+        let boxed_error: Box<dyn std::error::Error + Send + Sync> = report.into();
+        println!("{}", boxed_error);
+        println!("{:?}", boxed_error);
+    }
 
     #[test]
     fn errors_can_be_converted_to_diagnostic() {
-        assert!(Result::<()>::Err(GracefulShutdownError::ShutdownTimeout(vec![]).into()).is_err());
-        assert!(Result::<()>::Err(GracefulShutdownError::SubsystemsFailed(vec![]).into()).is_err());
+        examine_report(GracefulShutdownError::ShutdownTimeout(vec![]).into());
+        examine_report(GracefulShutdownError::SubsystemsFailed(vec![]).into());
     }
 }
