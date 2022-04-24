@@ -193,17 +193,19 @@ impl Toplevel {
 
         let timeout_occurred = AtomicBool::new(false);
 
+        let cancel_on_timeout = async {
+            // Run the timeout in a separate thread
+            tokio::time::sleep(shutdown_timeout).await;
+            log::error!("Shutdown timed out. Attempting to cleanup stale subsystems ...");
+            timeout_occurred.store(true, Ordering::SeqCst);
+            self.subsys_data.cancel_all_subsystems();
+            // Await forever, because we don't want to cancel the attempt_clean_shutdown.
+            // Resolving this arm of the tokio::select would cancel the other side.
+            std::future::pending().await
+        };
+
         let result = tokio::select! {
-            _ = async {
-                // Run the timeout in a separate thread
-                tokio::time::sleep(shutdown_timeout).await;
-                log::error!("Shutdown timed out. Attempting to cleanup stale subsystems ...");
-                timeout_occurred.store(true, Ordering::SeqCst);
-                self.subsys_data.cancel_all_subsystems();
-                // Await forever, because we don't want to cancel the attempt_clean_shutdown.
-                // Resolving this arm of the tokio::select would cancel the other side.
-                std::future::pending().await
-            } => unreachable!(),
+            _ = cancel_on_timeout => unreachable!(),
             result = self.attempt_clean_shutdown() => result
         };
 
