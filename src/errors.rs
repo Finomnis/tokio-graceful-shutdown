@@ -91,5 +91,38 @@ mod tests {
     fn errors_can_be_converted_to_diagnostic() {
         examine_report(GracefulShutdownError::ShutdownTimeout(vec![]).into());
         examine_report(GracefulShutdownError::SubsystemsFailed(vec![]).into());
+        examine_report(PartialShutdownError::AlreadyShuttingDown.into());
+        examine_report(PartialShutdownError::SubsystemNotFound.into());
+        examine_report(PartialShutdownError::SubsystemsFailed(vec![]).into());
+        examine_report(SubsystemError::Cancelled("".into()).into());
+        examine_report(SubsystemError::Panicked("".into()).into());
+        examine_report(SubsystemError::Failed("".into(), "".into()).into());
+    }
+
+    #[test]
+    fn convert_graceful_shutdown_error_into_related() {
+        let related = || {
+            vec![
+                SubsystemError::Cancelled("a".into()),
+                SubsystemError::Panicked("b".into()),
+            ]
+        };
+
+        let matches_related = |data: Vec<SubsystemError>| {
+            let mut iter = data.into_iter();
+
+            let elem = iter.next().unwrap();
+            assert_eq!(elem.name(), "a");
+            assert!(matches!(elem, SubsystemError::Cancelled(_)));
+
+            let elem = iter.next().unwrap();
+            assert_eq!(elem.name(), "b");
+            assert!(matches!(elem, SubsystemError::Panicked(_)));
+
+            assert!(iter.next().is_none());
+        };
+
+        matches_related(GracefulShutdownError::ShutdownTimeout(related()).into_related());
+        matches_related(GracefulShutdownError::SubsystemsFailed(related()).into_related());
     }
 }
