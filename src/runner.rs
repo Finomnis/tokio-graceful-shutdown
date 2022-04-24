@@ -98,14 +98,12 @@ impl SubsystemRunner {
     }
 
     pub async fn join(&mut self) -> Result<(), SubsystemError> {
-        match (&mut self.outer_joinhandle).await {
-            Ok(result) => result,
-            Err(e) => Err(if e.is_cancelled() {
-                SubsystemError::Cancelled(self.name.clone())
-            } else {
-                SubsystemError::Panicked(self.name.clone())
-            }),
-        }
+        // Safety: we are in full control over the outer_joinhandle and the
+        // code it runs. Therefore, if this either returns a panic or a cancelled,
+        // it's a programming error on our side.
+        // Therefore using unwrap() here is the correct way of handling it.
+        // (this and the fact that unreachable code would decrease our test coverage)
+        (&mut self.outer_joinhandle).await.unwrap()
     }
 
     pub fn abort(&self) {

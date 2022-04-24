@@ -1,6 +1,5 @@
 use crate::errors::SubsystemError;
 
-#[derive(Debug)]
 pub struct SubprocessExitState {
     pub name: String,
     pub exit_state: String,
