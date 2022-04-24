@@ -9,10 +9,9 @@ use tokio_util::sync::CancellationToken;
 
 use crate::runner::SubsystemRunner;
 use crate::shutdown_token::ShutdownToken;
+use crate::PartialShutdownError;
 
 use self::identifier::SubsystemIdentifier;
-
-use crate::errors::PartialShutdownError;
 
 /// The data stored per subsystem, like name or nested subsystems
 pub struct SubsystemData {
