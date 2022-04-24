@@ -75,9 +75,9 @@ impl SubsystemData {
     async fn prepare_shutdown(&self) -> MutexGuard<'_, Vec<SubsystemDescriptor>> {
         let mut shutdown_subsystems = self.shutdown_subsystems.lock().await;
         let mut subsystems = self.subsystems.lock().unwrap();
-        subsystems
-            .take()
-            .map(|e| shutdown_subsystems.extend(e.into_iter()));
+        if let Some(e) = subsystems.take() {
+            shutdown_subsystems.extend(e.into_iter())
+        };
         shutdown_subsystems
     }
 
@@ -208,5 +208,28 @@ impl SubsystemData {
         } else {
             Err(PartialShutdownError::SubsystemsFailed(failed_subsystems))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::shutdown_token::create_shutdown_token;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn prepare_shutdown_does_not_crash_when_called_twice() {
+        let shutdown_token = create_shutdown_token();
+        let data = SubsystemData::new(
+            "MySubsys",
+            shutdown_token.clone(),
+            shutdown_token.clone(),
+            CancellationToken::new(),
+        );
+
+        data.prepare_shutdown().await;
+        data.prepare_shutdown().await;
+
+        assert!(data.subsystems.lock().unwrap().is_none());
     }
 }
