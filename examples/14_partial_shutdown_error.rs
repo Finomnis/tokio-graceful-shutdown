@@ -4,8 +4,8 @@
 //! shutdown, but instead it will be delivered to the task that initiated
 //! the partial shutdown.
 
-use anyhow::Result;
 use env_logger::{Builder, Env};
+use miette::Result;
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 

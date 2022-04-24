@@ -5,8 +5,8 @@
 //! tasks once one of them finishes. This can be used to cancel
 //! tasks once the shutdown was initiated.
 
-use anyhow::Result;
 use env_logger::{Builder, Env};
+use miette::Result;
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 

@@ -3,8 +3,8 @@
 //! Subsys1 will perform a partial shutdown after 5 seconds, which will in turn
 //! shut down Subsys2 and Subsys3, leaving Subsys1 running.
 
-use anyhow::Result;
 use env_logger::{Builder, Env};
+use miette::Result;
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 

@@ -7,8 +7,8 @@
 //! If custom arguments for the subsystem coroutines are required,
 //! a struct has to be used instead, as seen in other examples.
 
-use anyhow::Result;
 use env_logger::{Builder, Env};
+use miette::Result;
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 

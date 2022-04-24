@@ -4,8 +4,8 @@
 //! Returning Ok(()) from a subsystem indicates that the subsystem
 //! stopped intentionally, and no further measures by the runtime are performed.
 
-use anyhow::Result;
 use env_logger::{Builder, Env};
+use miette::Result;
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 

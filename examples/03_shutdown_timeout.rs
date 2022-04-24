@@ -4,8 +4,8 @@
 //! so the subsystem gets cancelled and the program returns an appropriate
 //! error code.
 
-use anyhow::Result;
 use env_logger::{Builder, Env};
+use miette::Result;
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 
@@ -13,7 +13,7 @@ async fn subsys1(subsys: SubsystemHandle) -> Result<()> {
     log::info!("Subsystem1 started.");
     subsys.on_shutdown_requested().await;
     log::info!("Shutting down Subsystem1 ...");
-    sleep(Duration::from_millis(1000)).await;
+    sleep(Duration::from_millis(2000)).await;
     log::info!("Subsystem1 stopped.");
     Ok(())
 }

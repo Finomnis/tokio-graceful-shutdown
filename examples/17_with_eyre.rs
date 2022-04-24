@@ -1,4 +1,4 @@
-//! This example shows how to use this library with eyre instead of anyhow
+//! This example shows how to use this library with eyre instead of miette
 
 use env_logger::{Builder, Env};
 use eyre::{eyre, Result};

@@ -1,17 +1,17 @@
 mod data;
 mod handle;
 mod identifier;
-mod partial_shutdown_errors;
 
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use tokio_util::sync::CancellationToken;
+
 use crate::runner::SubsystemRunner;
 use crate::shutdown_token::ShutdownToken;
+use crate::PartialShutdownError;
 
 use self::identifier::SubsystemIdentifier;
-
-pub use partial_shutdown_errors::PartialShutdownError;
 
 /// The data stored per subsystem, like name or nested subsystems
 pub struct SubsystemData {
@@ -20,6 +20,7 @@ pub struct SubsystemData {
     shutdown_subsystems: tokio::sync::Mutex<Vec<SubsystemDescriptor>>,
     local_shutdown_token: ShutdownToken,
     global_shutdown_token: ShutdownToken,
+    cancellation_token: CancellationToken,
 }
 
 /// The handle given to each subsystem through which the subsystem can interact with this crate.

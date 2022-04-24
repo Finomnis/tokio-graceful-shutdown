@@ -1,10 +1,15 @@
 use std::future::Future;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
+
+use tokio_util::sync::CancellationToken;
 
 use crate::exit_state::prettify_exit_states;
 use crate::shutdown_token::create_shutdown_token;
 use crate::signal_handling::wait_for_signal;
+use crate::utils::wait_forever;
 use crate::BoxedError;
 use crate::GracefulShutdownError;
 use crate::{ShutdownToken, SubsystemHandle};
@@ -19,7 +24,7 @@ use super::subsystem::SubsystemData;
 /// # Examples
 ///
 /// ```
-/// use anyhow::Result;
+/// use miette::Result;
 /// use tokio::time::Duration;
 /// use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 ///
@@ -53,11 +58,13 @@ impl Toplevel {
         // On the top-level, the global and local shutdown token are identical
         let global_shutdown_token = create_shutdown_token();
         let local_shutdown_token = global_shutdown_token.clone();
+        let cancellation_token = CancellationToken::new();
 
         let subsys_data = Arc::new(SubsystemData::new(
             "",
             global_shutdown_token,
             local_shutdown_token,
+            cancellation_token,
         ));
         let subsys_handle = SubsystemHandle::new(subsys_data.clone());
         Self {
@@ -128,26 +135,31 @@ impl Toplevel {
     /// Wait for all subsystems to finish.
     /// Then return and print all of their exit codes.
     async fn attempt_clean_shutdown(&self) -> Result<(), GracefulShutdownError> {
-        let result = self.subsys_data.perform_shutdown().await;
+        let exit_states = self.subsys_data.perform_shutdown().await;
+
+        // Prettify exit states
+        let formatted_exit_states = prettify_exit_states(&exit_states);
+
+        // Collect failed subsystems
+        let failed_subsystems = exit_states
+            .into_iter()
+            .filter_map(|exit_state| exit_state.raw_result.err())
+            .collect::<Vec<_>>();
 
         // Print subsystem exit states
-        let exit_codes = match &result {
-            Ok(codes) => {
-                log::debug!("Shutdown successful. Subsystem states:");
-                codes
-            }
-            Err(codes) => {
-                log::debug!("Some subsystems failed. Subsystem states:");
-                codes
-            }
+        if failed_subsystems.is_empty() {
+            log::debug!("Shutdown successful. Subsystem states:");
+        } else {
+            log::debug!("Some subsystems failed. Subsystem states:");
         };
-        for formatted_exit_code in prettify_exit_states(exit_codes) {
-            log::debug!("    {}", formatted_exit_code);
+        for formatted_exit_state in formatted_exit_states {
+            log::debug!("    {}", formatted_exit_state);
         }
 
-        match result {
-            Ok(_) => Ok(()),
-            Err(_) => Err(GracefulShutdownError::SubsystemFailed),
+        if failed_subsystems.is_empty() {
+            Ok(())
+        } else {
+            Err(GracefulShutdownError::SubsystemsFailed(failed_subsystems))
         }
     }
 
@@ -177,18 +189,34 @@ impl Toplevel {
     ) -> Result<(), ErrType> {
         self.subsys_handle.on_shutdown_requested().await;
 
-        match tokio::time::timeout(shutdown_timeout, self.attempt_clean_shutdown()).await {
-            Ok(val) => val,
-            Err(_) => {
-                log::error!("Shutdown timed out. Attempting to cleanup stale subsystems ...");
-                self.subsys_data.cancel_all_subsystems().await;
-                tokio::time::timeout(shutdown_timeout, self.attempt_clean_shutdown())
-                    .await
-                    .or(Err(GracefulShutdownError::ShutdownTimeout))? // Happens if second shutdown times out as well
-                    .or(Err(GracefulShutdownError::ShutdownTimeout)) // Happens in all other cases, as cancellation always forces an error in cancelled subsystems
-            }
-        }
-        .map_err(GracefulShutdownError::into)
+        let timeout_occurred = AtomicBool::new(false);
+
+        let cancel_on_timeout = async {
+            // Wait for the timeout to happen
+            tokio::time::sleep(shutdown_timeout).await;
+            log::error!("Shutdown timed out. Attempting to cleanup stale subsystems ...");
+            timeout_occurred.store(true, Ordering::SeqCst);
+            self.subsys_data.cancel_all_subsystems();
+            // Await forever, because we don't want to cancel the attempt_clean_shutdown.
+            // Resolving this arm of the tokio::select would cancel the other side.
+            wait_forever().await;
+        };
+
+        let result = tokio::select! {
+            _ = cancel_on_timeout => unreachable!(),
+            result = self.attempt_clean_shutdown() => result
+        };
+
+        // Overwrite return value with "ShutdownTimeout" if a timeout occurred
+        let result = if timeout_occurred.load(Ordering::SeqCst) {
+            Err(GracefulShutdownError::ShutdownTimeout(
+                result.err().map_or(vec![], |e| e.into_related()),
+            ))
+        } else {
+            result
+        };
+
+        result.map_err(GracefulShutdownError::into)
     }
 
     #[doc(hidden)]

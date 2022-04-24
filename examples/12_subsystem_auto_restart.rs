@@ -4,8 +4,8 @@
 //! This isn't really a usecase related to this library, but seems to be used regularly,
 //! so I included it anyway.
 
-use anyhow::Result;
 use env_logger::{Builder, Env};
+use miette::{IntoDiagnostic, Result};
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 
@@ -40,7 +40,7 @@ async fn subsys1_with_autorestart(subsys: SubsystemHandle) -> Result<()> {
                     }
             },
             _ = subsys.on_shutdown_requested() => {
-                return joinhandle.await?;
+                return joinhandle.await.into_diagnostic()?;
             }
         };
     }

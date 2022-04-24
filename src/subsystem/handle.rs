@@ -35,7 +35,7 @@ impl SubsystemHandle {
     /// # Examples
     ///
     /// ```
-    /// use anyhow::Result;
+    /// use miette::Result;
     /// use tokio_graceful_shutdown::SubsystemHandle;
     ///
     /// async fn nested_subsystem(subsys: SubsystemHandle) -> Result<()> {
@@ -74,6 +74,7 @@ impl SubsystemHandle {
             &name,
             self.global_shutdown_token().clone(),
             self.local_shutdown_token().child_token(),
+            self.data.cancellation_token.child_token(),
         ));
 
         // Create handle
@@ -90,6 +91,7 @@ impl SubsystemHandle {
             name,
             shutdown_token,
             new_subsystem.local_shutdown_token.clone(),
+            self.data.cancellation_token.child_token(),
             subsystem_future,
         );
 
@@ -112,7 +114,7 @@ impl SubsystemHandle {
     /// # Examples
     ///
     /// ```
-    /// use anyhow::Result;
+    /// use miette::Result;
     /// use tokio::time::{sleep, Duration};
     /// use tokio_graceful_shutdown::SubsystemHandle;
     ///
@@ -152,7 +154,7 @@ impl SubsystemHandle {
     /// # Examples
     ///
     /// ```
-    /// use anyhow::Result;
+    /// use miette::Result;
     /// use tokio::time::{sleep, Duration};
     /// use tokio_graceful_shutdown::SubsystemHandle;
     ///
@@ -185,7 +187,7 @@ impl SubsystemHandle {
     /// # Examples
     ///
     /// ```
-    /// use anyhow::Result;
+    /// use miette::Result;
     /// use tokio::time::{sleep, Duration};
     /// use tokio_graceful_shutdown::SubsystemHandle;
     ///

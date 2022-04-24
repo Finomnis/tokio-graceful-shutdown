@@ -5,9 +5,10 @@ use async_recursion::async_recursion;
 use futures::future::join;
 use futures::future::join_all;
 use std::sync::Mutex;
+use tokio_util::sync::CancellationToken;
 
-use super::partial_shutdown_errors::PartialShutdownError;
 use super::NestedSubsystem;
+use super::PartialShutdownError;
 use super::SubsystemData;
 use super::SubsystemDescriptor;
 use super::SubsystemIdentifier;
@@ -15,18 +16,21 @@ use crate::exit_state::prettify_exit_states;
 use crate::exit_state::{join_shutdown_results, ShutdownResults, SubprocessExitState};
 use crate::runner::SubsystemRunner;
 use crate::shutdown_token::ShutdownToken;
+use crate::SubsystemError;
 
 impl SubsystemData {
     pub fn new(
         name: &str,
         global_shutdown_token: ShutdownToken,
         local_shutdown_token: ShutdownToken,
+        cancellation_token: CancellationToken,
     ) -> Self {
         Self {
             name: name.to_string(),
             subsystems: Mutex::new(Some(Vec::new())),
             global_shutdown_token,
             local_shutdown_token,
+            cancellation_token,
             shutdown_subsystems: tokio::sync::Mutex::new(Vec::new()),
         }
     }
@@ -115,30 +119,21 @@ impl SubsystemData {
             async {
                 let joinhandles_finished = joinhandles_finished.await;
 
-                let join_results = joinhandles_finished
-                    .iter()
-                    .map(|(name, result)| match result {
-                        Ok(Ok(())) => Ok((name, "OK".to_string())),
-                        Ok(Err(())) => Err((name, "Failed".to_string())),
-                        Err(e) => Err((name, format!("Internal error: {}", e))),
+                joinhandles_finished
+                    .into_iter()
+                    .map(|(name, result)| {
+                        SubprocessExitState::new(
+                            name,
+                            match &result {
+                                Ok(()) => "OK",
+                                Err(SubsystemError::Cancelled(_)) => "Cancelled",
+                                Err(SubsystemError::Failed(_, _)) => "Failed",
+                                Err(SubsystemError::Panicked(_)) => "Panicked",
+                            },
+                            result,
+                        )
                     })
-                    .collect::<Vec<_>>();
-
-                let exit_states = join_results
-                    .iter()
-                    .map(|e| {
-                        let (name, msg) = match e {
-                            Ok(msg) => msg,
-                            Err(msg) => msg,
-                        };
-                        SubprocessExitState::new(name, msg)
-                    })
-                    .collect::<Vec<_>>();
-
-                match join_results.into_iter().collect::<Result<Vec<_>, _>>() {
-                    Ok(_) => Ok(exit_states),
-                    Err(_) => Err(exit_states),
-                }
+                    .collect()
             },
             subsystems_finished,
         )
@@ -159,13 +154,8 @@ impl SubsystemData {
         SubsystemData::perform_shutdown_on_subsystems(&mut subsystems).await
     }
 
-    #[async_recursion]
-    pub async fn cancel_all_subsystems(&self) {
-        let subsystems = self.prepare_shutdown().await;
-        for subsystem in subsystems.iter() {
-            subsystem.subsystem_runner.abort();
-            subsystem.data.cancel_all_subsystems().await;
-        }
+    pub fn cancel_all_subsystems(&self) {
+        self.cancellation_token.cancel();
     }
 
     pub async fn perform_partial_shutdown(
@@ -189,26 +179,57 @@ impl SubsystemData {
 
         // Wait for shutdown to finish
         let mut subsystem_vec = vec![subsystem];
-        let result = SubsystemData::perform_shutdown_on_subsystems(&mut subsystem_vec).await;
+        let exit_states = SubsystemData::perform_shutdown_on_subsystems(&mut subsystem_vec).await;
+
+        // Prettify exit states
+        let formatted_exit_states = prettify_exit_states(&exit_states);
+
+        // Collect failed subsystems
+        let failed_subsystems = exit_states
+            .into_iter()
+            .filter_map(|exit_state| match exit_state.raw_result {
+                Ok(()) => None,
+                Err(e) => Some(e),
+            })
+            .collect::<Vec<_>>();
 
         // Print subsystem exit states
-        let exit_codes = match &result {
-            Ok(codes) => {
-                log::debug!("Partial shutdown successful. Subsystem states:");
-                codes
-            }
-            Err(codes) => {
-                log::debug!("Some subsystems during partial shutdown failed. Subsystem states:");
-                codes
-            }
+        if failed_subsystems.is_empty() {
+            log::debug!("Partial shutdown successful. Subsystem states:");
+        } else {
+            log::debug!("Some subsystems during partial shutdown failed. Subsystem states:");
         };
-        for formatted_exit_code in prettify_exit_states(exit_codes) {
-            log::debug!("    {}", formatted_exit_code);
+        for formatted_exit_state in formatted_exit_states {
+            log::debug!("    {}", formatted_exit_state);
         }
 
-        match result {
-            Ok(_) => Ok(()),
-            Err(_) => Err(PartialShutdownError::SubsystemFailed),
+        if failed_subsystems.is_empty() {
+            Ok(())
+        } else {
+            Err(PartialShutdownError::SubsystemsFailed(failed_subsystems))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::shutdown_token::create_shutdown_token;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn prepare_shutdown_does_not_crash_when_called_twice() {
+        let shutdown_token = create_shutdown_token();
+        let data = SubsystemData::new(
+            "MySubsys",
+            shutdown_token.clone(),
+            shutdown_token.clone(),
+            CancellationToken::new(),
+        );
+
+        data.prepare_shutdown().await;
+        data.prepare_shutdown().await;
+
+        assert!(data.subsystems.lock().unwrap().is_none());
     }
 }

@@ -20,7 +20,7 @@
 //! During the countdown, the program will react to Ctrl-C/SIGINT/SIGTERM and will cancel the countdown task accordingly.
 //!
 //! ```
-//! use anyhow::Result;
+//! use miette::Result;
 //! use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 //! use env_logger::{Builder, Env};
 //! use tokio::time::{sleep, Duration};
@@ -91,17 +91,18 @@
 type BoxedError = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 mod errors;
-mod event;
 mod exit_state;
 mod runner;
 mod shutdown_token;
 mod signal_handling;
 mod subsystem;
 mod toplevel;
+mod utils;
 
 pub use errors::GracefulShutdownError;
+pub use errors::PartialShutdownError;
+pub use errors::SubsystemError;
 pub use shutdown_token::ShutdownToken;
 pub use subsystem::NestedSubsystem;
-pub use subsystem::PartialShutdownError;
 pub use subsystem::SubsystemHandle;
 pub use toplevel::Toplevel;
