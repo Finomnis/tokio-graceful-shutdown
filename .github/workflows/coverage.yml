@@ -8,35 +8,24 @@ concurrency:
   group: coverage-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  coveralls:
-    name: Coveralls
+  test:
+    name: Coverage
     continue-on-error: true
     runs-on: ubuntu-latest
+    container:
+      image: xd009642/tarpaulin
+      options: --security-opt seccomp=unconfined
     env:
       RUST_TEST_THREADS: "1"
     steps:
-      - name: Install rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          components: llvm-tools-preview
-          override: true
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v2
-      - name: Install llvm-cov
-        uses: actions-rs/install@v0.1
-        with:
-          crate: cargo-llvm-cov
-          version: 0.2.3
-          use-tool-cache: true
-      - name: Coverage
-        env:
-          RUST_LOG: "debug"
-        uses: actions-rs/cargo@v1
-        with:
-          command: llvm-cov
-          args: --all-features --workspace --lcov --output-path lcov.info
-      - name: Coveralls
+
+      - name: Generate code coverage
+        run: |
+          cargo tarpaulin --all-features --workspace --timeout 120 --out Lcov
+
+      - name: Upload to coveralls.io
         uses: coverallsapp/github-action@master
         with:
           path-to-lcov: lcov.info
