@@ -91,7 +91,7 @@ impl SubsystemHandle {
             name,
             shutdown_token,
             new_subsystem.local_shutdown_token.clone(),
-            new_subsystem.cancellation_token.child_token(),
+            self.data.cancellation_token.child_token(),
             subsystem_future,
         );
 
