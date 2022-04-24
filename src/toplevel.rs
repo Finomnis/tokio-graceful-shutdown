@@ -143,10 +143,7 @@ impl Toplevel {
         // Collect failed subsystems
         let failed_subsystems = exit_states
             .into_iter()
-            .filter_map(|exit_state| match exit_state.raw_result {
-                Ok(()) => None,
-                Err(e) => Some(e),
-            })
+            .filter_map(|exit_state| exit_state.raw_result.err())
             .collect::<Vec<_>>();
 
         // Print subsystem exit states
