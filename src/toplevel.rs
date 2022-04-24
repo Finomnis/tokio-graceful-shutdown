@@ -9,6 +9,7 @@ use tokio_util::sync::CancellationToken;
 use crate::exit_state::prettify_exit_states;
 use crate::shutdown_token::create_shutdown_token;
 use crate::signal_handling::wait_for_signal;
+use crate::utils::wait_forever;
 use crate::BoxedError;
 use crate::GracefulShutdownError;
 use crate::{ShutdownToken, SubsystemHandle};
@@ -192,12 +193,6 @@ impl Toplevel {
         self.subsys_handle.on_shutdown_requested().await;
 
         let timeout_occurred = AtomicBool::new(false);
-
-        async fn wait_forever() -> ! {
-            loop {
-                std::future::pending::<()>().await;
-            }
-        }
 
         let cancel_on_timeout = async {
             // Wait for the timeout to happen

@@ -97,6 +97,7 @@ mod shutdown_token;
 mod signal_handling;
 mod subsystem;
 mod toplevel;
+mod utils;
 
 pub use errors::GracefulShutdownError;
 pub use errors::PartialShutdownError;
