@@ -44,6 +44,7 @@ use super::subsystem::SubsystemData;
 /// }
 /// ```
 ///
+#[must_use = "This toplevel must be consumed by calling `handle_shutdown_requests` on it."]
 pub struct Toplevel {
     subsys_data: Arc<SubsystemData>,
     subsys_handle: SubsystemHandle,
@@ -222,5 +223,11 @@ impl Toplevel {
     #[doc(hidden)]
     pub fn get_shutdown_token(&self) -> &ShutdownToken {
         self.subsys_handle.global_shutdown_token()
+    }
+}
+
+impl Drop for Toplevel {
+    fn drop(&mut self) {
+        self.subsys_data.cancel_all_subsystems();
     }
 }
