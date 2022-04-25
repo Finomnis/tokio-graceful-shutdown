@@ -44,6 +44,7 @@ use super::subsystem::SubsystemData;
 /// }
 /// ```
 ///
+#[must_use = "This toplevel must be consumed by calling `handle_shutdown_requests` on it."]
 pub struct Toplevel {
     subsys_data: Arc<SubsystemData>,
     subsys_handle: SubsystemHandle,
