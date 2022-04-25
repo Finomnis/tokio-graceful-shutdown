@@ -5,7 +5,7 @@ Prepation:
 - Add global_shutdown token to tokens
 - Add cancellation_token to tokens
 
-Every subsysten has not tokens:
+Every subsysten has 4 tokens:
 - global_shutdown
 - group_shutdown
 - local_shutdown
@@ -32,3 +32,5 @@ More knowledge:
     - "Subsystem finished" only needs to be propagated to toplevel (if toplevel should auto-stop)
 
 Problem: Errors never get propagated up. (Is that desired?) (I don't think so, whether people handle errors at the top or at a nested tokio::spawn shouldn't matter)
+
+- rewrite example 12 with new nested toplevel
