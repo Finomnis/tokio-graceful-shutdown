@@ -225,3 +225,9 @@ impl Toplevel {
         self.subsys_handle.global_shutdown_token()
     }
 }
+
+impl Drop for Toplevel {
+    fn drop(&mut self) {
+        self.subsys_data.cancel_all_subsystems();
+    }
+}
