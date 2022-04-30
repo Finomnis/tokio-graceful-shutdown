@@ -29,6 +29,7 @@ jobs:
           crate: cargo-llvm-cov
           version: 0.2.3
           use-tool-cache: true
+      - uses: Swatinem/rust-cache@v1
       - name: Coverage
         env:
           RUST_LOG: "debug"
