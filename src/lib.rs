@@ -94,6 +94,7 @@ type BoxedError = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 mod errors;
 mod exit_state;
+mod into_subsystem;
 mod runner;
 mod shutdown_token;
 mod signal_handling;
@@ -104,6 +105,7 @@ mod utils;
 pub use errors::GracefulShutdownError;
 pub use errors::PartialShutdownError;
 pub use errors::SubsystemError;
+pub use into_subsystem::IntoSubsystem;
 pub use shutdown_token::ShutdownToken;
 pub use subsystem::NestedSubsystem;
 pub use subsystem::SubsystemHandle;

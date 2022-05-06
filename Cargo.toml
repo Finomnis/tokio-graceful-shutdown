@@ -29,6 +29,9 @@ tokio-util = { version = "0.7", default-features = false }
 futures = "0.3"
 async-recursion = "1.0"
 
+# For 'IntoSubsystem' trait
+async-trait = "0.1"
+
 # For logging
 log = "0.4"
 
