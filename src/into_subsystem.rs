@@ -11,6 +11,7 @@ type SubsystemFuture<Err> = dyn Future<Output = Result<(), Err>> + Send + 'stati
 /// Allows a struct to be used as a subsystem.
 ///
 /// Implementing this trait requires the `async_trait` dependency.
+///
 /// Using structs without this trait as subsystems is possible
 /// by wrapping them in an async closure. This trait exists primarily
 /// for convenience.
