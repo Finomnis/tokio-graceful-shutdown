@@ -2,7 +2,8 @@ use anyhow::anyhow;
 use env_logger;
 use tokio::time::{sleep, timeout, Duration};
 use tokio_graceful_shutdown::{
-    GracefulShutdownError, PartialShutdownError, SubsystemError, SubsystemHandle, Toplevel,
+    GracefulShutdownError, IntoSubsystem, PartialShutdownError, SubsystemError, SubsystemHandle,
+    Toplevel,
 };
 
 mod common;
@@ -36,6 +37,38 @@ async fn normal_shutdown() {
     };
 
     let toplevel = Toplevel::new().start("subsys", subsystem);
+    let shutdown_token = toplevel.get_shutdown_token().clone();
+
+    tokio::join!(
+        async {
+            sleep(Duration::from_millis(100)).await;
+            shutdown_token.shutdown();
+        },
+        async {
+            let result: BoxedResult = toplevel
+                .handle_shutdown_requests(Duration::from_millis(400))
+                .await;
+            assert!(result.is_ok());
+        },
+    );
+}
+
+#[tokio::test]
+async fn use_subsystem_struct() {
+    setup();
+
+    struct MySubsystem;
+
+    #[async_trait::async_trait]
+    impl IntoSubsystem<BoxedError> for MySubsystem {
+        async fn run(self, subsys: SubsystemHandle) -> BoxedResult {
+            subsys.on_shutdown_requested().await;
+            sleep(Duration::from_millis(200)).await;
+            BoxedResult::Ok(())
+        }
+    }
+
+    let toplevel = Toplevel::new().start("subsys", MySubsystem {}.into_subsystem());
     let shutdown_token = toplevel.get_shutdown_token().clone();
 
     tokio::join!(
