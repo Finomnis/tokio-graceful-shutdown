@@ -16,7 +16,7 @@ type SubsystemFuture<Err> = dyn Future<Output = Result<(), Err>> + Send + 'stati
 /// by wrapping them in an async closure. This trait exists primarily
 /// for convenience.
 ///
-/// The template parameter of the trait represents is the error type
+/// The template parameter of the trait is the error type
 /// that the subsytem returns.
 ///
 /// # Examples
