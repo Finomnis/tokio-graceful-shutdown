@@ -12,8 +12,8 @@ type SubsystemFuture<Err> = dyn Future<Output = Result<(), Err>> + Send + 'stati
 ///
 /// Implementing this trait requires the `async_trait` dependency.
 ///
-/// Using structs without this trait as subsystems is possible
-/// by wrapping them in an async closure. This trait exists primarily
+/// Using a struct that does not implement this trait as a subsystem is possible
+/// by wrapping it in an async closure. This trait exists primarily
 /// for convenience.
 ///
 /// The template parameter of the trait is the error type
@@ -53,7 +53,7 @@ where
 {
     /// The logic of the subsystem.
     ///
-    /// Will be called as soon as the subsystem gets activated.
+    /// Will be called as soon as the subsystem gets started.
     ///
     /// Returning an error automatically initiates a shutdown.
     ///
