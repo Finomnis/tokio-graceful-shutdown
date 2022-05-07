@@ -83,7 +83,6 @@
 //!
 
 #![deny(missing_docs)]
-#![deny(rustdoc::missing_doc_code_examples)]
 #![doc(
     issue_tracker_base_url = "https://github.com/Finomnis/tokio-graceful-shutdown/issues",
     test(no_crate_inject, attr(deny(warnings))),
@@ -92,7 +91,6 @@
 
 type BoxedError = Box<dyn std::error::Error + Send + Sync + 'static>;
 
-#[allow(rustdoc::missing_doc_code_examples)]
 /// A collection of traits a custom error has to fulfill in order to be
 /// usable as the `ErrType` of [Toplevel].
 pub trait ErrTypeTraits:
