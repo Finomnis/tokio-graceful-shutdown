@@ -211,7 +211,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         // Overwrite return value with "ShutdownTimeout" if a timeout occurred
         let result = if timeout_occurred.load(Ordering::SeqCst) {
             Err(GracefulShutdownError::ShutdownTimeout(
-                result.err().map_or(vec![], |e| e.into_related()),
+                result.err().map_or(vec![], |e| e.into_subsystem_errors()),
             ))
         } else {
             result

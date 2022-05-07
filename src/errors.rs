@@ -18,8 +18,15 @@ pub enum GracefulShutdownError<ErrType: ErrTypeTraits = crate::BoxedError> {
 }
 
 impl<ErrType: ErrTypeTraits> GracefulShutdownError<ErrType> {
-    #[doc(hidden)]
-    pub fn into_related(self) -> Vec<SubsystemError<ErrType>> {
+    /// Converts the error into a list of subsystem errors that occurred.
+    pub fn into_subsystem_errors(self) -> Vec<SubsystemError<ErrType>> {
+        match self {
+            GracefulShutdownError::SubsystemsFailed(rel) => rel,
+            GracefulShutdownError::ShutdownTimeout(rel) => rel,
+        }
+    }
+    /// Queries the list of subsystem errors that occurred.
+    pub fn get_subsystem_errors(&self) -> &Vec<SubsystemError<ErrType>> {
         match self {
             GracefulShutdownError::SubsystemsFailed(rel) => rel,
             GracefulShutdownError::ShutdownTimeout(rel) => rel,
@@ -44,7 +51,7 @@ pub enum PartialShutdownError<ErrType: ErrTypeTraits = crate::BoxedError> {
     AlreadyShuttingDown,
 }
 
-/// TODO
+/// A wrapper type that carries the errors returned by subsystems.
 pub struct SubsystemFailure<ErrType>(pub ErrType);
 
 impl<ErrType> std::ops::Deref for SubsystemFailure<ErrType> {
@@ -52,6 +59,16 @@ impl<ErrType> std::ops::Deref for SubsystemFailure<ErrType> {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+impl<ErrType> SubsystemFailure<ErrType> {
+    /// Retrieves the containing error.
+    pub fn get_error(&self) -> &ErrType {
+        &self.0
+    }
+    /// Converts the object into the containing error.
+    pub fn into_error(self) -> ErrType {
+        self.0
     }
 }
 
