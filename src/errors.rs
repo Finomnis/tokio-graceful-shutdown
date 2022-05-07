@@ -161,20 +161,19 @@ mod tests {
             ]
         };
 
-        let matches_related =
-            |data: &Vec<SubsystemError<Box<dyn std::error::Error + Send + Sync>>>| {
-                let mut iter = data.into_iter();
+        let matches_related = |data: &Vec<SubsystemError<BoxedError>>| {
+            let mut iter = data.into_iter();
 
-                let elem = iter.next().unwrap();
-                assert_eq!(elem.name(), "a");
-                assert!(matches!(elem, SubsystemError::Cancelled(_)));
+            let elem = iter.next().unwrap();
+            assert_eq!(elem.name(), "a");
+            assert!(matches!(elem, SubsystemError::Cancelled(_)));
 
-                let elem = iter.next().unwrap();
-                assert_eq!(elem.name(), "b");
-                assert!(matches!(elem, SubsystemError::Panicked(_)));
+            let elem = iter.next().unwrap();
+            assert_eq!(elem.name(), "b");
+            assert!(matches!(elem, SubsystemError::Panicked(_)));
 
-                assert!(iter.next().is_none());
-            };
+            assert!(iter.next().is_none());
+        };
 
         matches_related(GracefulShutdownError::ShutdownTimeout(related()).get_subsystem_errors());
         matches_related(GracefulShutdownError::SubsystemsFailed(related()).get_subsystem_errors());
