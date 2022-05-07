@@ -10,7 +10,7 @@ use crate::exit_state::prettify_exit_states;
 use crate::shutdown_token::create_shutdown_token;
 use crate::signal_handling::wait_for_signal;
 use crate::utils::wait_forever;
-use crate::BoxedError;
+use crate::ErrTypeTraits;
 use crate::GracefulShutdownError;
 use crate::{ShutdownToken, SubsystemHandle};
 
@@ -45,12 +45,12 @@ use super::subsystem::SubsystemData;
 /// ```
 ///
 #[must_use = "This toplevel must be consumed by calling `handle_shutdown_requests` on it."]
-pub struct Toplevel {
-    subsys_data: Arc<SubsystemData>,
-    subsys_handle: SubsystemHandle,
+pub struct Toplevel<ErrType: ErrTypeTraits = crate::BoxedError> {
+    subsys_data: Arc<SubsystemData<ErrType>>,
+    subsys_handle: SubsystemHandle<ErrType>,
 }
 
-impl Toplevel {
+impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// Creates a new Toplevel object.
     ///
     /// The Toplevel object is the base for everything else in this crate.
@@ -98,9 +98,9 @@ impl Toplevel {
     /// * `subsystem` - The subsystem to be started
     ///
     pub fn start<
-        Err: Into<BoxedError>,
+        Err: Into<ErrType>,
         Fut: 'static + Future<Output = Result<(), Err>> + Send,
-        S: 'static + FnOnce(SubsystemHandle) -> Fut + Send,
+        S: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
     >(
         self,
         name: &'static str,
@@ -135,7 +135,7 @@ impl Toplevel {
 
     /// Wait for all subsystems to finish.
     /// Then return and print all of their exit codes.
-    async fn attempt_clean_shutdown(&self) -> Result<(), GracefulShutdownError> {
+    async fn attempt_clean_shutdown(&self) -> Result<(), GracefulShutdownError<ErrType>> {
         let exit_states = self.subsys_data.perform_shutdown().await;
 
         // Prettify exit states
@@ -184,10 +184,10 @@ impl Toplevel {
     /// An error of type [`GracefulShutdownError`] if an error occurred.
     /// An implicit `.into()` will be performed to convert it to the desired error wrapping type.
     ///
-    pub async fn handle_shutdown_requests<ErrType: From<GracefulShutdownError>>(
+    pub async fn handle_shutdown_requests<ReturnErrType: From<GracefulShutdownError<ErrType>>>(
         self,
         shutdown_timeout: Duration,
-    ) -> Result<(), ErrType> {
+    ) -> Result<(), ReturnErrType> {
         self.subsys_handle.on_shutdown_requested().await;
 
         let timeout_occurred = AtomicBool::new(false);
@@ -211,7 +211,7 @@ impl Toplevel {
         // Overwrite return value with "ShutdownTimeout" if a timeout occurred
         let result = if timeout_occurred.load(Ordering::SeqCst) {
             Err(GracefulShutdownError::ShutdownTimeout(
-                result.err().map_or(vec![], |e| e.into_related()),
+                result.err().map_or(vec![], |e| e.into_subsystem_errors()),
             ))
         } else {
             result
@@ -226,7 +226,7 @@ impl Toplevel {
     }
 }
 
-impl Drop for Toplevel {
+impl<ErrType: ErrTypeTraits> Drop for Toplevel<ErrType> {
     fn drop(&mut self) {
         self.subsys_data.cancel_all_subsystems();
     }

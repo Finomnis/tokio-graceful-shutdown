@@ -124,7 +124,7 @@ async fn subsystem_finishes_with_success() {
 
     let (toplevel_finished, set_toplevel_finished) = Event::create();
 
-    let toplevel = Toplevel::new().start("subsys", subsystem);
+    let toplevel = Toplevel::<BoxedError>::new().start("subsys", subsystem);
     let shutdown_token = toplevel.get_shutdown_token().clone();
 
     tokio::join!(
@@ -156,7 +156,7 @@ async fn subsystem_finishes_with_error() {
 
     let (toplevel_finished, set_toplevel_finished) = Event::create();
 
-    let toplevel = Toplevel::new().start("subsys", subsystem);
+    let toplevel = Toplevel::<BoxedError>::new().start("subsys", subsystem);
     let shutdown_token = toplevel.get_shutdown_token().clone();
 
     tokio::join!(

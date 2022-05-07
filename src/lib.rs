@@ -83,7 +83,6 @@
 //!
 
 #![deny(missing_docs)]
-#![deny(rustdoc::missing_doc_code_examples)]
 #![doc(
     issue_tracker_base_url = "https://github.com/Finomnis/tokio-graceful-shutdown/issues",
     test(no_crate_inject, attr(deny(warnings))),
@@ -91,6 +90,17 @@
 )]
 
 type BoxedError = Box<dyn std::error::Error + Send + Sync + 'static>;
+
+/// A collection of traits a custom error has to fulfill in order to be
+/// usable as the `ErrType` of [Toplevel].
+pub trait ErrTypeTraits:
+    std::fmt::Debug + std::fmt::Display + 'static + Send + Sync + Sized
+{
+}
+impl<T> ErrTypeTraits for T where
+    T: std::fmt::Debug + std::fmt::Display + 'static + Send + Sync + Sized
+{
+}
 
 mod errors;
 mod exit_state;
@@ -105,6 +115,7 @@ mod utils;
 pub use errors::GracefulShutdownError;
 pub use errors::PartialShutdownError;
 pub use errors::SubsystemError;
+pub use errors::SubsystemFailure;
 pub use into_subsystem::IntoSubsystem;
 pub use shutdown_token::ShutdownToken;
 pub use subsystem::NestedSubsystem;

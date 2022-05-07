@@ -5,16 +5,16 @@ use super::NestedSubsystem;
 use super::SubsystemData;
 use super::SubsystemHandle;
 use crate::runner::SubsystemRunner;
-use crate::BoxedError;
+use crate::ErrTypeTraits;
 use crate::PartialShutdownError;
 use crate::ShutdownToken;
 
 #[cfg(doc)]
 use crate::Toplevel;
 
-impl SubsystemHandle {
+impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     #[doc(hidden)]
-    pub fn new(data: Arc<SubsystemData>) -> Self {
+    pub fn new(data: Arc<SubsystemData<ErrType>>) -> Self {
         Self { data }
     }
 
@@ -53,9 +53,9 @@ impl SubsystemHandle {
     /// ```
     ///
     pub fn start<
-        Err: Into<BoxedError>,
+        Err: Into<ErrType>,
         Fut: 'static + Future<Output = Result<(), Err>> + Send,
-        S: 'static + FnOnce(SubsystemHandle) -> Fut + Send,
+        S: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
     >(
         &self,
         name: &'static str,
@@ -215,7 +215,7 @@ impl SubsystemHandle {
     pub async fn perform_partial_shutdown(
         &self,
         subsystem: NestedSubsystem,
-    ) -> Result<(), PartialShutdownError> {
+    ) -> Result<(), PartialShutdownError<ErrType>> {
         self.data.perform_partial_shutdown(subsystem).await
     }
 
