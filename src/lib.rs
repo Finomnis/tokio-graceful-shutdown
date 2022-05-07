@@ -91,6 +91,14 @@
 )]
 
 type BoxedError = Box<dyn std::error::Error + Send + Sync + 'static>;
+pub trait ErrTypeTraits:
+    std::fmt::Debug + std::fmt::Display + 'static + Send + Sync + Sized
+{
+}
+impl<T> ErrTypeTraits for T where
+    T: std::fmt::Debug + std::fmt::Display + 'static + Send + Sync + Sized
+{
+}
 
 mod errors;
 mod exit_state;

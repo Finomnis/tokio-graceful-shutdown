@@ -1,38 +1,44 @@
-use crate::{errors::SubsystemError, BoxedError, ShutdownToken};
+use crate::{
+    errors::{SubsystemError, SubsystemFailure},
+    ErrTypeTraits, ShutdownToken,
+};
 use std::future::Future;
 use tokio::task::{JoinError, JoinHandle};
 use tokio_util::sync::CancellationToken;
 
-pub struct SubsystemRunner {
-    outer_joinhandle: JoinHandle<Result<(), SubsystemError>>,
+pub struct SubsystemRunner<ErrType: ErrTypeTraits> {
+    outer_joinhandle: JoinHandle<Result<(), SubsystemError<ErrType>>>,
     cancellation_token: CancellationToken,
 }
 
 /// Dropping the SubsystemRunner cancels the task.
 ///
 /// In consequence, this means that dropping the Toplevel object cancels all tasks.
-impl Drop for SubsystemRunner {
+impl<ErrType: ErrTypeTraits> Drop for SubsystemRunner<ErrType> {
     fn drop(&mut self) {
         self.abort();
     }
 }
 
-impl SubsystemRunner {
+impl<ErrType: ErrTypeTraits> SubsystemRunner<ErrType> {
     async fn handle_subsystem(
-        mut inner_joinhandle: JoinHandle<Result<(), BoxedError>>,
+        mut inner_joinhandle: JoinHandle<Result<(), ErrType>>,
         shutdown_token: ShutdownToken,
         local_shutdown_token: ShutdownToken,
         name: String,
         cancellation_token: CancellationToken,
-    ) -> Result<(), SubsystemError> {
+    ) -> Result<(), SubsystemError<ErrType>> {
         /// Maps the complicated return value of the subsystem joinhandle to an appropriate error
-        fn map_subsystem_result(
+        fn map_subsystem_result<ErrType: ErrTypeTraits>(
             name: &str,
-            result: Result<Result<(), BoxedError>, JoinError>,
-        ) -> Result<(), SubsystemError> {
+            result: Result<Result<(), ErrType>, JoinError>,
+        ) -> Result<(), SubsystemError<ErrType>> {
             match result {
                 Ok(Ok(())) => Ok(()),
-                Ok(Err(e)) => Err(SubsystemError::Failed(name.to_string(), e)),
+                Ok(Err(e)) => Err(SubsystemError::Failed(
+                    name.to_string(),
+                    SubsystemFailure(e),
+                )),
                 Err(e) => Err(if e.is_cancelled() {
                     SubsystemError::Cancelled(name.to_string())
                 } else {
@@ -71,7 +77,7 @@ impl SubsystemRunner {
         result
     }
 
-    pub fn new<Fut: 'static + Future<Output = Result<(), BoxedError>> + Send>(
+    pub fn new<Fut: 'static + Future<Output = Result<(), ErrType>> + Send>(
         name: String,
         shutdown_token: ShutdownToken,
         local_shutdown_token: ShutdownToken,
@@ -95,7 +101,7 @@ impl SubsystemRunner {
         }
     }
 
-    pub async fn join(&mut self) -> Result<(), SubsystemError> {
+    pub async fn join(&mut self) -> Result<(), SubsystemError<ErrType>> {
         // Safety: we are in full control over the outer_joinhandle and the
         // code it runs. Therefore, if this either returns a panic or a cancelled,
         // it's a programming error on our side.

@@ -1,23 +1,25 @@
 use miette::Diagnostic;
 use thiserror::Error;
 
-use crate::BoxedError;
+use crate::ErrTypeTraits;
+
+//use crate::BoxedError;
 
 /// This enum contains all the possible errors that could be returned
 /// by [`handle_shutdown_requests()`](crate::Toplevel::handle_shutdown_requests).
 #[derive(Error, Debug, Diagnostic)]
-pub enum GracefulShutdownError {
+pub enum GracefulShutdownError<ErrType: ErrTypeTraits = crate::BoxedError> {
     /// At least one subsystem caused an error.
     #[error("at least one subsystem returned an error")]
-    SubsystemsFailed(#[related] Vec<SubsystemError>),
+    SubsystemsFailed(#[related] Vec<SubsystemError<ErrType>>),
     /// The shutdown did not finish within the given timeout.
     #[error("shutdown timed out")]
-    ShutdownTimeout(#[related] Vec<SubsystemError>),
+    ShutdownTimeout(#[related] Vec<SubsystemError<ErrType>>),
 }
 
-impl GracefulShutdownError {
+impl<ErrType: ErrTypeTraits> GracefulShutdownError<ErrType> {
     #[doc(hidden)]
-    pub fn into_related(self) -> Vec<SubsystemError> {
+    pub fn into_related(self) -> Vec<SubsystemError<ErrType>> {
         match self {
             GracefulShutdownError::SubsystemsFailed(rel) => rel,
             GracefulShutdownError::ShutdownTimeout(rel) => rel,
@@ -28,10 +30,10 @@ impl GracefulShutdownError {
 /// This enum contains all the possible errors that a partial shutdown
 /// could cause.
 #[derive(Debug, Error, Diagnostic)]
-pub enum PartialShutdownError {
+pub enum PartialShutdownError<ErrType: ErrTypeTraits = crate::BoxedError> {
     /// At least one subsystem caused an error.
     #[error("at least one subsystem returned an error")]
-    SubsystemsFailed(#[related] Vec<SubsystemError>),
+    SubsystemsFailed(#[related] Vec<SubsystemError<ErrType>>),
     /// The given nested subsystem does not seem to be a child of
     /// the parent subsystem.
     #[error("unable to find nested subsystem in given subsystem")]
@@ -42,15 +44,47 @@ pub enum PartialShutdownError {
     AlreadyShuttingDown,
 }
 
+/// TODO
+pub struct SubsystemFailure<ErrType>(pub ErrType);
+
+impl<ErrType> std::ops::Deref for SubsystemFailure<ErrType> {
+    type Target = ErrType;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<ErrType> std::fmt::Debug for SubsystemFailure<ErrType>
+where
+    ErrType: std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(&self.0, f)
+    }
+}
+impl<ErrType> std::fmt::Display for SubsystemFailure<ErrType>
+where
+    ErrType: std::fmt::Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.0, f)
+    }
+}
+impl<ErrType> std::error::Error for SubsystemFailure<ErrType> where
+    ErrType: std::fmt::Display + std::fmt::Debug
+{
+}
+
 /// This enum contains all the possible errors that a subsystem execution
 /// could cause.
 ///
 /// Every error carries the name of the subsystem as the first argument.
 #[derive(Debug, Error, Diagnostic)]
-pub enum SubsystemError {
+pub enum SubsystemError<ErrType: ErrTypeTraits = crate::BoxedError> {
     /// The subsystem returned an error value. Carries the actual error as the second argument.
     #[error("Error in subsystem '{0}'")]
-    Failed(String, #[source] BoxedError),
+    Failed(String, #[source] SubsystemFailure<ErrType>),
     /// The subsystem was cancelled. Should only happen if the shutdown timeout is exceeded.
     #[error("Subsystem '{0}' was aborted")]
     Cancelled(String),
@@ -59,7 +93,7 @@ pub enum SubsystemError {
     Panicked(String),
 }
 
-impl SubsystemError {
+impl<ErrType: ErrTypeTraits> SubsystemError<ErrType> {
     /// Retrieves the name of the subsystem that caused the error.
     ///
     /// # Returns
@@ -89,14 +123,45 @@ mod tests {
 
     #[test]
     fn errors_can_be_converted_to_diagnostic() {
-        examine_report(GracefulShutdownError::ShutdownTimeout(vec![]).into());
-        examine_report(GracefulShutdownError::SubsystemsFailed(vec![]).into());
-        examine_report(PartialShutdownError::AlreadyShuttingDown.into());
-        examine_report(PartialShutdownError::SubsystemNotFound.into());
-        examine_report(PartialShutdownError::SubsystemsFailed(vec![]).into());
-        examine_report(SubsystemError::Cancelled("".into()).into());
-        examine_report(SubsystemError::Panicked("".into()).into());
-        examine_report(SubsystemError::Failed("".into(), "".into()).into());
+        examine_report(
+            GracefulShutdownError::ShutdownTimeout::<Box<dyn std::error::Error + Send + Sync>>(
+                vec![],
+            )
+            .into(),
+        );
+        examine_report(
+            GracefulShutdownError::SubsystemsFailed::<Box<dyn std::error::Error + Send + Sync>>(
+                vec![],
+            )
+            .into(),
+        );
+        examine_report(
+            PartialShutdownError::AlreadyShuttingDown::<Box<dyn std::error::Error + Send + Sync>>
+                .into(),
+        );
+        examine_report(
+            PartialShutdownError::SubsystemNotFound::<Box<dyn std::error::Error + Send + Sync>>
+                .into(),
+        );
+        examine_report(
+            PartialShutdownError::SubsystemsFailed::<Box<dyn std::error::Error + Send + Sync>>(
+                vec![],
+            )
+            .into(),
+        );
+        examine_report(
+            SubsystemError::Cancelled::<Box<dyn std::error::Error + Send + Sync>>("".into()).into(),
+        );
+        examine_report(
+            SubsystemError::Panicked::<Box<dyn std::error::Error + Send + Sync>>("".into()).into(),
+        );
+        examine_report(
+            SubsystemError::Failed::<Box<dyn std::error::Error + Send + Sync>>(
+                "".into(),
+                SubsystemFailure("".into()),
+            )
+            .into(),
+        );
     }
 
     #[test]
@@ -108,19 +173,20 @@ mod tests {
             ]
         };
 
-        let matches_related = |data: Vec<SubsystemError>| {
-            let mut iter = data.into_iter();
+        let matches_related =
+            |data: Vec<SubsystemError<Box<dyn std::error::Error + Send + Sync>>>| {
+                let mut iter = data.into_iter();
 
-            let elem = iter.next().unwrap();
-            assert_eq!(elem.name(), "a");
-            assert!(matches!(elem, SubsystemError::Cancelled(_)));
+                let elem = iter.next().unwrap();
+                assert_eq!(elem.name(), "a");
+                assert!(matches!(elem, SubsystemError::Cancelled(_)));
 
-            let elem = iter.next().unwrap();
-            assert_eq!(elem.name(), "b");
-            assert!(matches!(elem, SubsystemError::Panicked(_)));
+                let elem = iter.next().unwrap();
+                assert_eq!(elem.name(), "b");
+                assert!(matches!(elem, SubsystemError::Panicked(_)));
 
-            assert!(iter.next().is_none());
-        };
+                assert!(iter.next().is_none());
+            };
 
         matches_related(GracefulShutdownError::ShutdownTimeout(related()).into_related());
         matches_related(GracefulShutdownError::SubsystemsFailed(related()).into_related());

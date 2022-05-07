@@ -1,13 +1,17 @@
-use crate::errors::SubsystemError;
+use crate::{errors::SubsystemError, ErrTypeTraits};
 
-pub struct SubprocessExitState {
+pub struct SubprocessExitState<ErrType: ErrTypeTraits> {
     pub name: String,
     pub exit_state: String,
-    pub raw_result: Result<(), SubsystemError>,
+    pub raw_result: Result<(), SubsystemError<ErrType>>,
 }
 
-impl SubprocessExitState {
-    pub fn new(name: &str, exit_state: &str, raw_result: Result<(), SubsystemError>) -> Self {
+impl<ErrType: ErrTypeTraits> SubprocessExitState<ErrType> {
+    pub fn new(
+        name: &str,
+        exit_state: &str,
+        raw_result: Result<(), SubsystemError<ErrType>>,
+    ) -> Self {
         Self {
             name: name.to_string(),
             exit_state: exit_state.to_string(),
@@ -16,12 +20,12 @@ impl SubprocessExitState {
     }
 }
 
-pub type ShutdownResults = Vec<SubprocessExitState>;
+pub type ShutdownResults<ErrType> = Vec<SubprocessExitState<ErrType>>;
 
-pub fn join_shutdown_results(
-    mut left: ShutdownResults,
-    right: Vec<ShutdownResults>,
-) -> ShutdownResults {
+pub fn join_shutdown_results<ErrType: ErrTypeTraits>(
+    mut left: ShutdownResults<ErrType>,
+    right: Vec<ShutdownResults<ErrType>>,
+) -> ShutdownResults<ErrType> {
     for mut right_element in right {
         left.append(&mut right_element);
     }
@@ -29,7 +33,9 @@ pub fn join_shutdown_results(
     left
 }
 
-pub fn prettify_exit_states(exit_states: &[SubprocessExitState]) -> Vec<String> {
+pub fn prettify_exit_states<ErrType: ErrTypeTraits>(
+    exit_states: &[SubprocessExitState<ErrType>],
+) -> Vec<String> {
     let max_subprocess_name_length = exit_states
         .iter()
         .map(|code| code.name.len())

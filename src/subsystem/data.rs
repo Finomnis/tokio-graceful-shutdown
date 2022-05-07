@@ -16,9 +16,10 @@ use crate::exit_state::prettify_exit_states;
 use crate::exit_state::{join_shutdown_results, ShutdownResults, SubprocessExitState};
 use crate::runner::SubsystemRunner;
 use crate::shutdown_token::ShutdownToken;
+use crate::ErrTypeTraits;
 use crate::SubsystemError;
 
-impl SubsystemData {
+impl<ErrType: ErrTypeTraits> SubsystemData<ErrType> {
     pub fn new(
         name: &str,
         global_shutdown_token: ShutdownToken,
@@ -41,8 +42,8 @@ impl SubsystemData {
     /// and the newly spawned subsystem will be cancelled.
     pub fn add_subsystem(
         &self,
-        subsystem: Arc<SubsystemData>,
-        subsystem_runner: SubsystemRunner,
+        subsystem: Arc<SubsystemData<ErrType>>,
+        subsystem_runner: SubsystemRunner<ErrType>,
     ) -> SubsystemIdentifier {
         let id = SubsystemIdentifier::create();
         match self.subsystems.lock().unwrap().as_mut() {
@@ -72,7 +73,7 @@ impl SubsystemData {
     /// [`SubsystemHandle.start`] during cleanup, leaking the new nested subsystem.
     ///
     /// (The place where adding new subsystems will fail is in [`SubsystemData.add_subsystem`])
-    async fn prepare_shutdown(&self) -> MutexGuard<'_, Vec<SubsystemDescriptor>> {
+    async fn prepare_shutdown(&self) -> MutexGuard<'_, Vec<SubsystemDescriptor<ErrType>>> {
         let mut shutdown_subsystems = self.shutdown_subsystems.lock().await;
         let mut subsystems = self.subsystems.lock().unwrap();
         if let Some(e) = subsystems.take() {
@@ -89,8 +90,8 @@ impl SubsystemData {
     /// This function can handle cancellation.
     #[async_recursion]
     async fn perform_shutdown_on_subsystems(
-        subsystems: &mut [SubsystemDescriptor],
-    ) -> ShutdownResults {
+        subsystems: &mut [SubsystemDescriptor<ErrType>],
+    ) -> ShutdownResults<ErrType> {
         let mut subsystem_runners = vec![];
         let mut subsystem_data = vec![];
         for SubsystemDescriptor {
@@ -122,7 +123,7 @@ impl SubsystemData {
                 joinhandles_finished
                     .into_iter()
                     .map(|(name, result)| {
-                        SubprocessExitState::new(
+                        SubprocessExitState::<ErrType>::new(
                             name,
                             match &result {
                                 Ok(()) => "OK",
@@ -148,7 +149,7 @@ impl SubsystemData {
     /// Returns the collected subsystem exit states.
     ///
     /// This function can handle cancellation.
-    pub async fn perform_shutdown(&self) -> ShutdownResults {
+    pub async fn perform_shutdown(&self) -> ShutdownResults<ErrType> {
         let mut subsystems = self.prepare_shutdown().await;
 
         SubsystemData::perform_shutdown_on_subsystems(&mut subsystems).await
@@ -161,7 +162,7 @@ impl SubsystemData {
     pub async fn perform_partial_shutdown(
         &self,
         subsystem_handle: NestedSubsystem,
-    ) -> Result<(), PartialShutdownError> {
+    ) -> Result<(), PartialShutdownError<ErrType>> {
         let subsystem = {
             let mut subsystems_mutex = self.subsystems.lock().unwrap();
             let subsystems = subsystems_mutex
@@ -220,7 +221,7 @@ mod tests {
     #[tokio::test]
     async fn prepare_shutdown_does_not_crash_when_called_twice() {
         let shutdown_token = create_shutdown_token();
-        let data = SubsystemData::new(
+        let data = SubsystemData::<Box<dyn std::error::Error + Send + Sync + 'static>>::new(
             "MySubsys",
             shutdown_token.clone(),
             shutdown_token.clone(),
