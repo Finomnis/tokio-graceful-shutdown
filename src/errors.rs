@@ -205,7 +205,7 @@ mod tests {
                 assert!(iter.next().is_none());
             };
 
-        matches_related(GracefulShutdownError::ShutdownTimeout(related()).into_related());
-        matches_related(GracefulShutdownError::SubsystemsFailed(related()).into_related());
+        matches_related(GracefulShutdownError::ShutdownTimeout(related()).into_subsystem_errors());
+        matches_related(GracefulShutdownError::SubsystemsFailed(related()).into_subsystem_errors());
     }
 }
