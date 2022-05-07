@@ -3,8 +3,6 @@ use thiserror::Error;
 
 use crate::ErrTypeTraits;
 
-//use crate::BoxedError;
-
 /// This enum contains all the possible errors that could be returned
 /// by [`handle_shutdown_requests()`](crate::Toplevel::handle_shutdown_requests).
 #[derive(Error, Debug, Diagnostic)]
