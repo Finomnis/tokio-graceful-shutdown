@@ -116,6 +116,7 @@ mod utils;
 pub use errors::GracefulShutdownError;
 pub use errors::PartialShutdownError;
 pub use errors::SubsystemError;
+pub use errors::SubsystemFailure;
 pub use into_subsystem::IntoSubsystem;
 pub use shutdown_token::ShutdownToken;
 pub use subsystem::NestedSubsystem;

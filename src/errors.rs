@@ -52,7 +52,7 @@ pub enum PartialShutdownError<ErrType: ErrTypeTraits = crate::BoxedError> {
 }
 
 /// A wrapper type that carries the errors returned by subsystems.
-pub struct SubsystemFailure<ErrType>(pub ErrType);
+pub struct SubsystemFailure<ErrType>(pub(crate) ErrType);
 
 impl<ErrType> std::ops::Deref for SubsystemFailure<ErrType> {
     type Target = ErrType;
