@@ -3,7 +3,7 @@ use std::future::Future;
 use tokio::task::{JoinError, JoinHandle};
 use tokio_util::sync::CancellationToken;
 
-pub struct SubsystemRunner<ErrType: ErrTypeTraits> {
+pub struct SubsystemRunner<ErrType: ErrTypeTraits = crate::BoxedError> {
     outer_joinhandle: JoinHandle<Result<(), SubsystemError<ErrType>>>,
     cancellation_token: CancellationToken,
 }

@@ -15,7 +15,7 @@ use crate::PartialShutdownError;
 use self::identifier::SubsystemIdentifier;
 
 /// The data stored per subsystem, like name or nested subsystems
-pub struct SubsystemData<ErrType: ErrTypeTraits> {
+pub struct SubsystemData<ErrType: ErrTypeTraits = crate::BoxedError> {
     name: String,
     subsystems: Mutex<Option<Vec<SubsystemDescriptor<ErrType>>>>,
     shutdown_subsystems: tokio::sync::Mutex<Vec<SubsystemDescriptor<ErrType>>>,
@@ -40,7 +40,7 @@ impl<ErrType: ErrTypeTraits> Clone for SubsystemHandle<ErrType> {
 }
 
 /// A running subsystem. Can be used to stop the subsystem or get its return value.
-struct SubsystemDescriptor<ErrType: ErrTypeTraits> {
+struct SubsystemDescriptor<ErrType: ErrTypeTraits = crate::BoxedError> {
     id: SubsystemIdentifier,
     data: Arc<SubsystemData<ErrType>>,
     subsystem_runner: SubsystemRunner<ErrType>,

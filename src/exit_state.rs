@@ -1,6 +1,6 @@
 use crate::{errors::SubsystemError, ErrTypeTraits};
 
-pub struct SubprocessExitState<ErrType: ErrTypeTraits> {
+pub struct SubprocessExitState<ErrType: ErrTypeTraits = crate::BoxedError> {
     pub name: String,
     pub exit_state: String,
     pub raw_result: Result<(), SubsystemError<ErrType>>,
