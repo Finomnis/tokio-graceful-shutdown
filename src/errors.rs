@@ -164,7 +164,7 @@ mod tests {
         };
 
         let matches_related =
-            |data: Vec<SubsystemError<Box<dyn std::error::Error + Send + Sync>>>| {
+            |data: &Vec<SubsystemError<Box<dyn std::error::Error + Send + Sync>>>| {
                 let mut iter = data.into_iter();
 
                 let elem = iter.next().unwrap();
@@ -178,7 +178,11 @@ mod tests {
                 assert!(iter.next().is_none());
             };
 
-        matches_related(GracefulShutdownError::ShutdownTimeout(related()).into_subsystem_errors());
-        matches_related(GracefulShutdownError::SubsystemsFailed(related()).into_subsystem_errors());
+        matches_related(GracefulShutdownError::ShutdownTimeout(related()).get_subsystem_errors());
+        matches_related(GracefulShutdownError::SubsystemsFailed(related()).get_subsystem_errors());
+        matches_related(&GracefulShutdownError::ShutdownTimeout(related()).into_subsystem_errors());
+        matches_related(
+            &GracefulShutdownError::SubsystemsFailed(related()).into_subsystem_errors(),
+        );
     }
 }
