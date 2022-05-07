@@ -155,7 +155,7 @@ mod tests {
     }
 
     #[test]
-    fn convert_graceful_shutdown_error_into_related() {
+    fn extract_related_from_graceful_shutdown_error() {
         let related = || {
             vec![
                 SubsystemError::Cancelled("a".into()),
@@ -184,5 +184,15 @@ mod tests {
         matches_related(
             &GracefulShutdownError::SubsystemsFailed(related()).into_subsystem_errors(),
         );
+    }
+
+    #[test]
+    fn extract_contained_error_from_convert_subsystem_failure() {
+        let msg = "MyFailure".to_string();
+        let failure = SubsystemFailure(msg.clone());
+
+        assert_eq!(&msg, failure.get_error());
+        assert_eq!(msg, *failure);
+        assert_eq!(msg, failure.into_error());
     }
 }
