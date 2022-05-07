@@ -127,57 +127,30 @@ impl<ErrType: ErrTypeTraits> SubsystemError<ErrType> {
 
 #[cfg(test)]
 mod tests {
+    use crate::BoxedError;
+
     use super::*;
 
     fn examine_report(report: miette::Report) {
         println!("{}", report);
         println!("{:?}", report);
         // Convert to std::error::Error
-        let boxed_error: Box<dyn std::error::Error + Send + Sync> = report.into();
+        let boxed_error: BoxedError = report.into();
         println!("{}", boxed_error);
         println!("{:?}", boxed_error);
     }
 
     #[test]
     fn errors_can_be_converted_to_diagnostic() {
+        examine_report(GracefulShutdownError::ShutdownTimeout::<BoxedError>(vec![]).into());
+        examine_report(GracefulShutdownError::SubsystemsFailed::<BoxedError>(vec![]).into());
+        examine_report(PartialShutdownError::AlreadyShuttingDown::<BoxedError>.into());
+        examine_report(PartialShutdownError::SubsystemNotFound::<BoxedError>.into());
+        examine_report(PartialShutdownError::SubsystemsFailed::<BoxedError>(vec![]).into());
+        examine_report(SubsystemError::Cancelled::<BoxedError>("".into()).into());
+        examine_report(SubsystemError::Panicked::<BoxedError>("".into()).into());
         examine_report(
-            GracefulShutdownError::ShutdownTimeout::<Box<dyn std::error::Error + Send + Sync>>(
-                vec![],
-            )
-            .into(),
-        );
-        examine_report(
-            GracefulShutdownError::SubsystemsFailed::<Box<dyn std::error::Error + Send + Sync>>(
-                vec![],
-            )
-            .into(),
-        );
-        examine_report(
-            PartialShutdownError::AlreadyShuttingDown::<Box<dyn std::error::Error + Send + Sync>>
-                .into(),
-        );
-        examine_report(
-            PartialShutdownError::SubsystemNotFound::<Box<dyn std::error::Error + Send + Sync>>
-                .into(),
-        );
-        examine_report(
-            PartialShutdownError::SubsystemsFailed::<Box<dyn std::error::Error + Send + Sync>>(
-                vec![],
-            )
-            .into(),
-        );
-        examine_report(
-            SubsystemError::Cancelled::<Box<dyn std::error::Error + Send + Sync>>("".into()).into(),
-        );
-        examine_report(
-            SubsystemError::Panicked::<Box<dyn std::error::Error + Send + Sync>>("".into()).into(),
-        );
-        examine_report(
-            SubsystemError::Failed::<Box<dyn std::error::Error + Send + Sync>>(
-                "".into(),
-                SubsystemFailure("".into()),
-            )
-            .into(),
+            SubsystemError::Failed::<BoxedError>("".into(), SubsystemFailure("".into())).into(),
         );
     }
 
