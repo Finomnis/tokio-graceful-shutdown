@@ -214,14 +214,14 @@ impl<ErrType: ErrTypeTraits> SubsystemData<ErrType> {
 
 #[cfg(test)]
 mod tests {
-    use crate::shutdown_token::create_shutdown_token;
+    use crate::{shutdown_token::create_shutdown_token, BoxedError};
 
     use super::*;
 
     #[tokio::test]
     async fn prepare_shutdown_does_not_crash_when_called_twice() {
         let shutdown_token = create_shutdown_token();
-        let data = SubsystemData::<Box<dyn std::error::Error + Send + Sync + 'static>>::new(
+        let data = SubsystemData::<BoxedError>::new(
             "MySubsys",
             shutdown_token.clone(),
             shutdown_token.clone(),
