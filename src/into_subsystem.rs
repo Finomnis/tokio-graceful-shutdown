@@ -3,11 +3,11 @@ use std::pin::Pin;
 
 use async_trait::async_trait;
 
-use crate::SubsystemHandle;
+use crate::{BoxedError, ErrTypeTraits, SubsystemHandle};
 
 type SubsystemFuture<Err> = dyn Future<Output = Result<(), Err>> + Send + 'static;
-type SubsystemFunction<Err> =
-    dyn FnOnce(SubsystemHandle<Err>) -> Pin<Box<SubsystemFuture<Err>>> + Send + 'static;
+type SubsystemFunction<Err, ErrWrapper> =
+    dyn FnOnce(SubsystemHandle<ErrWrapper>) -> Pin<Box<SubsystemFuture<Err>>> + Send + 'static;
 
 #[async_trait]
 /// Allows a struct to be used as a subsystem.
@@ -49,10 +49,11 @@ type SubsystemFunction<Err> =
 /// }
 /// ```
 ///
-pub trait IntoSubsystem<Err>
+pub trait IntoSubsystem<Err, ErrWrapper = BoxedError>
 where
     Self: Sized + Send + Sync + 'static,
-    Err: std::fmt::Debug + std::fmt::Display + Send + Sync + 'static,
+    Err: ErrTypeTraits,
+    ErrWrapper: ErrTypeTraits,
 {
     /// The logic of the subsystem.
     ///
@@ -62,11 +63,13 @@ where
     ///
     /// For more information about subsystem functions, see
     /// [`Toplevel::start()`](crate::Toplevel::start) and [`SubsystemHandle::start()`](crate::SubsystemHandle::start).
-    async fn run(self, subsys: SubsystemHandle<Err>) -> Result<(), Err>;
+    async fn run(self, subsys: SubsystemHandle<ErrWrapper>) -> Result<(), Err>;
 
     /// Converts the object into a type that can be passed into
     /// [`Toplevel::start()`](crate::Toplevel::start) and [`SubsystemHandle::start()`](crate::SubsystemHandle::start).
-    fn into_subsystem(self) -> Box<SubsystemFunction<Err>> {
-        Box::new(|handle: SubsystemHandle<Err>| Box::pin(async move { self.run(handle).await }))
+    fn into_subsystem(self) -> Box<SubsystemFunction<Err, ErrWrapper>> {
+        Box::new(|handle: SubsystemHandle<ErrWrapper>| {
+            Box::pin(async move { self.run(handle).await })
+        })
     }
 }

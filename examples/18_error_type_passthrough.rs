@@ -60,7 +60,7 @@ async fn subsys5(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
 struct Subsys6;
 
 #[async_trait::async_trait]
-impl IntoSubsystem<MyError> for Subsys6 {
+impl IntoSubsystem<MyError, MyError> for Subsys6 {
     async fn run(self, _subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
         log::info!("Subsystem6 started.");
         sleep(Duration::from_millis(200)).await;
