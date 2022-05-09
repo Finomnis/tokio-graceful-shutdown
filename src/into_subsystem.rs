@@ -6,6 +6,8 @@ use async_trait::async_trait;
 use crate::SubsystemHandle;
 
 type SubsystemFuture<Err> = dyn Future<Output = Result<(), Err>> + Send + 'static;
+type SubsystemFunction<Err> =
+    dyn FnOnce(SubsystemHandle<Err>) -> Pin<Box<SubsystemFuture<Err>>> + Send + 'static;
 
 #[async_trait]
 /// Allows a struct to be used as a subsystem.
@@ -64,10 +66,7 @@ where
 
     /// Converts the object into a type that can be passed into
     /// [`Toplevel::start()`](crate::Toplevel::start) and [`SubsystemHandle::start()`](crate::SubsystemHandle::start).
-    fn into_subsystem(
-        self,
-    ) -> Box<dyn FnOnce(SubsystemHandle<Err>) -> Pin<Box<SubsystemFuture<Err>>> + Send + 'static>
-    {
+    fn into_subsystem(self) -> Box<SubsystemFunction<Err>> {
         Box::new(|handle: SubsystemHandle<Err>| Box::pin(async move { self.run(handle).await }))
     }
 }
