@@ -52,7 +52,7 @@ type SubsystemFunction<Err, ErrWrapper> =
 pub trait IntoSubsystem<Err, ErrWrapper = BoxedError>
 where
     Self: Sized + Send + Sync + 'static,
-    Err: ErrTypeTraits,
+    Err: Into<ErrWrapper>,
     ErrWrapper: ErrTypeTraits,
 {
     /// The logic of the subsystem.
