@@ -3,7 +3,7 @@
 
 use env_logger::{Builder, Env};
 use tokio::time::{sleep, Duration};
-use tokio_graceful_shutdown::{GracefulShutdownError, SubsystemHandle, Toplevel};
+use tokio_graceful_shutdown::{GracefulShutdownError, IntoSubsystem, SubsystemHandle, Toplevel};
 
 #[derive(Debug, thiserror::Error)]
 enum MyError {
@@ -57,6 +57,19 @@ async fn subsys5(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
     Ok(())
 }
 
+struct Subsys6;
+
+#[async_trait::async_trait]
+impl IntoSubsystem<MyError> for Subsys6 {
+    async fn run(self, _subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
+        log::info!("Subsystem6 started.");
+        sleep(Duration::from_millis(200)).await;
+        log::info!("Subsystem6 stopped.");
+
+        Err(MyError::WithData(69))
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), miette::Report> {
     // Init logging
@@ -69,6 +82,7 @@ async fn main() -> Result<(), miette::Report> {
         .start("Subsys3", subsys3)
         .start("Subsys4", subsys4)
         .start("Subsys5", subsys5)
+        .start("Subsys6", Subsys6.into_subsystem())
         .catch_signals()
         .handle_shutdown_requests::<GracefulShutdownError<MyError>>(Duration::from_millis(500))
         .await;

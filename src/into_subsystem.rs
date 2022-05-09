@@ -50,6 +50,7 @@ type SubsystemFuture<Err> = dyn Future<Output = Result<(), Err>> + Send + 'stati
 pub trait IntoSubsystem<Err>
 where
     Self: Sized + Send + Sync + 'static,
+    Err: std::fmt::Debug + std::fmt::Display + Send + Sync + 'static,
 {
     /// The logic of the subsystem.
     ///
@@ -59,13 +60,14 @@ where
     ///
     /// For more information about subsystem functions, see
     /// [`Toplevel::start()`](crate::Toplevel::start) and [`SubsystemHandle::start()`](crate::SubsystemHandle::start).
-    async fn run(self, subsys: SubsystemHandle) -> Result<(), Err>;
+    async fn run(self, subsys: SubsystemHandle<Err>) -> Result<(), Err>;
 
     /// Converts the object into a type that can be passed into
     /// [`Toplevel::start()`](crate::Toplevel::start) and [`SubsystemHandle::start()`](crate::SubsystemHandle::start).
     fn into_subsystem(
         self,
-    ) -> Box<dyn FnOnce(SubsystemHandle) -> Pin<Box<SubsystemFuture<Err>>> + Send + 'static> {
-        Box::new(|handle: SubsystemHandle| Box::pin(async move { self.run(handle).await }))
+    ) -> Box<dyn FnOnce(SubsystemHandle<Err>) -> Pin<Box<SubsystemFuture<Err>>> + Send + 'static>
+    {
+        Box::new(|handle: SubsystemHandle<Err>| Box::pin(async move { self.run(handle).await }))
     }
 }
