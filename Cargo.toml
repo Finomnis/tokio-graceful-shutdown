@@ -52,7 +52,7 @@ hyper = { version = "0.14", features = ["full"] }
 
 # For testing unix signals
 [target.'cfg(unix)'.dev-dependencies]
-nix = "0.24"
+nix = { version = "0.24", default-features = false, features = ["signal"] }
 
 # Make leak sanitizer more reliable
 [profile.dev]
