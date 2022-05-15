@@ -90,8 +90,8 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
         let subsystem_runner = SubsystemRunner::new(
             name,
             shutdown_token,
-            new_subsystem.local_shutdown_token.clone(),
-            self.data.cancellation_token.child_token(),
+            new_subsystem.local_shutdown_token.child_token(),
+            new_subsystem.cancellation_token.child_token(),
             subsystem_future,
         );
 
