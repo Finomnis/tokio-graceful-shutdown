@@ -164,7 +164,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     /// async fn uncancellable_action(subsys: &SubsystemHandle) {
     ///     tokio::select! {
     ///         // Execute an action. A dummy `sleep` in this case.
-    ///         _ = tokio::sleep(Duration::from_millis(1000)) => {
+    ///         _ = sleep(Duration::from_millis(1000)) => {
     ///             log::info!("Action finished.");
     ///         }
     ///         // Perform a shutdown if requested
