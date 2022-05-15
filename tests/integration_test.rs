@@ -981,6 +981,24 @@ async fn subsystem_errors_get_propagated_to_user_when_timeout() {
     }
 }
 
+#[tokio::test]
+async fn is_shutdown_requested_works_as_intended() {
+    setup();
+
+    let subsys1 = move |subsys: SubsystemHandle| async move {
+        assert!(!subsys.is_shutdown_requested());
+        subsys.request_shutdown();
+        assert!(subsys.is_shutdown_requested());
+        BoxedResult::Ok(())
+    };
+
+    Toplevel::new()
+        .start("subsys", subsys1)
+        .handle_shutdown_requests::<BoxedError>(Duration::from_millis(100))
+        .await
+        .unwrap();
+}
+
 #[cfg(unix)]
 #[tokio::test]
 async fn shutdown_through_signal() {

@@ -146,6 +146,53 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
         self.data.local_shutdown_token.wait_for_shutdown().await
     }
 
+    /// Returns whether a shutdown should be performed now.
+    ///
+    /// This method is provided for subsystems that need to query the shutdown
+    /// request state repeatedly.
+    ///
+    /// This can be useful in scenarios where a subsystem depends on the graceful
+    /// shutdown of its nested coroutines before it can run final cleanup steps itself.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use miette::Result;
+    /// use tokio::time::{sleep, Duration};
+    /// use tokio_graceful_shutdown::SubsystemHandle;
+    ///
+    /// async fn uncancellable_action(subsys: &SubsystemHandle) {
+    ///     tokio::select! {
+    ///         // Execute an action. A dummy `sleep` in this case.
+    ///         _ = tokio::sleep(Duration::from_millis(1000)) => {
+    ///             log::info!("Action finished.");
+    ///         }
+    ///         // Perform a shutdown if requested
+    ///         _ = subsys.on_shutdown_requested() => {
+    ///             log::info!("Action aborted.");
+    ///         },
+    ///     }
+    /// }
+    ///
+    /// async fn my_subsystem(subsys: SubsystemHandle) -> Result<()> {
+    ///     log::info!("Starting subsystem ...");
+    ///
+    ///     // We cannot do a `tokio::select` with `on_shutdown_requested`
+    ///     // here, because a shutdown would cancel the action without giving
+    ///     // it the chance to react first.
+    ///     while !subsys.is_shutdown_requested() {
+    ///         uncancellable_action(&subsys).await;
+    ///     }
+    ///
+    ///     log::info!("Subsystem stopped.");
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn is_shutdown_requested(&self) -> bool {
+        self.data.local_shutdown_token.is_shutting_down()
+    }
+
     /// Triggers the shutdown mode of the program.
     ///
     /// If a submodule itself shall have the capability to initiate a program shutdown,
