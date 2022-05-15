@@ -97,15 +97,12 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// * `name` - The name of the subsystem
     /// * `subsystem` - The subsystem to be started
     ///
-    pub fn start<
-        Err: Into<ErrType>,
+    pub fn start<Err, Fut, Subsys>(self, name: &'static str, subsystem: Subsys) -> Self
+    where
+        Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
         Fut: 'static + Future<Output = Result<(), Err>> + Send,
-        S: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
-    >(
-        self,
-        name: &'static str,
-        subsystem: S,
-    ) -> Self {
+        Err: Into<ErrType>,
+    {
         SubsystemHandle::new(self.subsys_data.clone()).start(name, subsystem);
 
         self

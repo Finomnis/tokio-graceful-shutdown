@@ -52,15 +52,12 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     /// }
     /// ```
     ///
-    pub fn start<
-        Err: Into<ErrType>,
+    pub fn start<Err, Fut, Subsys>(&self, name: &'static str, subsystem: Subsys) -> NestedSubsystem
+    where
+        Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
         Fut: 'static + Future<Output = Result<(), Err>> + Send,
-        S: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
-    >(
-        &self,
-        name: &'static str,
-        subsystem: S,
-    ) -> NestedSubsystem {
+        Err: Into<ErrType>,
+    {
         let name = {
             if !self.data.name.is_empty() {
                 self.data.name.clone() + "/" + name
