@@ -121,10 +121,16 @@ async fn subsystem_finishes_with_success() {
     setup();
 
     let subsystem = |_| async { BoxedResult::Ok(()) };
+    let subsystem2 = |subsys: SubsystemHandle| async move {
+        subsys.on_shutdown_requested().await;
+        BoxedResult::Ok(())
+    };
 
     let (toplevel_finished, set_toplevel_finished) = Event::create();
 
-    let toplevel = Toplevel::<BoxedError>::new().start("subsys", subsystem);
+    let toplevel = Toplevel::<BoxedError>::new()
+        .start("subsys", subsystem)
+        .start("subsys2", subsystem2);
     let shutdown_token = toplevel.get_shutdown_token().clone();
 
     tokio::join!(
@@ -153,10 +159,16 @@ async fn subsystem_finishes_with_error() {
     setup();
 
     let subsystem = |_| async { Err(anyhow!("Error!")) };
+    let subsystem2 = |subsys: SubsystemHandle| async move {
+        subsys.on_shutdown_requested().await;
+        BoxedResult::Ok(())
+    };
 
     let (toplevel_finished, set_toplevel_finished) = Event::create();
 
-    let toplevel = Toplevel::<BoxedError>::new().start("subsys", subsystem);
+    let toplevel = Toplevel::<BoxedError>::new()
+        .start("subsys", subsystem)
+        .start("subsys2", subsystem2);
     let shutdown_token = toplevel.get_shutdown_token().clone();
 
     tokio::join!(
@@ -541,7 +553,12 @@ async fn destroying_toplevel_cancels_subsystems() {
 async fn shutdown_triggers_if_all_tasks_ended() {
     setup();
 
-    let subsys = move |_subsys: SubsystemHandle| async move { BoxedResult::Ok(()) };
+    let nested_subsys = move |_subsys: SubsystemHandle| async move { BoxedResult::Ok(()) };
+
+    let subsys = move |subsys: SubsystemHandle| async move {
+        subsys.start("nested", nested_subsys);
+        BoxedResult::Ok(())
+    };
 
     tokio::time::timeout(
         Duration::from_millis(100),

@@ -1,5 +1,5 @@
-use crate::{ErrTypeTraits, ShutdownToken, SubsystemError, SubsystemFailure};
-use std::future::Future;
+use crate::{utils::ShutdownGuard, ErrTypeTraits, ShutdownToken, SubsystemError, SubsystemFailure};
+use std::{future::Future, sync::Arc};
 use tokio::task::{JoinError, JoinHandle};
 use tokio_util::sync::CancellationToken;
 
@@ -24,6 +24,7 @@ impl<ErrType: ErrTypeTraits> SubsystemRunner<ErrType> {
         local_shutdown_token: ShutdownToken,
         name: String,
         cancellation_token: CancellationToken,
+        shutdown_guard: Arc<ShutdownGuard>,
     ) -> Result<(), SubsystemError<ErrType>> {
         /// Maps the complicated return value of the subsystem joinhandle to an appropriate error
         fn map_subsystem_result<ErrType: ErrTypeTraits>(
@@ -71,6 +72,8 @@ impl<ErrType: ErrTypeTraits> SubsystemRunner<ErrType> {
             }
         };
 
+        drop(shutdown_guard);
+
         result
     }
 
@@ -80,6 +83,7 @@ impl<ErrType: ErrTypeTraits> SubsystemRunner<ErrType> {
         local_shutdown_token: ShutdownToken,
         cancellation_token: CancellationToken,
         subsystem_future: Fut,
+        shutdown_guard: Arc<ShutdownGuard>,
     ) -> Self {
         // Spawn to nested tasks.
         // This enables us to catch panics, as panics get returned through a JoinHandle.
@@ -90,6 +94,7 @@ impl<ErrType: ErrTypeTraits> SubsystemRunner<ErrType> {
             local_shutdown_token,
             name,
             cancellation_token.clone(),
+            shutdown_guard,
         ));
 
         Self {
