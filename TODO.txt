@@ -34,3 +34,10 @@ More knowledge:
 Problem: Errors never get propagated up. (Is that desired?) (I don't think so, whether people handle errors at the top or at a nested tokio::spawn shouldn't matter)
 
 - rewrite example 12 with new nested toplevel
+
+- Question: should nested toplevel keep parent toplevel from auto-shutdown?
+    Answer: yes? No? Unsure ... it shouldn't matter, because someone has to query the error code of
+            the nested toplevel
+    Safest bet: store it in the nested toplevel and delete it in the handle_shutdown_requests function
+                after the on_shutdown_requested call
+                -> Write tests for that
