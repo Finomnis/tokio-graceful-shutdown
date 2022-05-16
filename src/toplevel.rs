@@ -10,6 +10,7 @@ use crate::exit_state::prettify_exit_states;
 use crate::shutdown_token::create_shutdown_token;
 use crate::signal_handling::wait_for_signal;
 use crate::utils::wait_forever;
+use crate::utils::ShutdownGuard;
 use crate::ErrTypeTraits;
 use crate::GracefulShutdownError;
 use crate::{ShutdownToken, SubsystemHandle};
@@ -48,6 +49,7 @@ use super::subsystem::SubsystemData;
 pub struct Toplevel<ErrType: ErrTypeTraits = crate::BoxedError> {
     subsys_data: Arc<SubsystemData<ErrType>>,
     subsys_handle: SubsystemHandle<ErrType>,
+    shutdown_guard: Option<Arc<ShutdownGuard>>,
 }
 
 impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
@@ -60,17 +62,20 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         let global_shutdown_token = create_shutdown_token();
         let local_shutdown_token = global_shutdown_token.clone();
         let cancellation_token = CancellationToken::new();
+        let shutdown_guard = Arc::new(ShutdownGuard::new(global_shutdown_token.clone()));
 
         let subsys_data = Arc::new(SubsystemData::new(
             "",
             global_shutdown_token,
             local_shutdown_token,
             cancellation_token,
+            Arc::downgrade(&shutdown_guard),
         ));
         let subsys_handle = SubsystemHandle::new(subsys_data.clone());
         Self {
             subsys_data,
             subsys_handle,
+            shutdown_guard: Some(shutdown_guard),
         }
     }
 
@@ -161,7 +166,8 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         }
     }
 
-    /// Performs a clean program shutdown, once a shutdown is requested.
+    /// Performs a clean program shutdown, once a shutdown is requested or all subsystems have
+    /// finished.
     ///
     /// In most cases, this will be the final method of `main()`, as it blocks until program
     /// shutdown and returns an appropriate `Result` that can be directly returned by `main()`.
@@ -182,9 +188,13 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// An implicit `.into()` will be performed to convert it to the desired error wrapping type.
     ///
     pub async fn handle_shutdown_requests<ReturnErrType: From<GracefulShutdownError<ErrType>>>(
-        self,
+        mut self,
         shutdown_timeout: Duration,
     ) -> Result<(), ReturnErrType> {
+        // Remove the shutdown guard we hold ourselves, to enable auto-shutdown triggering
+        // when all subsystems are finished
+        self.shutdown_guard.take();
+
         self.subsys_handle.on_shutdown_requested().await;
 
         let timeout_occurred = AtomicBool::new(false);

@@ -20,6 +20,11 @@ async fn subsys1(_subsys: SubsystemHandle) -> Result<()> {
     Err(miette!("Subsystem1 threw an error."))
 }
 
+async fn subsys2(subsys: SubsystemHandle) -> Result<()> {
+    subsys.on_shutdown_requested().await;
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     // Init logging
@@ -28,6 +33,7 @@ async fn main() -> Result<()> {
     // Create toplevel
     Toplevel::new()
         .start("Subsys1", subsys1)
+        .start("Subsys2", subsys2)
         .catch_signals()
         .handle_shutdown_requests(Duration::from_millis(1000))
         .await

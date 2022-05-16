@@ -4,11 +4,13 @@ mod identifier;
 
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::Weak;
 
 use tokio_util::sync::CancellationToken;
 
 use crate::runner::SubsystemRunner;
 use crate::shutdown_token::ShutdownToken;
+use crate::utils::ShutdownGuard;
 use crate::ErrTypeTraits;
 use crate::PartialShutdownError;
 
@@ -22,6 +24,7 @@ pub struct SubsystemData<ErrType: ErrTypeTraits = crate::BoxedError> {
     local_shutdown_token: ShutdownToken,
     global_shutdown_token: ShutdownToken,
     cancellation_token: CancellationToken,
+    shutdown_guard: Weak<ShutdownGuard>,
 }
 
 /// The handle given to each subsystem through which the subsystem can interact with this crate.

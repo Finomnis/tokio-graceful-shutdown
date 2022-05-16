@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::sync::Weak;
 use tokio::sync::MutexGuard;
 
 use async_recursion::async_recursion;
@@ -16,6 +17,7 @@ use crate::exit_state::prettify_exit_states;
 use crate::exit_state::{join_shutdown_results, ShutdownResults, SubprocessExitState};
 use crate::runner::SubsystemRunner;
 use crate::shutdown_token::ShutdownToken;
+use crate::utils::ShutdownGuard;
 use crate::ErrTypeTraits;
 use crate::SubsystemError;
 
@@ -25,6 +27,7 @@ impl<ErrType: ErrTypeTraits> SubsystemData<ErrType> {
         global_shutdown_token: ShutdownToken,
         local_shutdown_token: ShutdownToken,
         cancellation_token: CancellationToken,
+        shutdown_guard: Weak<ShutdownGuard>,
     ) -> Self {
         Self {
             name: name.to_string(),
@@ -33,6 +36,7 @@ impl<ErrType: ErrTypeTraits> SubsystemData<ErrType> {
             local_shutdown_token,
             cancellation_token,
             shutdown_subsystems: tokio::sync::Mutex::new(Vec::new()),
+            shutdown_guard,
         }
     }
 
@@ -221,11 +225,14 @@ mod tests {
     #[tokio::test]
     async fn prepare_shutdown_does_not_crash_when_called_twice() {
         let shutdown_token = create_shutdown_token();
+        let shutdown_guard = Arc::new(ShutdownGuard::new(shutdown_token.clone()));
+
         let data = SubsystemData::<BoxedError>::new(
             "MySubsys",
             shutdown_token.clone(),
             shutdown_token.clone(),
             CancellationToken::new(),
+            Arc::downgrade(&shutdown_guard),
         );
 
         data.prepare_shutdown().await;

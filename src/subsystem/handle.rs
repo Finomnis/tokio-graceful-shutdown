@@ -66,12 +66,21 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
             }
         };
 
+        // When we are inside a subsystem, shutdown_guard cannot have gotten dropped, because
+        // the SubsystemRunner of the current subsystem keeps it alive.
+        let shutdown_guard = self
+            .data
+            .shutdown_guard
+            .upgrade()
+            .expect("'start()' called from outside a subsystem");
+
         // Create subsystem data structure
         let new_subsystem = Arc::new(SubsystemData::new(
             &name,
             self.global_shutdown_token().clone(),
             self.local_shutdown_token().child_token(),
             self.data.cancellation_token.child_token(),
+            self.data.shutdown_guard.clone(),
         ));
 
         // Create handle
@@ -90,6 +99,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
             new_subsystem.local_shutdown_token.child_token(),
             new_subsystem.cancellation_token.child_token(),
             subsystem_future,
+            shutdown_guard,
         );
 
         // Store subsystem data
