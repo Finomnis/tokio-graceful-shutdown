@@ -121,8 +121,14 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// - On Windows:
     ///     - Ctrl+C (SIGINT)
     ///
-    /// - On Linux:
+    /// - On Unix:
     ///     - SIGINT and SIGTERM
+    ///
+    /// # Caveats
+    ///
+    /// This function internally uses [tokio::signal] with all of its caveats.
+    ///
+    /// Especially the caveats from [tokio::signal::unix::Signal] are important for Unix targets.
     ///
     pub fn catch_signals(self) -> Self {
         let shutdown_token = self.subsys_handle.global_shutdown_token().clone();
