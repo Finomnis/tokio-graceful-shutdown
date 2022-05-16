@@ -103,7 +103,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         Fut: 'static + Future<Output = Result<(), Err>> + Send,
         Err: Into<ErrType>,
     {
-        SubsystemHandle::new(self.subsys_data.clone()).start(name, subsystem);
+        self.subsys_handle.start(name, subsystem);
 
         self
     }
