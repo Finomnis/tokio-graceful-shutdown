@@ -538,6 +538,38 @@ async fn destroying_toplevel_cancels_subsystems() {
 }
 
 #[tokio::test]
+async fn shutdown_triggers_if_all_tasks_ended() {
+    setup();
+
+    let subsys = move |_subsys: SubsystemHandle| async move { BoxedResult::Ok(()) };
+
+    tokio::time::timeout(
+        Duration::from_millis(100),
+        Toplevel::new()
+            .start("subsys1", subsys)
+            .start("subsys2", subsys)
+            .handle_shutdown_requests::<BoxedError>(Duration::from_millis(100)),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+}
+
+#[tokio::test]
+async fn shutdown_triggers_if_no_task_exists() {
+    setup();
+
+    tokio::time::timeout(
+        Duration::from_millis(100),
+        Toplevel::<BoxedError>::new()
+            .handle_shutdown_requests::<BoxedError>(Duration::from_millis(100)),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+}
+
+#[tokio::test]
 async fn destroying_toplevel_cancels_nested_toplevel_subsystems() {
     setup();
 
