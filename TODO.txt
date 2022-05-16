@@ -17,7 +17,7 @@ Now, nested toplevel is possible:
               -> local
 - cancellation.child -> cancellation
 
-Otherwise, for non-nested:
+Otherwise, for non-toplevel:
 - global -> global
 - group -> group
 - local.child -> local
