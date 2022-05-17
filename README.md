@@ -53,7 +53,7 @@ Subsystems can then be started using the `start()` functionality of the toplevel
 
 The `catch_signals()` method signals the `Toplevel` object to listen for SIGINT/SIGTERM/Ctrl+C and initiate a shutdown thereafter.
 
-`handle_shutdown_requests()` is the final and most important method of `Toplevel`. It idles until the program enters the shutdown mode. Then, it collects all the return values of the subsystems and determines the global error state, and makes sure shutdown completes within the given timeout.
+`handle_shutdown_requests()` is the final and most important method of `Toplevel`. It idles until the program enters the shutdown mode. Then, it collects all the return values of the subsystems, determines the global error state and makes sure the shutdown completes within the given timeout.
 Lastly, it returns an error value that can be directly used as a return code for `main()`.
 
 Further examples can be seen in the [**examples**](https://github.com/Finomnis/tokio-graceful-shutdown/tree/main/examples) folder.
