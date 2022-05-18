@@ -9,10 +9,10 @@ use std::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 
 use super::NestedSubsystem;
-use super::PartialShutdownError;
 use super::SubsystemData;
 use super::SubsystemDescriptor;
 use super::SubsystemIdentifier;
+use super::SubsystemJoinError;
 use crate::exit_state::prettify_exit_states;
 use crate::exit_state::{join_shutdown_results, ShutdownResults, SubprocessExitState};
 use crate::runner::SubsystemRunner;
@@ -163,24 +163,21 @@ impl<ErrType: ErrTypeTraits> SubsystemData<ErrType> {
         self.cancellation_token.cancel();
     }
 
-    pub async fn perform_partial_shutdown(
+    pub async fn join_subsystem(
         &self,
-        subsystem_handle: NestedSubsystem,
-    ) -> Result<(), PartialShutdownError<ErrType>> {
+        subsystem_id: SubsystemIdentifier,
+    ) -> Result<(), SubsystemJoinError<ErrType>> {
         let subsystem = {
             let mut subsystems_mutex = self.subsystems.lock().unwrap();
             let subsystems = subsystems_mutex
                 .as_mut()
-                .ok_or(PartialShutdownError::AlreadyShuttingDown)?;
+                .ok_or(SubsystemJoinError::AlreadyShuttingDown)?;
             let position = subsystems
                 .iter()
-                .position(|elem| elem.id == subsystem_handle.id)
-                .ok_or(PartialShutdownError::SubsystemNotFound)?;
+                .position(|elem| elem.id == subsystem_id)
+                .ok_or(SubsystemJoinError::SubsystemNotFound)?;
             subsystems.swap_remove(position)
         };
-
-        // Initiate shutdown
-        subsystem.data.local_shutdown_token.shutdown();
 
         // Wait for shutdown to finish
         let mut subsystem_vec = vec![subsystem];
@@ -211,7 +208,7 @@ impl<ErrType: ErrTypeTraits> SubsystemData<ErrType> {
         if failed_subsystems.is_empty() {
             Ok(())
         } else {
-            Err(PartialShutdownError::SubsystemsFailed(failed_subsystems))
+            Err(SubsystemJoinError::SubsystemsFailed(failed_subsystems))
         }
     }
 }

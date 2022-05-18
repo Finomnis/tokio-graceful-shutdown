@@ -6,8 +6,8 @@ use super::SubsystemData;
 use super::SubsystemHandle;
 use crate::runner::SubsystemRunner;
 use crate::ErrTypeTraits;
-use crate::PartialShutdownError;
 use crate::ShutdownToken;
+use crate::SubsystemJoinError;
 
 #[cfg(doc)]
 use crate::Toplevel;
@@ -52,7 +52,11 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     /// }
     /// ```
     ///
-    pub fn start<Err, Fut, Subsys>(&self, name: &'static str, subsystem: Subsys) -> NestedSubsystem
+    pub fn start<Err, Fut, Subsys>(
+        &self,
+        name: &'static str,
+        subsystem: Subsys,
+    ) -> NestedSubsystem<ErrType>
     where
         Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
         Fut: 'static + Future<Output = Result<(), Err>> + Send,
@@ -102,10 +106,16 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
             shutdown_guard,
         );
 
+        let local_shutdown_token = new_subsystem.local_shutdown_token.clone();
+
         // Store subsystem data
         let id = self.data.add_subsystem(new_subsystem, subsystem_runner);
 
-        NestedSubsystem { id }
+        NestedSubsystem {
+            id,
+            parent_data: self.data.clone(),
+            local_shutdown_token,
+        }
     }
 
     /// Wait for the shutdown mode to be triggered.
@@ -226,51 +236,6 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     /// ```
     pub fn request_shutdown(&self) {
         self.data.global_shutdown_token.shutdown()
-    }
-
-    /// Preforms a partial shutdown of the given nested subsystem.
-    ///
-    /// # Arguments
-    ///
-    /// * `subsystem` - The nested subsystem that should be shut down
-    ///
-    /// # Returns
-    ///
-    /// A [`PartialShutdownError`] on failure.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use miette::Result;
-    /// use tokio::time::{sleep, Duration};
-    /// use tokio_graceful_shutdown::SubsystemHandle;
-    ///
-    /// async fn nested_subsystem(subsys: SubsystemHandle) -> Result<()> {
-    ///     // This subsystem does nothing but wait for the shutdown to happen
-    ///     subsys.on_shutdown_requested().await;
-    ///     Ok(())
-    /// }
-    ///
-    /// async fn subsystem(subsys: SubsystemHandle) -> Result<()> {
-    ///     // This subsystem waits for one second and then performs a partial shutdown
-    ///
-    ///     // Spawn nested subsystem
-    ///     let nested = subsys.start("nested", nested_subsystem);
-    ///
-    ///     // Wait for a second
-    ///     sleep(Duration::from_millis(1000)).await;
-    ///
-    ///     // Perform a partial shutdown of the nested subsystem
-    ///     subsys.perform_partial_shutdown(nested).await?;
-    ///
-    ///     Ok(())
-    /// }
-    /// ```
-    pub async fn perform_partial_shutdown(
-        &self,
-        subsystem: NestedSubsystem,
-    ) -> Result<(), PartialShutdownError<ErrType>> {
-        self.data.perform_partial_shutdown(subsystem).await
     }
 
     /// Provides access to the process-wide parent shutdown token.

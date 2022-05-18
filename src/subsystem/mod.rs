@@ -1,6 +1,8 @@
 mod data;
+mod descriptor;
 mod handle;
 mod identifier;
+mod nested_subsystem;
 
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -12,7 +14,7 @@ use crate::runner::SubsystemRunner;
 use crate::shutdown_token::ShutdownToken;
 use crate::utils::ShutdownGuard;
 use crate::ErrTypeTraits;
-use crate::PartialShutdownError;
+use crate::SubsystemJoinError;
 
 use self::identifier::SubsystemIdentifier;
 
@@ -52,6 +54,8 @@ struct SubsystemDescriptor<ErrType: ErrTypeTraits = crate::BoxedError> {
 /// A nested subsystem. Can be used to perform a partial shutdown.
 ///
 /// For more information, see [`SubsystemHandle::start()`] and [`SubsystemHandle::perform_partial_shutdown()`].
-pub struct NestedSubsystem {
+pub struct NestedSubsystem<ErrType: ErrTypeTraits = crate::BoxedError> {
     id: SubsystemIdentifier,
+    parent_data: Arc<SubsystemData<ErrType>>,
+    local_shutdown_token: ShutdownToken,
 }

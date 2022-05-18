@@ -32,16 +32,15 @@ impl<ErrType: ErrTypeTraits> GracefulShutdownError<ErrType> {
     }
 }
 
-/// This enum contains all the possible errors that a partial shutdown
-/// could cause.
+/// This enum contains all the possible errors that joining a subsystem could cause
 #[derive(Debug, Error, Diagnostic)]
-pub enum PartialShutdownError<ErrType: ErrTypeTraits = crate::BoxedError> {
+pub enum SubsystemJoinError<ErrType: ErrTypeTraits = crate::BoxedError> {
     /// At least one subsystem caused an error.
     #[error("at least one subsystem returned an error")]
     SubsystemsFailed(#[related] Vec<SubsystemError<ErrType>>),
     /// The given nested subsystem does not seem to be a child of
     /// the parent subsystem.
-    #[error("unable to find nested subsystem in given subsystem")]
+    #[error("unable to find the nested subsystem")]
     SubsystemNotFound,
     /// A partial shutdown can not be performed because the entire program
     /// is already shutting down.
@@ -142,9 +141,9 @@ mod tests {
     fn errors_can_be_converted_to_diagnostic() {
         examine_report(GracefulShutdownError::ShutdownTimeout::<BoxedError>(vec![]).into());
         examine_report(GracefulShutdownError::SubsystemsFailed::<BoxedError>(vec![]).into());
-        examine_report(PartialShutdownError::AlreadyShuttingDown::<BoxedError>.into());
-        examine_report(PartialShutdownError::SubsystemNotFound::<BoxedError>.into());
-        examine_report(PartialShutdownError::SubsystemsFailed::<BoxedError>(vec![]).into());
+        examine_report(SubsystemJoinError::AlreadyShuttingDown::<BoxedError>.into());
+        examine_report(SubsystemJoinError::SubsystemNotFound::<BoxedError>.into());
+        examine_report(SubsystemJoinError::SubsystemsFailed::<BoxedError>(vec![]).into());
         examine_report(SubsystemError::Cancelled::<BoxedError>("".into()).into());
         examine_report(SubsystemError::Panicked::<BoxedError>("".into()).into());
         examine_report(
