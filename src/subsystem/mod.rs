@@ -8,11 +8,11 @@ use std::sync::Weak;
 
 use tokio_util::sync::CancellationToken;
 
+use crate::errors::PartialShutdownError;
 use crate::runner::SubsystemRunner;
 use crate::shutdown_token::ShutdownToken;
 use crate::utils::ShutdownGuard;
 use crate::ErrTypeTraits;
-use crate::PartialShutdownError;
 
 use self::identifier::SubsystemIdentifier;
 

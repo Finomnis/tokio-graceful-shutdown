@@ -4,9 +4,9 @@ use std::sync::Arc;
 use super::NestedSubsystem;
 use super::SubsystemData;
 use super::SubsystemHandle;
+use crate::errors::PartialShutdownError;
 use crate::runner::SubsystemRunner;
 use crate::ErrTypeTraits;
-use crate::PartialShutdownError;
 use crate::ShutdownToken;
 
 #[cfg(doc)]

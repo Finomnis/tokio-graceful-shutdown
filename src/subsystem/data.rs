@@ -13,13 +13,13 @@ use super::PartialShutdownError;
 use super::SubsystemData;
 use super::SubsystemDescriptor;
 use super::SubsystemIdentifier;
+use crate::errors::SubsystemError;
 use crate::exit_state::prettify_exit_states;
 use crate::exit_state::{join_shutdown_results, ShutdownResults, SubprocessExitState};
 use crate::runner::SubsystemRunner;
 use crate::shutdown_token::ShutdownToken;
 use crate::utils::ShutdownGuard;
 use crate::ErrTypeTraits;
-use crate::SubsystemError;
 
 impl<ErrType: ErrTypeTraits> SubsystemData<ErrType> {
     pub fn new(
