@@ -7,7 +7,6 @@ use super::SubsystemHandle;
 use crate::runner::SubsystemRunner;
 use crate::ErrTypeTraits;
 use crate::ShutdownToken;
-use crate::SubsystemJoinError;
 
 #[cfg(doc)]
 use crate::Toplevel;
@@ -84,6 +83,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
             self.global_shutdown_token().clone(),
             self.local_shutdown_token().child_token(),
             self.data.cancellation_token.child_token(),
+            self.data.shutdown_on_error.child_token(),
             self.data.shutdown_guard.clone(),
         ));
 
@@ -103,18 +103,19 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
             new_subsystem.local_shutdown_token.child_token(),
             new_subsystem.cancellation_token.child_token(),
             subsystem_future,
+            new_subsystem.shutdown_on_error.child_token(),
             shutdown_guard,
         );
 
-        let local_shutdown_token = new_subsystem.local_shutdown_token.clone();
-
         // Store subsystem data
-        let id = self.data.add_subsystem(new_subsystem, subsystem_runner);
+        let id = self
+            .data
+            .add_subsystem(new_subsystem.clone(), subsystem_runner);
 
         NestedSubsystem {
             id,
             parent_data: self.data.clone(),
-            local_shutdown_token,
+            data: new_subsystem,
         }
     }
 

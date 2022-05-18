@@ -25,18 +25,28 @@ impl<ErrType: ErrTypeTraits> NestedSubsystem<ErrType> {
     ///     // Wait for a second
     ///     sleep(Duration::from_millis(1000)).await;
     ///
-    ///     // Perform a partial shutdown of the nested subsystem
-    ///     subsys.perform_partial_shutdown(nested).await?;
+    ///     // Trigger a partial shutdown of the nested subsystem
+    ///     nested.request_partial_shutdown();
+    ///
+    ///     // Wait until the subsystem is finished shutting down
+    ///     nested.join().await?;
     ///
     ///     Ok(())
     /// }
     /// ```
-    pub async fn request_partial_shutdown(&self) {
-        self.local_shutdown_token.shutdown();
+    pub fn request_partial_shutdown(&self) {
+        self.data.local_shutdown_token.shutdown();
     }
 
-    /// Bla
+    /// Takes ownership of the error path of the subsystem and waits for its completion.
+    ///
+    /// # Caveats
+    ///
+    /// This will move the error propagation to this function.
+    /// Even when this function is cancelled, the error will no longer be received
+    /// by parent subsystems or the [Toplevel](crate::Toplevel) object.
+    ///
     pub async fn join(self) -> Result<(), SubsystemJoinError<ErrType>> {
-        self.parent_data.join_subsystem(self.id).await
+        self.parent_data.clone().join_subsystem(self).await
     }
 }

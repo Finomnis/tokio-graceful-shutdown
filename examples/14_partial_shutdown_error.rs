@@ -35,7 +35,8 @@ async fn subsys1(subsys: SubsystemHandle) -> Result<()> {
         _ = subsys.on_shutdown_requested() => (),
         _ = sleep(Duration::from_secs(1)) => {
             log::info!("Shutting down nested subsystem ...");
-            if let Err(err) = subsys.perform_partial_shutdown(nested_subsys).await{
+            nested_subsys.request_partial_shutdown();
+            if let Err(err) = nested_subsys.join().await{
                 log::warn!("Partial shutdown failed: {}", err);
             };
             log::info!("Nested subsystem shut down.");

@@ -1,5 +1,4 @@
 mod data;
-mod descriptor;
 mod handle;
 mod identifier;
 mod nested_subsystem;
@@ -26,6 +25,7 @@ pub struct SubsystemData<ErrType: ErrTypeTraits = crate::BoxedError> {
     local_shutdown_token: ShutdownToken,
     global_shutdown_token: ShutdownToken,
     cancellation_token: CancellationToken,
+    shutdown_on_error: CancellationToken,
     shutdown_guard: Weak<ShutdownGuard>,
 }
 
@@ -57,5 +57,5 @@ struct SubsystemDescriptor<ErrType: ErrTypeTraits = crate::BoxedError> {
 pub struct NestedSubsystem<ErrType: ErrTypeTraits = crate::BoxedError> {
     id: SubsystemIdentifier,
     parent_data: Arc<SubsystemData<ErrType>>,
-    local_shutdown_token: ShutdownToken,
+    data: Arc<SubsystemData<ErrType>>,
 }

@@ -24,6 +24,7 @@ impl<ErrType: ErrTypeTraits> SubsystemRunner<ErrType> {
         local_shutdown_token: ShutdownToken,
         name: String,
         cancellation_token: CancellationToken,
+        shutdown_on_error: CancellationToken,
         shutdown_guard: Arc<ShutdownGuard>,
     ) -> Result<(), SubsystemError<ErrType>> {
         /// Maps the complicated return value of the subsystem joinhandle to an appropriate error
@@ -60,13 +61,13 @@ impl<ErrType: ErrTypeTraits> SubsystemRunner<ErrType> {
             Ok(()) | Err(SubsystemError::Cancelled(_)) => {}
             Err(SubsystemError::Failed(name, e)) => {
                 log::error!("Error in subsystem '{}': {:?}", name, e);
-                if !local_shutdown_token.is_shutting_down() {
+                if !shutdown_on_error.is_cancelled() && !local_shutdown_token.is_shutting_down() {
                     shutdown_token.shutdown();
                 }
             }
             Err(SubsystemError::Panicked(name)) => {
                 log::error!("Subsystem '{}' panicked", name);
-                if !local_shutdown_token.is_shutting_down() {
+                if !shutdown_on_error.is_cancelled() && !local_shutdown_token.is_shutting_down() {
                     shutdown_token.shutdown();
                 }
             }
@@ -83,6 +84,7 @@ impl<ErrType: ErrTypeTraits> SubsystemRunner<ErrType> {
         local_shutdown_token: ShutdownToken,
         cancellation_token: CancellationToken,
         subsystem_future: Fut,
+        shutdown_on_error: CancellationToken,
         shutdown_guard: Arc<ShutdownGuard>,
     ) -> Self {
         // Spawn to nested tasks.
@@ -94,6 +96,7 @@ impl<ErrType: ErrTypeTraits> SubsystemRunner<ErrType> {
             local_shutdown_token,
             name,
             cancellation_token.clone(),
+            shutdown_on_error,
             shutdown_guard,
         ));
 

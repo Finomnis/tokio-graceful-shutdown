@@ -27,6 +27,7 @@ impl<ErrType: ErrTypeTraits> SubsystemData<ErrType> {
         global_shutdown_token: ShutdownToken,
         local_shutdown_token: ShutdownToken,
         cancellation_token: CancellationToken,
+        shutdown_on_error: CancellationToken,
         shutdown_guard: Weak<ShutdownGuard>,
     ) -> Self {
         Self {
@@ -36,6 +37,7 @@ impl<ErrType: ErrTypeTraits> SubsystemData<ErrType> {
             local_shutdown_token,
             cancellation_token,
             shutdown_subsystems: tokio::sync::Mutex::new(Vec::new()),
+            shutdown_on_error,
             shutdown_guard,
         }
     }
@@ -165,8 +167,22 @@ impl<ErrType: ErrTypeTraits> SubsystemData<ErrType> {
 
     pub async fn join_subsystem(
         &self,
-        subsystem_id: SubsystemIdentifier,
+        subsystem_handle: NestedSubsystem<ErrType>,
     ) -> Result<(), SubsystemJoinError<ErrType>> {
+        // As we take this subsystem, we no longer want errors to be propagated to the top.
+        subsystem_handle.data.shutdown_on_error.cancel();
+
+        // If a shutdown is already in progress, don't take the subsystem.
+        if subsystem_handle
+            .data
+            .global_shutdown_token
+            .is_shutting_down()
+        {
+            return Err(SubsystemJoinError::AlreadyShuttingDown);
+        };
+
+        // Now that we decoupled the error propagation of the subsystem,
+        // let's take it and handle the error ourselves
         let subsystem = {
             let mut subsystems_mutex = self.subsystems.lock().unwrap();
             let subsystems = subsystems_mutex
@@ -174,9 +190,11 @@ impl<ErrType: ErrTypeTraits> SubsystemData<ErrType> {
                 .ok_or(SubsystemJoinError::AlreadyShuttingDown)?;
             let position = subsystems
                 .iter()
-                .position(|elem| elem.id == subsystem_id)
+                .position(|elem| elem.id == subsystem_handle.id)
                 .ok_or(SubsystemJoinError::SubsystemNotFound)?;
-            subsystems.swap_remove(position)
+            let subsystem = subsystems.swap_remove(position);
+
+            subsystem
         };
 
         // Wait for shutdown to finish
@@ -197,9 +215,9 @@ impl<ErrType: ErrTypeTraits> SubsystemData<ErrType> {
 
         // Print subsystem exit states
         if failed_subsystems.is_empty() {
-            log::debug!("Partial shutdown successful. Subsystem states:");
+            log::debug!("Subsystems finished. Subsystem states:");
         } else {
-            log::debug!("Some subsystems during partial shutdown failed. Subsystem states:");
+            log::debug!("Some subsystems failed. Subsystem states:");
         };
         for formatted_exit_state in formatted_exit_states {
             log::debug!("    {}", formatted_exit_state);
@@ -228,6 +246,7 @@ mod tests {
             "MySubsys",
             shutdown_token.clone(),
             shutdown_token.clone(),
+            CancellationToken::new(),
             CancellationToken::new(),
             Arc::downgrade(&shutdown_guard),
         );

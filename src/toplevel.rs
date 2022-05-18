@@ -62,6 +62,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         let global_shutdown_token = create_shutdown_token();
         let local_shutdown_token = global_shutdown_token.clone();
         let cancellation_token = CancellationToken::new();
+        let shutdown_on_error = CancellationToken::new();
         let shutdown_guard = Arc::new(ShutdownGuard::new(global_shutdown_token.clone()));
 
         let subsys_data = Arc::new(SubsystemData::new(
@@ -69,6 +70,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
             global_shutdown_token,
             local_shutdown_token,
             cancellation_token,
+            shutdown_on_error,
             Arc::downgrade(&shutdown_guard),
         ));
         let subsys_handle = SubsystemHandle::new(subsys_data.clone());
