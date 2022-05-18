@@ -6,13 +6,13 @@ use std::time::Duration;
 
 use tokio_util::sync::CancellationToken;
 
+use crate::errors::GracefulShutdownError;
 use crate::exit_state::prettify_exit_states;
 use crate::shutdown_token::create_shutdown_token;
 use crate::signal_handling::wait_for_signal;
 use crate::utils::wait_forever;
 use crate::utils::ShutdownGuard;
 use crate::ErrTypeTraits;
-use crate::GracefulShutdownError;
 use crate::{ShutdownToken, SubsystemHandle};
 
 use super::subsystem::SubsystemData;
