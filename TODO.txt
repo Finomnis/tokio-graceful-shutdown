@@ -1,0 +1,7 @@
+write tests for partial shutdown
+
+- trigger-shutdown triggers shutdown of children but not of self or parent
+- error does not reach toplevel when .join is cancelled
+- subsystem gets cancelled when .join is cancelled
+- error reaches .join
+-

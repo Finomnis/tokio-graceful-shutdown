@@ -42,11 +42,18 @@ impl<ErrType: ErrTypeTraits> NestedSubsystem<ErrType> {
     ///
     /// # Caveats
     ///
-    /// This will move the error propagation to this function.
-    /// Even when this function is cancelled, the error will no longer be received
-    /// by parent subsystems or the [Toplevel](crate::Toplevel) object.
+    /// This will redirect the error propagation to this function.
+    /// Even when this function is cancelled, errors of this subsystem will no longer be
+    /// received by parent subsystems or the [Toplevel](crate::Toplevel) object.
+    ///
+    /// # Cancellation
+    ///
+    /// Cancelling this function will cancel the subsystem tree.
     ///
     pub async fn join(self) -> Result<(), SubsystemJoinError<ErrType>> {
-        self.parent_data.clone().join_subsystem(self).await
+        let cancellation_guard = self.data.cancellation_token.clone().drop_guard();
+        let result = self.parent_data.clone().join_subsystem(self).await;
+        cancellation_guard.disarm();
+        result
     }
 }
