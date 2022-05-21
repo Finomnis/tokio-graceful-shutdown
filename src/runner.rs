@@ -1,4 +1,8 @@
-use crate::{utils::ShutdownGuard, ErrTypeTraits, ShutdownToken, SubsystemError, SubsystemFailure};
+use crate::{
+    errors::{SubsystemError, SubsystemFailure},
+    utils::ShutdownGuard,
+    ErrTypeTraits, ShutdownToken,
+};
 use std::{future::Future, sync::Arc};
 use tokio::task::{JoinError, JoinHandle};
 use tokio_util::sync::CancellationToken;

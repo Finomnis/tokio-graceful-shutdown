@@ -102,7 +102,7 @@ impl<T> ErrTypeTraits for T where
 {
 }
 
-mod errors;
+pub mod errors;
 mod exit_state;
 mod into_subsystem;
 mod runner;
@@ -112,10 +112,6 @@ mod subsystem;
 mod toplevel;
 mod utils;
 
-pub use errors::GracefulShutdownError;
-pub use errors::SubsystemError;
-pub use errors::SubsystemFailure;
-pub use errors::SubsystemJoinError;
 pub use into_subsystem::IntoSubsystem;
 pub use shutdown_token::ShutdownToken;
 pub use subsystem::NestedSubsystem;

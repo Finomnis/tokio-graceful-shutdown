@@ -13,7 +13,6 @@ use crate::runner::SubsystemRunner;
 use crate::shutdown_token::ShutdownToken;
 use crate::utils::ShutdownGuard;
 use crate::ErrTypeTraits;
-use crate::SubsystemJoinError;
 
 use self::identifier::SubsystemIdentifier;
 

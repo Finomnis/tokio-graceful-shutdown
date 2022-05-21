@@ -1,3 +1,5 @@
+//! All the errors that can be caused by this crate.
+
 use miette::Diagnostic;
 use thiserror::Error;
 

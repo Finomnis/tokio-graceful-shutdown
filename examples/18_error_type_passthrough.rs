@@ -3,7 +3,10 @@
 
 use env_logger::{Builder, Env};
 use tokio::time::{sleep, Duration};
-use tokio_graceful_shutdown::{GracefulShutdownError, IntoSubsystem, SubsystemHandle, Toplevel};
+use tokio_graceful_shutdown::{
+    errors::{GracefulShutdownError, SubsystemError},
+    IntoSubsystem, SubsystemHandle, Toplevel,
+};
 
 #[derive(Debug, thiserror::Error)]
 enum MyError {
@@ -57,6 +60,10 @@ async fn subsys5(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
     Ok(())
 }
 
+// This subsystem implements the IntoSubsystem trait with a custom error type.
+// The first generic is the error type returned from the `run()` function, the
+// second generic is the error wrapper type used by Toplevel. In this case,
+// both are identical.
 struct Subsys6;
 
 #[async_trait::async_trait]
@@ -99,7 +106,7 @@ async fn main() -> Result<(), miette::Report> {
 
         for subsystem_error in e.get_subsystem_errors() {
             match subsystem_error {
-                tokio_graceful_shutdown::SubsystemError::Failed(name, e) => {
+                SubsystemError::Failed(name, e) => {
                     log::warn!("   Subsystem '{}' failed.", name);
                     match e.get_error() {
                         MyError::WithData(data) => {
@@ -110,10 +117,10 @@ async fn main() -> Result<(), miette::Report> {
                         }
                     }
                 }
-                tokio_graceful_shutdown::SubsystemError::Cancelled(name) => {
+                SubsystemError::Cancelled(name) => {
                     log::warn!("   Subsystem '{}' was cancelled.", name)
                 }
-                tokio_graceful_shutdown::SubsystemError::Panicked(name) => {
+                SubsystemError::Panicked(name) => {
                     log::warn!("   Subsystem '{}' panicked.", name)
                 }
             }

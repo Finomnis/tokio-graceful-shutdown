@@ -2,8 +2,8 @@ use anyhow::anyhow;
 use env_logger;
 use tokio::time::{sleep, timeout, Duration};
 use tokio_graceful_shutdown::{
-    GracefulShutdownError, IntoSubsystem, PartialShutdownError, SubsystemError, SubsystemHandle,
-    Toplevel,
+    errors::{GracefulShutdownError, PartialShutdownError, SubsystemError},
+    IntoSubsystem, SubsystemHandle, Toplevel,
 };
 
 mod common;
