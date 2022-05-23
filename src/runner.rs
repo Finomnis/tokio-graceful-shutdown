@@ -1,13 +1,9 @@
-use crate::{
-    errors::{SubsystemError, SubsystemFailure},
-    utils::ShutdownGuard,
-    ErrTypeTraits, ShutdownToken,
-};
+use crate::{err_types::ErrorHolder, errors::SubsystemError, utils::ShutdownGuard, ShutdownToken};
 use std::{future::Future, sync::Arc};
 use tokio::task::{JoinError, JoinHandle};
 use tokio_util::sync::CancellationToken;
 
-pub struct SubsystemRunner<ErrType: ErrTypeTraits = crate::BoxedError> {
+pub struct SubsystemRunner<ErrType: ErrorHolder = crate::BoxedError> {
     outer_joinhandle: JoinHandle<Result<(), SubsystemError<ErrType>>>,
     cancellation_token: CancellationToken,
 }
@@ -15,15 +11,15 @@ pub struct SubsystemRunner<ErrType: ErrTypeTraits = crate::BoxedError> {
 /// Dropping the SubsystemRunner cancels the task.
 ///
 /// In consequence, this means that dropping the Toplevel object cancels all tasks.
-impl<ErrType: ErrTypeTraits> Drop for SubsystemRunner<ErrType> {
+impl<ErrType: ErrorHolder> Drop for SubsystemRunner<ErrType> {
     fn drop(&mut self) {
         self.abort();
     }
 }
 
-impl<ErrType: ErrTypeTraits> SubsystemRunner<ErrType> {
+impl<ErrType: ErrorHolder> SubsystemRunner<ErrType> {
     async fn handle_subsystem(
-        mut inner_joinhandle: JoinHandle<Result<(), ErrType>>,
+        mut inner_joinhandle: JoinHandle<Result<(), ErrType::Internal>>,
         shutdown_token: ShutdownToken,
         local_shutdown_token: ShutdownToken,
         name: String,
@@ -31,15 +27,15 @@ impl<ErrType: ErrTypeTraits> SubsystemRunner<ErrType> {
         shutdown_guard: Arc<ShutdownGuard>,
     ) -> Result<(), SubsystemError<ErrType>> {
         /// Maps the complicated return value of the subsystem joinhandle to an appropriate error
-        fn map_subsystem_result<ErrType: ErrTypeTraits>(
+        fn map_subsystem_result<ErrType: ErrorHolder>(
             name: &str,
-            result: Result<Result<(), ErrType>, JoinError>,
+            result: Result<Result<(), ErrType::Internal>, JoinError>,
         ) -> Result<(), SubsystemError<ErrType>> {
             match result {
                 Ok(Ok(())) => Ok(()),
                 Ok(Err(e)) => Err(SubsystemError::Failed(
                     name.to_string(),
-                    SubsystemFailure(e),
+                    ErrType::from_error(e),
                 )),
                 Err(e) => Err(if e.is_cancelled() {
                     SubsystemError::Cancelled(name.to_string())
@@ -81,7 +77,7 @@ impl<ErrType: ErrTypeTraits> SubsystemRunner<ErrType> {
         result
     }
 
-    pub fn new<Fut: 'static + Future<Output = Result<(), ErrType>> + Send>(
+    pub fn new<Fut: 'static + Future<Output = Result<(), ErrType::Internal>> + Send>(
         name: String,
         shutdown_token: ShutdownToken,
         local_shutdown_token: ShutdownToken,

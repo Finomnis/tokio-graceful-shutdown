@@ -1,12 +1,12 @@
-use crate::{errors::SubsystemError, ErrTypeTraits};
+use crate::{err_types::ErrorHolder, errors::SubsystemError};
 
-pub struct SubprocessExitState<ErrType: ErrTypeTraits = crate::BoxedError> {
+pub struct SubprocessExitState<ErrType: ErrorHolder = crate::BoxedError> {
     pub name: String,
     pub exit_state: String,
     pub raw_result: Result<(), SubsystemError<ErrType>>,
 }
 
-impl<ErrType: ErrTypeTraits> SubprocessExitState<ErrType> {
+impl<ErrType: ErrorHolder> SubprocessExitState<ErrType> {
     pub fn new(
         name: &str,
         exit_state: &str,
@@ -22,7 +22,7 @@ impl<ErrType: ErrTypeTraits> SubprocessExitState<ErrType> {
 
 pub type ShutdownResults<ErrType> = Vec<SubprocessExitState<ErrType>>;
 
-pub fn join_shutdown_results<ErrType: ErrTypeTraits>(
+pub fn join_shutdown_results<ErrType: ErrorHolder>(
     mut left: ShutdownResults<ErrType>,
     right: Vec<ShutdownResults<ErrType>>,
 ) -> ShutdownResults<ErrType> {
@@ -33,7 +33,7 @@ pub fn join_shutdown_results<ErrType: ErrTypeTraits>(
     left
 }
 
-pub fn prettify_exit_states<ErrType: ErrTypeTraits>(
+pub fn prettify_exit_states<ErrType: ErrorHolder>(
     exit_states: &[SubprocessExitState<ErrType>],
 ) -> Vec<String> {
     let max_subprocess_name_length = exit_states

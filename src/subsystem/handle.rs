@@ -4,15 +4,15 @@ use std::sync::Arc;
 use super::NestedSubsystem;
 use super::SubsystemData;
 use super::SubsystemHandle;
+use crate::err_types::ErrorHolder;
 use crate::errors::PartialShutdownError;
 use crate::runner::SubsystemRunner;
-use crate::ErrTypeTraits;
 use crate::ShutdownToken;
 
 #[cfg(doc)]
 use crate::Toplevel;
 
-impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
+impl<ErrType: ErrorHolder> SubsystemHandle<ErrType> {
     #[doc(hidden)]
     pub fn new(data: Arc<SubsystemData<ErrType>>) -> Self {
         Self { data }
@@ -56,7 +56,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     where
         Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
         Fut: 'static + Future<Output = Result<(), Err>> + Send,
-        Err: Into<ErrType>,
+        Err: Into<ErrType::Internal>,
     {
         let name = {
             if !self.data.name.is_empty() {

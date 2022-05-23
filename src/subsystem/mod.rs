@@ -8,16 +8,16 @@ use std::sync::Weak;
 
 use tokio_util::sync::CancellationToken;
 
+use crate::err_types::ErrorHolder;
 use crate::errors::PartialShutdownError;
 use crate::runner::SubsystemRunner;
 use crate::shutdown_token::ShutdownToken;
 use crate::utils::ShutdownGuard;
-use crate::ErrTypeTraits;
 
 use self::identifier::SubsystemIdentifier;
 
 /// The data stored per subsystem, like name or nested subsystems
-pub struct SubsystemData<ErrType: ErrTypeTraits = crate::BoxedError> {
+pub struct SubsystemData<ErrType: ErrorHolder = crate::BoxedError> {
     name: String,
     subsystems: Mutex<Option<Vec<SubsystemDescriptor<ErrType>>>>,
     shutdown_subsystems: tokio::sync::Mutex<Vec<SubsystemDescriptor<ErrType>>>,
@@ -28,13 +28,13 @@ pub struct SubsystemData<ErrType: ErrTypeTraits = crate::BoxedError> {
 }
 
 /// The handle given to each subsystem through which the subsystem can interact with this crate.
-pub struct SubsystemHandle<ErrType: ErrTypeTraits = crate::BoxedError> {
+pub struct SubsystemHandle<ErrType: ErrorHolder = crate::BoxedError> {
     data: Arc<SubsystemData<ErrType>>,
 }
 // Implement `Clone` manually because the compiler cannot derive `Clone
 // from Generics that don't implement `Clone`.
 // (https://stackoverflow.com/questions/72150623/)
-impl<ErrType: ErrTypeTraits> Clone for SubsystemHandle<ErrType> {
+impl<ErrType: ErrorHolder> Clone for SubsystemHandle<ErrType> {
     fn clone(&self) -> Self {
         Self {
             data: self.data.clone(),
@@ -43,7 +43,7 @@ impl<ErrType: ErrTypeTraits> Clone for SubsystemHandle<ErrType> {
 }
 
 /// A running subsystem. Can be used to stop the subsystem or get its return value.
-struct SubsystemDescriptor<ErrType: ErrTypeTraits = crate::BoxedError> {
+struct SubsystemDescriptor<ErrType: ErrorHolder = crate::BoxedError> {
     id: SubsystemIdentifier,
     data: Arc<SubsystemData<ErrType>>,
     subsystem_runner: SubsystemRunner<ErrType>,

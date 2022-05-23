@@ -82,26 +82,16 @@
 //! to initiate a shutdown.
 //!
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 #![doc(
     issue_tracker_base_url = "https://github.com/Finomnis/tokio-graceful-shutdown/issues",
     test(no_crate_inject, attr(deny(warnings))),
     test(attr(allow(dead_code)))
 )]
 
-type BoxedError = Box<dyn std::error::Error + Send + Sync + 'static>;
+type BoxedError = err_types::Wrapped<Box<dyn std::error::Error + Send + Sync + 'static>>;
 
-/// A collection of traits a custom error has to fulfill in order to be
-/// usable as the `ErrType` of [Toplevel].
-pub trait ErrTypeTraits:
-    std::fmt::Debug + std::fmt::Display + 'static + Send + Sync + Sized
-{
-}
-impl<T> ErrTypeTraits for T where
-    T: std::fmt::Debug + std::fmt::Display + 'static + Send + Sync + Sized
-{
-}
-
+pub mod err_types;
 pub mod errors;
 mod exit_state;
 mod into_subsystem;

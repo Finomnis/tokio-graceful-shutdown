@@ -6,13 +6,13 @@ use std::time::Duration;
 
 use tokio_util::sync::CancellationToken;
 
+use crate::err_types::ErrorHolder;
 use crate::errors::GracefulShutdownError;
 use crate::exit_state::prettify_exit_states;
 use crate::shutdown_token::create_shutdown_token;
 use crate::signal_handling::wait_for_signal;
 use crate::utils::wait_forever;
 use crate::utils::ShutdownGuard;
-use crate::ErrTypeTraits;
 use crate::{ShutdownToken, SubsystemHandle};
 
 use super::subsystem::SubsystemData;
@@ -46,13 +46,13 @@ use super::subsystem::SubsystemData;
 /// ```
 ///
 #[must_use = "This toplevel must be consumed by calling `handle_shutdown_requests` on it."]
-pub struct Toplevel<ErrType: ErrTypeTraits = crate::BoxedError> {
+pub struct Toplevel<ErrType: ErrorHolder = crate::BoxedError> {
     subsys_data: Arc<SubsystemData<ErrType>>,
     subsys_handle: SubsystemHandle<ErrType>,
     shutdown_guard: Option<Arc<ShutdownGuard>>,
 }
 
-impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
+impl<ErrType: ErrorHolder> Toplevel<ErrType> {
     /// Creates a new Toplevel object.
     ///
     /// The Toplevel object is the base for everything else in this crate.
@@ -106,7 +106,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     where
         Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
         Fut: 'static + Future<Output = Result<(), Err>> + Send,
-        Err: Into<ErrType>,
+        Err: Into<ErrType::Internal>,
     {
         self.subsys_handle.start(name, subsystem);
 
@@ -239,7 +239,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     }
 }
 
-impl<ErrType: ErrTypeTraits> Drop for Toplevel<ErrType> {
+impl<ErrType: ErrorHolder> Drop for Toplevel<ErrType> {
     fn drop(&mut self) {
         self.subsys_data.cancel_all_subsystems();
     }

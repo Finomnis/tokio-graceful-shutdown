@@ -3,12 +3,12 @@
 use miette::Diagnostic;
 use thiserror::Error;
 
-use crate::ErrTypeTraits;
+use crate::err_types::ErrorHolder;
 
 /// This enum contains all the possible errors that could be returned
 /// by [`handle_shutdown_requests()`](crate::Toplevel::handle_shutdown_requests).
 #[derive(Error, Debug, Diagnostic)]
-pub enum GracefulShutdownError<ErrType: ErrTypeTraits = crate::BoxedError> {
+pub enum GracefulShutdownError<ErrType: ErrorHolder = crate::BoxedError> {
     /// At least one subsystem caused an error.
     #[error("at least one subsystem returned an error")]
     SubsystemsFailed(#[related] Vec<SubsystemError<ErrType>>),
@@ -17,7 +17,7 @@ pub enum GracefulShutdownError<ErrType: ErrTypeTraits = crate::BoxedError> {
     ShutdownTimeout(#[related] Vec<SubsystemError<ErrType>>),
 }
 
-impl<ErrType: ErrTypeTraits> GracefulShutdownError<ErrType> {
+impl<ErrType: ErrorHolder> GracefulShutdownError<ErrType> {
     /// Converts the error into a list of subsystem errors that occurred.
     pub fn into_subsystem_errors(self) -> Vec<SubsystemError<ErrType>> {
         match self {
@@ -37,7 +37,7 @@ impl<ErrType: ErrTypeTraits> GracefulShutdownError<ErrType> {
 /// This enum contains all the possible errors that a partial shutdown
 /// could cause.
 #[derive(Debug, Error, Diagnostic)]
-pub enum PartialShutdownError<ErrType: ErrTypeTraits = crate::BoxedError> {
+pub enum PartialShutdownError<ErrType: ErrorHolder = crate::BoxedError> {
     /// At least one subsystem caused an error.
     #[error("at least one subsystem returned an error")]
     SubsystemsFailed(#[related] Vec<SubsystemError<ErrType>>),
@@ -51,57 +51,15 @@ pub enum PartialShutdownError<ErrType: ErrTypeTraits = crate::BoxedError> {
     AlreadyShuttingDown,
 }
 
-/// A wrapper type that carries the errors returned by subsystems.
-pub struct SubsystemFailure<ErrType>(pub(crate) ErrType);
-
-impl<ErrType> std::ops::Deref for SubsystemFailure<ErrType> {
-    type Target = ErrType;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-impl<ErrType> SubsystemFailure<ErrType> {
-    /// Retrieves the containing error.
-    pub fn get_error(&self) -> &ErrType {
-        &self.0
-    }
-    /// Converts the object into the containing error.
-    pub fn into_error(self) -> ErrType {
-        self.0
-    }
-}
-
-impl<ErrType> std::fmt::Debug for SubsystemFailure<ErrType>
-where
-    ErrType: std::fmt::Debug,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(&self.0, f)
-    }
-}
-impl<ErrType> std::fmt::Display for SubsystemFailure<ErrType>
-where
-    ErrType: std::fmt::Display,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(&self.0, f)
-    }
-}
-impl<ErrType> std::error::Error for SubsystemFailure<ErrType> where
-    ErrType: std::fmt::Display + std::fmt::Debug
-{
-}
-
 /// This enum contains all the possible errors that a subsystem execution
 /// could cause.
 ///
 /// Every error carries the name of the subsystem as the first argument.
 #[derive(Debug, Error, Diagnostic)]
-pub enum SubsystemError<ErrType: ErrTypeTraits = crate::BoxedError> {
+pub enum SubsystemError<ErrType: ErrorHolder = crate::BoxedError> {
     /// The subsystem returned an error value. Carries the actual error as the second argument.
     #[error("Error in subsystem '{0}'")]
-    Failed(String, #[source] SubsystemFailure<ErrType>),
+    Failed(String, #[source] ErrType),
     /// The subsystem was cancelled. Should only happen if the shutdown timeout is exceeded.
     #[error("Subsystem '{0}' was aborted")]
     Cancelled(String),
@@ -110,7 +68,7 @@ pub enum SubsystemError<ErrType: ErrTypeTraits = crate::BoxedError> {
     Panicked(String),
 }
 
-impl<ErrType: ErrTypeTraits> SubsystemError<ErrType> {
+impl<ErrType: ErrorHolder> SubsystemError<ErrType> {
     /// Retrieves the name of the subsystem that caused the error.
     ///
     /// # Returns
@@ -135,7 +93,7 @@ mod tests {
         println!("{}", report);
         println!("{:?}", report);
         // Convert to std::error::Error
-        let boxed_error: BoxedError = report.into();
+        let boxed_error: BoxedError = crate::err_types::Wrapped(report.into());
         println!("{}", boxed_error);
         println!("{:?}", boxed_error);
     }
@@ -150,7 +108,8 @@ mod tests {
         examine_report(SubsystemError::Cancelled::<BoxedError>("".into()).into());
         examine_report(SubsystemError::Panicked::<BoxedError>("".into()).into());
         examine_report(
-            SubsystemError::Failed::<BoxedError>("".into(), SubsystemFailure("".into())).into(),
+            SubsystemError::Failed::<BoxedError>("".into(), crate::err_types::Wrapped("".into()))
+                .into(),
         );
     }
 
@@ -188,10 +147,11 @@ mod tests {
     #[test]
     fn extract_contained_error_from_convert_subsystem_failure() {
         let msg = "MyFailure".to_string();
-        let failure = SubsystemFailure(msg.clone());
+        let failure = crate::err_types::Wrapped(
+            Box::<dyn std::error::Error + Send + Sync + 'static>::from(msg.clone()),
+        );
 
-        assert_eq!(&msg, failure.get_error());
-        assert_eq!(msg, *failure);
-        assert_eq!(msg, failure.into_error());
+        assert_eq!(msg, failure.get_error().to_string());
+        assert_eq!(msg, failure.to_string());
     }
 }

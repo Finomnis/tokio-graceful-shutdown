@@ -4,6 +4,7 @@
 use env_logger::{Builder, Env};
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{
+    err_types::{Direct, ErrorHolder},
     errors::{GracefulShutdownError, SubsystemError},
     IntoSubsystem, SubsystemHandle, Toplevel,
 };
@@ -14,9 +15,11 @@ enum MyError {
     WithData(u32),
     #[error("MyError.WithoutData")]
     WithoutData,
+    #[error("MyError.WithSource")]
+    WithSource(#[source] Box<dyn std::error::Error + Send + Sync>),
 }
 
-async fn subsys1(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
+async fn subsys1(_subsys: SubsystemHandle<Direct<MyError>>) -> Result<(), MyError> {
     log::info!("Subsystem1 started.");
     sleep(Duration::from_millis(200)).await;
     log::info!("Subsystem1 stopped.");
@@ -24,7 +27,7 @@ async fn subsys1(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
     Err(MyError::WithData(42))
 }
 
-async fn subsys2(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
+async fn subsys2(_subsys: SubsystemHandle<Direct<MyError>>) -> Result<(), MyError> {
     log::info!("Subsystem2 started.");
     sleep(Duration::from_millis(200)).await;
     log::info!("Subsystem2 stopped.");
@@ -32,28 +35,36 @@ async fn subsys2(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
     Err(MyError::WithoutData)
 }
 
-async fn subsys3(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
+async fn subsys3(_subsys: SubsystemHandle<Direct<MyError>>) -> Result<(), MyError> {
     log::info!("Subsystem3 started.");
     sleep(Duration::from_millis(200)).await;
     log::info!("Subsystem3 stopped.");
 
+    Err(MyError::WithSource("Source error!".into()))
+}
+
+async fn subsys4(_subsys: SubsystemHandle<Direct<MyError>>) -> Result<(), MyError> {
+    log::info!("Subsystem4 started.");
+    sleep(Duration::from_millis(200)).await;
+    log::info!("Subsystem4 stopped.");
+
     panic!("This subsystem panicked.");
 }
 
-async fn subsys4(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
-    log::info!("Subsystem4 started.");
+async fn subsys5(_subsys: SubsystemHandle<Direct<MyError>>) -> Result<(), MyError> {
+    log::info!("Subsystem5 started.");
     sleep(Duration::from_millis(1000)).await;
-    log::info!("Subsystem4 stopped.");
+    log::info!("Subsystem5 stopped.");
 
     // This subsystem would end normally but takes too long and therefore
     // will time out.
     Ok(())
 }
 
-async fn subsys5(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
-    log::info!("Subsystem5 started.");
+async fn subsys6(_subsys: SubsystemHandle<Direct<MyError>>) -> Result<(), MyError> {
+    log::info!("Subsystem6 started.");
     sleep(Duration::from_millis(200)).await;
-    log::info!("Subsystem5 stopped.");
+    log::info!("Subsystem6 stopped.");
 
     // This subsystem ended normally and should not show up in the list of
     // subsystem errors.
@@ -64,14 +75,14 @@ async fn subsys5(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
 // The first generic is the error type returned from the `run()` function, the
 // second generic is the error wrapper type used by Toplevel. In this case,
 // both are identical.
-struct Subsys6;
+struct Subsys7;
 
 #[async_trait::async_trait]
-impl IntoSubsystem<MyError, MyError> for Subsys6 {
-    async fn run(self, _subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
-        log::info!("Subsystem6 started.");
+impl IntoSubsystem<MyError, Direct<MyError>> for Subsys7 {
+    async fn run(self, _subsys: SubsystemHandle<Direct<MyError>>) -> Result<(), MyError> {
+        log::info!("Subsystem7 started.");
         sleep(Duration::from_millis(200)).await;
-        log::info!("Subsystem6 stopped.");
+        log::info!("Subsystem7 stopped.");
 
         Err(MyError::WithData(69))
     }
@@ -83,15 +94,18 @@ async fn main() -> Result<(), miette::Report> {
     Builder::from_env(Env::default().default_filter_or("debug")).init();
 
     // Create toplevel
-    let errors = Toplevel::<MyError>::new()
+    let errors = Toplevel::<Direct<MyError>>::new()
         .start("Subsys1", subsys1)
         .start("Subsys2", subsys2)
         .start("Subsys3", subsys3)
         .start("Subsys4", subsys4)
         .start("Subsys5", subsys5)
-        .start("Subsys6", Subsys6.into_subsystem())
+        .start("Subsys6", subsys6)
+        .start("Subsys7", Subsys7.into_subsystem())
         .catch_signals()
-        .handle_shutdown_requests::<GracefulShutdownError<MyError>>(Duration::from_millis(500))
+        .handle_shutdown_requests::<GracefulShutdownError<Direct<MyError>>>(Duration::from_millis(
+            500,
+        ))
         .await;
 
     if let Err(e) = &errors {
@@ -114,6 +128,9 @@ async fn main() -> Result<(), miette::Report> {
                         }
                         MyError::WithoutData => {
                             log::warn!("      It failed with MyError::WithoutData")
+                        }
+                        MyError::WithSource(source) => {
+                            log::warn!("      It failed with MyError::WithSource({})", source)
                         }
                     }
                 }

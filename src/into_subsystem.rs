@@ -3,7 +3,7 @@ use std::pin::Pin;
 
 use async_trait::async_trait;
 
-use crate::{BoxedError, ErrTypeTraits, SubsystemHandle};
+use crate::{err_types::ErrorHolder, BoxedError, SubsystemHandle};
 
 type SubsystemFuture<Err> = dyn Future<Output = Result<(), Err>> + Send + 'static;
 type SubsystemFunction<Err, ErrWrapper> =
@@ -52,8 +52,8 @@ type SubsystemFunction<Err, ErrWrapper> =
 pub trait IntoSubsystem<Err, ErrWrapper = BoxedError>
 where
     Self: Sized + Send + Sync + 'static,
-    Err: Into<ErrWrapper>,
-    ErrWrapper: ErrTypeTraits,
+    Err: Into<ErrWrapper::Internal>,
+    ErrWrapper: ErrorHolder,
 {
     /// The logic of the subsystem.
     ///
