@@ -32,14 +32,17 @@ async fn subsys1_keepalive(subsys: SubsystemHandle) -> Result<()> {
             .handle_shutdown_requests(Duration::from_millis(50))
             .await;
 
-        match nested_toplevel_result {
-            Ok(()) => break,
-            Err(err) => {
-                log::error!("Subsystem1 failed: {}", err);
-                log::info!("Restarting subsystem1 ...");
-            }
+        if let Err(err) = &nested_toplevel_result {
+            log::error!("Subsystem1 failed: {}", err);
         }
+
+        if subsys.is_shutdown_requested() {
+            break;
+        }
+
+        log::info!("Restarting subsystem1 ...");
     }
+
     Ok(())
 }
 
