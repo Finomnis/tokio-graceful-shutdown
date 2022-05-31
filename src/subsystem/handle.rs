@@ -78,6 +78,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
         let new_subsystem = Arc::new(SubsystemData::new(
             &name,
             self.global_shutdown_token().clone(),
+            self.group_shutdown_token().clone(),
             self.local_shutdown_token().child_token(),
             self.data.cancellation_token.child_token(),
             self.data.shutdown_guard.clone(),
@@ -87,7 +88,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
         let subsystem_handle = SubsystemHandle::new(new_subsystem.clone());
 
         // Shutdown token
-        let shutdown_token = subsystem_handle.global_shutdown_token().clone();
+        let shutdown_token = subsystem_handle.group_shutdown_token().clone();
 
         // Future
         let subsystem_future = async { subsystem(subsystem_handle).await.map_err(|e| e.into()) };
@@ -223,7 +224,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     /// }
     /// ```
     pub fn request_shutdown(&self) {
-        self.data.global_shutdown_token.shutdown()
+        self.data.group_shutdown_token.shutdown()
     }
 
     /// Triggers the shutdown of the entire program.
@@ -246,8 +247,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     /// }
     /// ```
     pub fn request_global_shutdown(&self) {
-        // TODO
-        self.request_shutdown()
+        self.data.global_shutdown_token.shutdown()
     }
 
     /// Preforms a partial shutdown of the given nested subsystem.
@@ -302,6 +302,17 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     #[doc(hidden)]
     pub fn global_shutdown_token(&self) -> &ShutdownToken {
         &self.data.global_shutdown_token
+    }
+
+    /// Provides access to the group local shutdown token.
+    ///
+    /// This token shuts down the parent [Toplevel] object.
+    ///
+    /// This function is usually not required and is there
+    /// to provide lower-level access for specific corner cases.
+    #[doc(hidden)]
+    pub fn group_shutdown_token(&self) -> &ShutdownToken {
+        &self.data.group_shutdown_token
     }
 
     /// Provides access to the subsystem local shutdown token.

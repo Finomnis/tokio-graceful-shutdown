@@ -60,13 +60,15 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     pub fn new() -> Self {
         // On the top-level, the global and local shutdown token are identical
         let global_shutdown_token = create_shutdown_token();
-        let local_shutdown_token = global_shutdown_token.clone();
+        let group_shutdown_token = global_shutdown_token.clone();
+        let local_shutdown_token = group_shutdown_token.clone();
         let cancellation_token = CancellationToken::new();
-        let shutdown_guard = Arc::new(ShutdownGuard::new(global_shutdown_token.clone()));
+        let shutdown_guard = Arc::new(ShutdownGuard::new(group_shutdown_token.clone()));
 
         let subsys_data = Arc::new(SubsystemData::new(
             "",
             global_shutdown_token,
+            group_shutdown_token,
             local_shutdown_token,
             cancellation_token,
             Arc::downgrade(&shutdown_guard),
@@ -93,7 +95,27 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// * `parent` - The subsystemhandle that the [Toplevel] object will receive shutdown
     ///              requests from
     pub fn nested(parent: &SubsystemHandle) -> Self {
-        Self::new()
+        // Take shutdown tokesn from parent
+        let global_shutdown_token = parent.global_shutdown_token().clone();
+        let group_shutdown_token = parent.local_shutdown_token().child_token();
+        let local_shutdown_token = group_shutdown_token.clone();
+        let cancellation_token = CancellationToken::new();
+        let shutdown_guard = Arc::new(ShutdownGuard::new(group_shutdown_token.clone()));
+
+        let subsys_data = Arc::new(SubsystemData::new(
+            "",
+            global_shutdown_token,
+            group_shutdown_token,
+            local_shutdown_token,
+            cancellation_token,
+            Arc::downgrade(&shutdown_guard),
+        ));
+        let subsys_handle = SubsystemHandle::new(subsys_data.clone());
+        Self {
+            subsys_data,
+            subsys_handle,
+            shutdown_guard: Some(shutdown_guard),
+        }
     }
 
     /// Starts a new subsystem.
@@ -148,7 +170,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// Especially the caveats from [tokio::signal::unix::Signal] are important for Unix targets.
     ///
     pub fn catch_signals(self) -> Self {
-        let shutdown_token = self.subsys_handle.global_shutdown_token().clone();
+        let shutdown_token = self.subsys_handle.group_shutdown_token().clone();
 
         tokio::spawn(async move {
             wait_for_signal().await;
