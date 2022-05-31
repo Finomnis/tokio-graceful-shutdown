@@ -9,6 +9,7 @@ use crate::runner::SubsystemRunner;
 use crate::ErrTypeTraits;
 use crate::ShutdownToken;
 
+use crate::utils::get_subsystem_name;
 #[cfg(doc)]
 use crate::Toplevel;
 
@@ -52,19 +53,13 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     /// }
     /// ```
     ///
-    pub fn start<Err, Fut, Subsys>(&self, name: &'static str, subsystem: Subsys) -> NestedSubsystem
+    pub fn start<Err, Fut, Subsys>(&self, name: &str, subsystem: Subsys) -> NestedSubsystem
     where
         Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
         Fut: 'static + Future<Output = Result<(), Err>> + Send,
         Err: Into<ErrType>,
     {
-        let name = {
-            if !self.data.name.is_empty() {
-                self.data.name.clone() + "/" + name
-            } else {
-                name.to_string()
-            }
-        };
+        let name = get_subsystem_name(&self.data.name, name);
 
         // When we are inside a subsystem, shutdown_guard cannot have gotten dropped, because
         // the SubsystemRunner of the current subsystem keeps it alive.
@@ -322,5 +317,14 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     #[doc(hidden)]
     pub fn local_shutdown_token(&self) -> &ShutdownToken {
         &self.data.local_shutdown_token
+    }
+
+    /// The name of the subsystem.
+    ///
+    /// This function is usually not required and is there
+    /// to provide lower-level access for specific corner cases.
+    #[doc(hidden)]
+    pub fn name(&self) -> &str {
+        &self.data.name
     }
 }

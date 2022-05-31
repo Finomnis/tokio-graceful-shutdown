@@ -10,6 +10,7 @@ use crate::errors::GracefulShutdownError;
 use crate::exit_state::prettify_exit_states;
 use crate::shutdown_token::create_shutdown_token;
 use crate::signal_handling::wait_for_signal;
+use crate::utils::get_subsystem_name;
 use crate::utils::wait_forever;
 use crate::utils::ShutdownGuard;
 use crate::ErrTypeTraits;
@@ -94,7 +95,8 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     ///
     /// * `parent` - The subsystemhandle that the [Toplevel] object will receive shutdown
     ///              requests from
-    pub fn nested(parent: &SubsystemHandle) -> Self {
+    /// * `name` - The name of the nested toplevel object. Can be `""`.
+    pub fn nested(parent: &SubsystemHandle, name: &str) -> Self {
         // Take shutdown tokesn from parent
         let global_shutdown_token = parent.global_shutdown_token().clone();
         let group_shutdown_token = parent.local_shutdown_token().child_token();
@@ -102,8 +104,10 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         let cancellation_token = CancellationToken::new();
         let shutdown_guard = Arc::new(ShutdownGuard::new(group_shutdown_token.clone()));
 
+        let name = get_subsystem_name(parent.name(), name);
+
         let subsys_data = Arc::new(SubsystemData::new(
-            "",
+            &name,
             global_shutdown_token,
             group_shutdown_token,
             local_shutdown_token,
@@ -141,7 +145,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// * `name` - The name of the subsystem
     /// * `subsystem` - The subsystem to be started
     ///
-    pub fn start<Err, Fut, Subsys>(self, name: &'static str, subsystem: Subsys) -> Self
+    pub fn start<Err, Fut, Subsys>(self, name: &str, subsystem: Subsys) -> Self
     where
         Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
         Fut: 'static + Future<Output = Result<(), Err>> + Send,

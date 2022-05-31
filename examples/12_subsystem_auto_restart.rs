@@ -5,9 +5,9 @@
 //! so I included it anyway.
 
 use env_logger::{Builder, Env};
-use miette::{IntoDiagnostic, Result};
+use miette::Result;
 use tokio::time::{sleep, Duration};
-use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
+use tokio_graceful_shutdown::{GracefulShutdownError, SubsystemHandle, Toplevel};
 
 async fn subsys1(subsys: SubsystemHandle) -> Result<()> {
     // This subsystem panics every two seconds.
@@ -25,25 +25,22 @@ async fn subsys1(subsys: SubsystemHandle) -> Result<()> {
     Ok(())
 }
 
-async fn subsys1_with_autorestart(subsys: SubsystemHandle) -> Result<()> {
+async fn subsys1_keepalive(subsys: SubsystemHandle) -> Result<()> {
     loop {
-        let mut joinhandle = tokio::spawn(subsys1(subsys.clone()));
-        let joinhandle_ref = &mut joinhandle;
-        tokio::select! {
-            result = joinhandle_ref => {
-                    match result {
-                        Ok(result) => return result,
-                        Err(err) => {
-                            log::error!("Subsystem1 failed: {}", err);
-                            log::info!("Restarting subsystem1 ...");
-                        }
-                    }
-            },
-            _ = subsys.on_shutdown_requested() => {
-                return joinhandle.await.into_diagnostic()?;
+        let nested_toplevel_result = Toplevel::nested(&subsys, "")
+            .start("Subsys1", subsys1)
+            .handle_shutdown_requests::<GracefulShutdownError>(Duration::from_millis(50))
+            .await;
+
+        match nested_toplevel_result {
+            Ok(()) => break,
+            Err(err) => {
+                log::error!("Subsystem1 failed: {}", err);
+                log::info!("Restarting subsystem1 ...");
             }
-        };
+        }
     }
+    Ok(())
 }
 
 #[tokio::main(flavor = "current_thread")]
@@ -53,7 +50,7 @@ async fn main() -> Result<()> {
 
     // Create toplevel
     Toplevel::new()
-        .start("Subsys1", subsys1_with_autorestart)
+        .start("Subsys1Keepalive", subsys1_keepalive)
         .catch_signals()
         .handle_shutdown_requests(Duration::from_millis(1000))
         .await

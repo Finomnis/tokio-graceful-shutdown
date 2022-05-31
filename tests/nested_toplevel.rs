@@ -31,7 +31,7 @@ async fn nested_toplevel_shuts_down_when_requested() {
     };
 
     let subsystem = |subsys: SubsystemHandle| async move {
-        let nested_toplevel = Toplevel::nested(&subsys);
+        let nested_toplevel = Toplevel::nested(&subsys, "NestedToplevel");
         nested_toplevel
             .start("nested", nested_subsystem)
             .handle_shutdown_requests::<GracefulShutdownError>(Duration::from_millis(100))
@@ -89,7 +89,7 @@ async fn nested_toplevel_errors_do_not_get_propagated_up() {
     };
 
     let subsystem = move |subsys: SubsystemHandle| async move {
-        let nested_toplevel = Toplevel::nested(&subsys);
+        let nested_toplevel = Toplevel::nested(&subsys, "NestedToplevel");
         let result = nested_toplevel
             .start("nested", nested_subsystem)
             .start::<BoxedError, _, _>("nested_panic", nested_panic_subsystem)
@@ -149,7 +149,7 @@ async fn nested_toplevel_local_shutdown_does_not_get_propagated_up() {
     };
 
     let subsystem = move |subsys: SubsystemHandle| async move {
-        let nested_toplevel = Toplevel::nested(&subsys);
+        let nested_toplevel = Toplevel::nested(&subsys, "NestedToplevel");
         let result = nested_toplevel
             .start("nested", nested_subsystem)
             .start("nested_shutdown", nested_shutdown_subsystem)
@@ -219,7 +219,7 @@ async fn nested_toplevel_global_shutdown_does_get_propagated_up() {
     };
 
     let subsystem = move |subsys: SubsystemHandle| async move {
-        let nested_toplevel = Toplevel::nested(&subsys);
+        let nested_toplevel = Toplevel::nested(&subsys, "NestedToplevel");
         let result = nested_toplevel
             .start("nested", nested_subsystem)
             .start("nested_shutdown", nested_shutdown_subsystem)
