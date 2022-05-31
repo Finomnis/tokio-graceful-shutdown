@@ -200,10 +200,10 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
         self.data.local_shutdown_token.is_shutting_down()
     }
 
-    /// Triggers the shutdown mode of the program.
+    /// Triggers a shutdown.
     ///
-    /// If a submodule itself shall have the capability to initiate a program shutdown,
-    /// this is the method to use.
+    /// This version only propagates up to the next [Toplevel] object.
+    /// To initiate a shutdown for the entire program, see [SubsystemHandle::request_global_shutdown()].
     ///
     /// # Examples
     ///
@@ -216,9 +216,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     ///     // This subsystem wait for one second and then stops the program.
     ///     sleep(Duration::from_millis(1000)).await;
     ///
-    ///     // An explicit shutdown request is necessary, because
-    ///     // simply leaving the run() method does NOT initiate a program
-    ///     // shutdown if the return value is Ok(()).
+    ///     // Shut down the parent `Toplevel` object
     ///     subsys.request_shutdown();
     ///
     ///     Ok(())
@@ -226,6 +224,30 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     /// ```
     pub fn request_shutdown(&self) {
         self.data.global_shutdown_token.shutdown()
+    }
+
+    /// Triggers the shutdown of the entire program.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use miette::Result;
+    /// use tokio::time::{sleep, Duration};
+    /// use tokio_graceful_shutdown::SubsystemHandle;
+    ///
+    /// async fn stop_subsystem(subsys: SubsystemHandle) -> Result<()> {
+    ///     // This subsystem wait for one second and then stops the program.
+    ///     sleep(Duration::from_millis(1000)).await;
+    ///
+    ///     // Shut down all parent `Toplevel` objects.
+    ///     subsys.request_global_shutdown();
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn request_global_shutdown(&self) {
+        // TODO
+        self.request_shutdown()
     }
 
     /// Preforms a partial shutdown of the given nested subsystem.

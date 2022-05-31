@@ -79,6 +79,23 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         }
     }
 
+    /// Creates a new nested Toplevel object.
+    ///
+    /// This method is identical to `.new()`, except that the returned [Toplevel] object
+    /// will receive shutdown requests from the given [SubsystemHandle] object.
+    ///
+    /// Any errors that happen at subsystems inside the new [Toplevel] object will cause
+    /// the [Toplevel] object to initiate a shutdown, but will not propagate up to the
+    /// [SubsystemHandle] object.
+    ///
+    /// # Arguments
+    ///
+    /// * `parent` - The subsystemhandle that the [Toplevel] object will receive shutdown
+    ///              requests from
+    pub fn nested(parent: &SubsystemHandle) -> Self {
+        Self::new()
+    }
+
     /// Starts a new subsystem.
     ///
     /// Once called, the subsystem will be started immediately, similar to [`tokio::spawn`].

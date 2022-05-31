@@ -1,26 +1,15 @@
 use anyhow::anyhow;
-use env_logger;
 use tokio::time::{sleep, timeout, Duration};
 use tokio_graceful_shutdown::{
     errors::{GracefulShutdownError, PartialShutdownError, SubsystemError},
     IntoSubsystem, SubsystemHandle, Toplevel,
 };
 
-mod common;
+pub mod common;
 use common::event::Event;
+use common::setup;
 
 use std::error::Error;
-use std::sync::Once;
-
-static INIT: Once = Once::new();
-
-/// Setup function that is only run once, even if called multiple times.
-fn setup() {
-    INIT.call_once(|| {
-        // Init logging
-        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("off")).init();
-    });
-}
 
 /// Wrapper function to simplify lambdas
 type BoxedError = Box<dyn Error + Sync + Send>;
