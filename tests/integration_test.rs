@@ -34,7 +34,7 @@ async fn normal_shutdown() {
             shutdown_token.shutdown();
         },
         async {
-            let result: BoxedResult = toplevel
+            let result = toplevel
                 .handle_shutdown_requests(Duration::from_millis(400))
                 .await;
             assert!(result.is_ok());
@@ -66,7 +66,7 @@ async fn use_subsystem_struct() {
             shutdown_token.shutdown();
         },
         async {
-            let result: BoxedResult = toplevel
+            let result = toplevel
                 .handle_shutdown_requests(Duration::from_millis(400))
                 .await;
             assert!(result.is_ok());
@@ -124,7 +124,7 @@ async fn subsystem_finishes_with_success() {
 
     tokio::join!(
         async {
-            let result: BoxedResult = toplevel
+            let result = toplevel
                 .handle_shutdown_requests(Duration::from_millis(100))
                 .await;
             set_toplevel_finished();
@@ -162,7 +162,7 @@ async fn subsystem_finishes_with_error() {
 
     tokio::join!(
         async {
-            let result: BoxedResult = toplevel
+            let result = toplevel
                 .handle_shutdown_requests(Duration::from_millis(100))
                 .await;
             set_toplevel_finished();
@@ -192,8 +192,7 @@ async fn subsystem_receives_shutdown() {
 
     let toplevel = Toplevel::new().start("subsys", subsys);
     let shutdown_token = toplevel.get_shutdown_token().clone();
-    let result =
-        tokio::spawn(toplevel.handle_shutdown_requests::<BoxedError>(Duration::from_millis(100)));
+    let result = tokio::spawn(toplevel.handle_shutdown_requests(Duration::from_millis(100)));
 
     sleep(Duration::from_millis(100)).await;
     assert!(!subsys_finished.get());
@@ -231,8 +230,7 @@ async fn nested_subsystem_receives_shutdown() {
 
     let toplevel = Toplevel::new().start("subsys", subsystem);
     let shutdown_token = toplevel.get_shutdown_token().clone();
-    let result =
-        tokio::spawn(toplevel.handle_shutdown_requests::<BoxedError>(Duration::from_millis(100)));
+    let result = tokio::spawn(toplevel.handle_shutdown_requests(Duration::from_millis(100)));
 
     sleep(Duration::from_millis(100)).await;
     assert!(!subsys_finished.get());
@@ -269,7 +267,7 @@ async fn nested_subsystem_error_propagates() {
 
     tokio::join!(
         async {
-            let result: BoxedResult = toplevel
+            let result = toplevel
                 .handle_shutdown_requests(Duration::from_millis(100))
                 .await;
             set_toplevel_finished();
@@ -306,7 +304,7 @@ async fn panic_gets_handled_correctly() {
 
     tokio::join!(
         async {
-            let result: BoxedResult = toplevel
+            let result = toplevel
                 .handle_shutdown_requests(Duration::from_millis(100))
                 .await;
             set_toplevel_finished();
@@ -345,7 +343,7 @@ async fn subsystem_can_request_shutdown() {
 
     tokio::join!(
         async {
-            let result: BoxedResult = toplevel
+            let result = toplevel
                 .handle_shutdown_requests(Duration::from_millis(100))
                 .await;
             set_toplevel_finished();
@@ -390,7 +388,7 @@ async fn shutdown_timeout_causes_cancellation() {
 
     tokio::join!(
         async {
-            let result: BoxedResult = toplevel
+            let result = toplevel
                 .handle_shutdown_requests(Duration::from_millis(200))
                 .await;
             set_toplevel_finished();
@@ -448,7 +446,7 @@ async fn spawning_task_during_shutdown_causes_task_to_be_cancelled() {
 
     tokio::join!(
         async {
-            let result: BoxedResult = toplevel
+            let result = toplevel
                 .handle_shutdown_requests(Duration::from_millis(500))
                 .await;
             set_toplevel_finished();
@@ -506,7 +504,7 @@ async fn double_panic_does_not_stop_graceful_shutdown() {
         panic!("Subsystem1 panicked!")
     };
 
-    let result: BoxedResult = Toplevel::new()
+    let result = Toplevel::new()
         .start::<BoxedError, _, _>("subsys", subsys1)
         .handle_shutdown_requests(Duration::from_millis(500))
         .await;
@@ -554,7 +552,7 @@ async fn shutdown_triggers_if_all_tasks_ended() {
         Toplevel::new()
             .start("subsys1", subsys)
             .start("subsys2", subsys)
-            .handle_shutdown_requests::<BoxedError>(Duration::from_millis(100)),
+            .handle_shutdown_requests(Duration::from_millis(100)),
     )
     .await
     .unwrap()
@@ -567,8 +565,7 @@ async fn shutdown_triggers_if_no_task_exists() {
 
     tokio::time::timeout(
         Duration::from_millis(100),
-        Toplevel::<BoxedError>::new()
-            .handle_shutdown_requests::<BoxedError>(Duration::from_millis(100)),
+        Toplevel::<BoxedError>::new().handle_shutdown_requests(Duration::from_millis(100)),
     )
     .await
     .unwrap()
@@ -592,7 +589,7 @@ async fn destroying_toplevel_cancels_nested_toplevel_subsystems() {
     let subsys1 = move |_subsys: SubsystemHandle| async move {
         Toplevel::new()
             .start("subsys2", subsys2)
-            .handle_shutdown_requests::<BoxedError>(Duration::from_millis(100))
+            .handle_shutdown_requests(Duration::from_millis(100))
             .await
     };
 
@@ -650,7 +647,7 @@ async fn partial_shutdown_request_stops_nested_subsystems() {
 
     tokio::join!(
         async {
-            let result: BoxedResult = toplevel
+            let result = toplevel
                 .start("subsys", subsys1)
                 .handle_shutdown_requests(Duration::from_millis(500))
                 .await;
@@ -701,7 +698,7 @@ async fn partial_shutdown_panic_gets_propagated_correctly() {
         BoxedResult::Ok(())
     };
 
-    let result: BoxedResult = Toplevel::new()
+    let result = Toplevel::new()
         .start("subsys", subsys1)
         .handle_shutdown_requests(Duration::from_millis(500))
         .await;
@@ -740,7 +737,7 @@ async fn partial_shutdown_error_gets_propagated_correctly() {
         BoxedResult::Ok(())
     };
 
-    let result: BoxedResult = Toplevel::new()
+    let result = Toplevel::new()
         .start("subsys", subsys1)
         .handle_shutdown_requests(Duration::from_millis(500))
         .await;
@@ -783,7 +780,7 @@ async fn partial_shutdown_during_program_shutdown_causes_error() {
         BoxedResult::Ok(())
     };
 
-    let result: BoxedResult = Toplevel::new()
+    let result = Toplevel::new()
         .start("subsys", subsys1)
         .handle_shutdown_requests(Duration::from_millis(500))
         .await;
@@ -833,7 +830,7 @@ async fn partial_shutdown_on_wrong_parent_causes_error() {
         BoxedResult::Ok(())
     };
 
-    let result: BoxedResult = Toplevel::new()
+    let result = Toplevel::new()
         .start("subsys", subsys1)
         .handle_shutdown_requests(Duration::from_millis(500))
         .await;
@@ -876,7 +873,7 @@ async fn cloned_handles_can_spawn_nested_subsystems() {
 
     tokio::join!(
         async {
-            let result: BoxedResult = toplevel
+            let result = toplevel
                 .handle_shutdown_requests(Duration::from_millis(200))
                 .await;
             set_toplevel_finished();
@@ -928,7 +925,7 @@ async fn subsystem_errors_get_propagated_to_user() {
 
     let toplevel = Toplevel::new().start("subsys", subsystem);
     let result = toplevel
-        .handle_shutdown_requests::<GracefulShutdownError>(Duration::from_millis(200))
+        .handle_shutdown_requests(Duration::from_millis(200))
         .await;
 
     if let Err(GracefulShutdownError::SubsystemsFailed(mut errors)) = result {
@@ -987,7 +984,7 @@ async fn subsystem_errors_get_propagated_to_user_when_timeout() {
 
     let toplevel = Toplevel::new().start("subsys", subsystem);
     let result = toplevel
-        .handle_shutdown_requests::<GracefulShutdownError>(Duration::from_millis(200))
+        .handle_shutdown_requests(Duration::from_millis(200))
         .await;
 
     if let Err(GracefulShutdownError::ShutdownTimeout(mut errors)) = result {
@@ -1032,7 +1029,7 @@ async fn is_shutdown_requested_works_as_intended() {
 
     Toplevel::new()
         .start("subsys", subsys1)
-        .handle_shutdown_requests::<BoxedError>(Duration::from_millis(100))
+        .handle_shutdown_requests(Duration::from_millis(100))
         .await
         .unwrap();
 }

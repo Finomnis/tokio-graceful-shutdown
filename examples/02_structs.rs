@@ -52,12 +52,11 @@ async fn main() -> Result<()> {
     let subsys2 = Subsystem2 { arg: 69 };
 
     // Create toplevel
-    let result = Toplevel::new()
+    Toplevel::new()
         .start("Subsys1", |a| subsys1.run(a))
         .start("Subsys2", subsys2.into_subsystem())
         .catch_signals()
         .handle_shutdown_requests(Duration::from_millis(1000))
-        .await;
-
-    result
+        .await
+        .map_err(Into::into)
 }

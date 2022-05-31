@@ -43,6 +43,7 @@ use super::subsystem::SubsystemData;
 ///         .catch_signals()
 ///         .handle_shutdown_requests(Duration::from_millis(1000))
 ///         .await
+///         .map_err(Into::into)
 /// }
 /// ```
 ///
@@ -236,10 +237,10 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// An error of type [`GracefulShutdownError`] if an error occurred.
     /// An implicit `.into()` will be performed to convert it to the desired error wrapping type.
     ///
-    pub async fn handle_shutdown_requests<ReturnErrType: From<GracefulShutdownError<ErrType>>>(
+    pub async fn handle_shutdown_requests(
         mut self,
         shutdown_timeout: Duration,
-    ) -> Result<(), ReturnErrType> {
+    ) -> Result<(), GracefulShutdownError<ErrType>> {
         // Remove the shutdown guard we hold ourselves, to enable auto-shutdown triggering
         // when all subsystems are finished
         self.shutdown_guard.take();
@@ -265,15 +266,13 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         };
 
         // Overwrite return value with "ShutdownTimeout" if a timeout occurred
-        let result = if timeout_occurred.load(Ordering::SeqCst) {
+        if timeout_occurred.load(Ordering::SeqCst) {
             Err(GracefulShutdownError::ShutdownTimeout(
                 result.err().map_or(vec![], |e| e.into_subsystem_errors()),
             ))
         } else {
             result
-        };
-
-        result.map_err(GracefulShutdownError::into)
+        }
     }
 
     #[doc(hidden)]

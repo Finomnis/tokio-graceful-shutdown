@@ -52,4 +52,5 @@ async fn main() -> Result<()> {
         .catch_signals()
         .handle_shutdown_requests(Duration::from_millis(4000))
         .await
+        .map_err(Into::into)
 }

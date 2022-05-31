@@ -7,7 +7,7 @@
 use env_logger::{Builder, Env};
 use miette::Result;
 use tokio::time::{sleep, Duration};
-use tokio_graceful_shutdown::{GracefulShutdownError, SubsystemHandle, Toplevel};
+use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 
 async fn subsys1(subsys: SubsystemHandle) -> Result<()> {
     // This subsystem panics every two seconds.
@@ -29,7 +29,7 @@ async fn subsys1_keepalive(subsys: SubsystemHandle) -> Result<()> {
     loop {
         let nested_toplevel_result = Toplevel::nested(&subsys, "")
             .start("Subsys1", subsys1)
-            .handle_shutdown_requests::<GracefulShutdownError>(Duration::from_millis(50))
+            .handle_shutdown_requests(Duration::from_millis(50))
             .await;
 
         match nested_toplevel_result {
@@ -54,4 +54,5 @@ async fn main() -> Result<()> {
         .catch_signals()
         .handle_shutdown_requests(Duration::from_millis(1000))
         .await
+        .map_err(Into::into)
 }

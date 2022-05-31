@@ -1,5 +1,5 @@
 use tokio::time::{sleep, Duration};
-use tokio_graceful_shutdown::{GracefulShutdownError, SubsystemHandle, Toplevel};
+use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 
 pub mod common;
 use common::event::Event;
@@ -34,7 +34,7 @@ async fn nested_toplevel_shuts_down_when_requested() {
         let nested_toplevel = Toplevel::nested(&subsys, "NestedToplevel");
         nested_toplevel
             .start("nested", nested_subsystem)
-            .handle_shutdown_requests::<GracefulShutdownError>(Duration::from_millis(100))
+            .handle_shutdown_requests(Duration::from_millis(100))
             .await?;
         BoxedResult::Ok(())
     };
@@ -44,7 +44,7 @@ async fn nested_toplevel_shuts_down_when_requested() {
 
     tokio::join!(
         async {
-            let result: BoxedResult = toplevel
+            let result = toplevel
                 .handle_shutdown_requests(Duration::from_millis(100))
                 .await;
             set_toplevel_finished();
@@ -94,7 +94,7 @@ async fn nested_toplevel_errors_do_not_get_propagated_up() {
             .start("nested", nested_subsystem)
             .start::<BoxedError, _, _>("nested_panic", nested_panic_subsystem)
             .start("nested_error", nested_error_subsystem)
-            .handle_shutdown_requests::<GracefulShutdownError>(Duration::from_millis(100))
+            .handle_shutdown_requests(Duration::from_millis(100))
             .await;
         assert!(result.is_err());
         set_subsys_finished();
@@ -105,7 +105,7 @@ async fn nested_toplevel_errors_do_not_get_propagated_up() {
 
     tokio::join!(
         async {
-            let result: BoxedResult = toplevel
+            let result = toplevel
                 .handle_shutdown_requests(Duration::from_millis(100))
                 .await;
             set_toplevel_finished();
@@ -153,7 +153,7 @@ async fn nested_toplevel_local_shutdown_does_not_get_propagated_up() {
         let result = nested_toplevel
             .start("nested", nested_subsystem)
             .start("nested_shutdown", nested_shutdown_subsystem)
-            .handle_shutdown_requests::<GracefulShutdownError>(Duration::from_millis(100))
+            .handle_shutdown_requests(Duration::from_millis(100))
             .await;
         assert!(result.is_ok());
         set_nested_toplevel_finished();
@@ -167,7 +167,7 @@ async fn nested_toplevel_local_shutdown_does_not_get_propagated_up() {
 
     tokio::join!(
         async {
-            let result: BoxedResult = toplevel
+            let result = toplevel
                 .handle_shutdown_requests(Duration::from_millis(100))
                 .await;
             set_toplevel_finished();
@@ -223,7 +223,7 @@ async fn nested_toplevel_global_shutdown_does_get_propagated_up() {
         let result = nested_toplevel
             .start("nested", nested_subsystem)
             .start("nested_shutdown", nested_shutdown_subsystem)
-            .handle_shutdown_requests::<GracefulShutdownError>(Duration::from_millis(100))
+            .handle_shutdown_requests(Duration::from_millis(100))
             .await;
         assert!(result.is_ok());
         set_nested_toplevel_finished();
@@ -236,7 +236,7 @@ async fn nested_toplevel_global_shutdown_does_get_propagated_up() {
 
     tokio::join!(
         async {
-            let result: BoxedResult = toplevel
+            let result = toplevel
                 .handle_shutdown_requests(Duration::from_millis(100))
                 .await;
             set_toplevel_finished();

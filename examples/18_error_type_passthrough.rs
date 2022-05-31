@@ -91,7 +91,7 @@ async fn main() -> Result<(), miette::Report> {
         .start("Subsys5", subsys5)
         .start("Subsys6", Subsys6.into_subsystem())
         .catch_signals()
-        .handle_shutdown_requests::<GracefulShutdownError<MyError>>(Duration::from_millis(500))
+        .handle_shutdown_requests(Duration::from_millis(500))
         .await;
 
     if let Err(e) = &errors {
