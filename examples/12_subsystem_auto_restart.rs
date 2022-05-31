@@ -27,12 +27,12 @@ async fn subsys1(subsys: SubsystemHandle) -> Result<()> {
 
 async fn subsys1_keepalive(subsys: SubsystemHandle) -> Result<()> {
     loop {
-        let nested_toplevel_result = Toplevel::nested(&subsys, "")
+        let subsys_result = Toplevel::nested(&subsys, "")
             .start("Subsys1", subsys1)
             .handle_shutdown_requests(Duration::from_millis(50))
             .await;
 
-        if let Err(err) = &nested_toplevel_result {
+        if let Err(err) = &subsys_result {
             log::error!("Subsystem1 failed: {}", err);
         }
 
