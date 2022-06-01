@@ -199,7 +199,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     /// Triggers a shutdown.
     ///
     /// This version only propagates up to the next [Toplevel] object.
-    /// To initiate a shutdown for the entire program, see [SubsystemHandle::request_global_shutdown()].
+    /// To initiate a shutdown for the entire program, see [request_global_shutdown()](SubsystemHandle::request_global_shutdown).
     ///
     /// # Examples
     ///
