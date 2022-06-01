@@ -11,12 +11,6 @@ use std::error::Error;
 type BoxedError = Box<dyn Error + Sync + Send>;
 type BoxedResult = Result<(), BoxedError>;
 
-/*
-- nested toplevel shuts down on external shutdown
-- errors/panics/shutdown requests do not get propagated out
-- global_shutdown does get propagated out
-*/
-
 #[tokio::test]
 async fn nested_toplevel_shuts_down_when_requested() {
     setup();
