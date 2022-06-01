@@ -276,7 +276,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
 
     #[doc(hidden)]
     pub fn get_shutdown_token(&self) -> &ShutdownToken {
-        self.subsys_handle.global_shutdown_token()
+        self.subsys_handle.local_shutdown_token()
     }
 }
 
