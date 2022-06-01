@@ -56,6 +56,7 @@
 //!         .catch_signals()
 //!         .handle_shutdown_requests(Duration::from_millis(1000))
 //!         .await
+//!         .map_err(Into::into)
 //! }
 //! ```
 //!

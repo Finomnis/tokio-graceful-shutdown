@@ -46,6 +46,7 @@ type SubsystemFunction<Err, ErrWrapper> =
 ///         .catch_signals()
 ///         .handle_shutdown_requests(Duration::from_millis(500))
 ///         .await
+///         .map_err(Into::into)
 /// }
 /// ```
 ///

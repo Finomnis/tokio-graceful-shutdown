@@ -10,6 +10,7 @@ use crate::errors::GracefulShutdownError;
 use crate::exit_state::prettify_exit_states;
 use crate::shutdown_token::create_shutdown_token;
 use crate::signal_handling::wait_for_signal;
+use crate::utils::get_subsystem_name;
 use crate::utils::wait_forever;
 use crate::utils::ShutdownGuard;
 use crate::ErrTypeTraits;
@@ -42,6 +43,7 @@ use super::subsystem::SubsystemData;
 ///         .catch_signals()
 ///         .handle_shutdown_requests(Duration::from_millis(1000))
 ///         .await
+///         .map_err(Into::into)
 /// }
 /// ```
 ///
@@ -60,13 +62,55 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     pub fn new() -> Self {
         // On the top-level, the global and local shutdown token are identical
         let global_shutdown_token = create_shutdown_token();
-        let local_shutdown_token = global_shutdown_token.clone();
+        let group_shutdown_token = global_shutdown_token.clone();
+        let local_shutdown_token = group_shutdown_token.clone();
         let cancellation_token = CancellationToken::new();
-        let shutdown_guard = Arc::new(ShutdownGuard::new(global_shutdown_token.clone()));
+        let shutdown_guard = Arc::new(ShutdownGuard::new(group_shutdown_token.clone()));
 
         let subsys_data = Arc::new(SubsystemData::new(
             "",
             global_shutdown_token,
+            group_shutdown_token,
+            local_shutdown_token,
+            cancellation_token,
+            Arc::downgrade(&shutdown_guard),
+        ));
+        let subsys_handle = SubsystemHandle::new(subsys_data.clone());
+        Self {
+            subsys_data,
+            subsys_handle,
+            shutdown_guard: Some(shutdown_guard),
+        }
+    }
+
+    /// Creates a new nested Toplevel object.
+    ///
+    /// This method is identical to `.new()`, except that the returned [Toplevel] object
+    /// will receive shutdown requests from the given [SubsystemHandle] object.
+    ///
+    /// Any errors caused by subsystems inside the new [Toplevel] object will cause
+    /// the [Toplevel] object to initiate a shutdown, but will not propagate up to the
+    /// [SubsystemHandle] object.
+    ///
+    /// # Arguments
+    ///
+    /// * `parent` - The subsystemhandle that the [Toplevel] object will receive shutdown
+    ///              requests from
+    /// * `name` - The name of the nested toplevel object. Can be `""`.
+    pub fn nested(parent: &SubsystemHandle, name: &str) -> Self {
+        // Take shutdown tokesn from parent
+        let global_shutdown_token = parent.global_shutdown_token().clone();
+        let group_shutdown_token = parent.local_shutdown_token().child_token();
+        let local_shutdown_token = group_shutdown_token.clone();
+        let cancellation_token = CancellationToken::new();
+        let shutdown_guard = Arc::new(ShutdownGuard::new(group_shutdown_token.clone()));
+
+        let name = get_subsystem_name(parent.name(), name);
+
+        let subsys_data = Arc::new(SubsystemData::new(
+            &name,
+            global_shutdown_token,
+            group_shutdown_token,
             local_shutdown_token,
             cancellation_token,
             Arc::downgrade(&shutdown_guard),
@@ -102,7 +146,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// * `name` - The name of the subsystem
     /// * `subsystem` - The subsystem to be started
     ///
-    pub fn start<Err, Fut, Subsys>(self, name: &'static str, subsystem: Subsys) -> Self
+    pub fn start<Err, Fut, Subsys>(self, name: &str, subsystem: Subsys) -> Self
     where
         Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
         Fut: 'static + Future<Output = Result<(), Err>> + Send,
@@ -131,7 +175,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// Especially the caveats from [tokio::signal::unix::Signal] are important for Unix targets.
     ///
     pub fn catch_signals(self) -> Self {
-        let shutdown_token = self.subsys_handle.global_shutdown_token().clone();
+        let shutdown_token = self.subsys_handle.group_shutdown_token().clone();
 
         tokio::spawn(async move {
             wait_for_signal().await;
@@ -191,12 +235,11 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// # Returns
     ///
     /// An error of type [`GracefulShutdownError`] if an error occurred.
-    /// An implicit `.into()` will be performed to convert it to the desired error wrapping type.
     ///
-    pub async fn handle_shutdown_requests<ReturnErrType: From<GracefulShutdownError<ErrType>>>(
+    pub async fn handle_shutdown_requests(
         mut self,
         shutdown_timeout: Duration,
-    ) -> Result<(), ReturnErrType> {
+    ) -> Result<(), GracefulShutdownError<ErrType>> {
         // Remove the shutdown guard we hold ourselves, to enable auto-shutdown triggering
         // when all subsystems are finished
         self.shutdown_guard.take();
@@ -222,20 +265,18 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         };
 
         // Overwrite return value with "ShutdownTimeout" if a timeout occurred
-        let result = if timeout_occurred.load(Ordering::SeqCst) {
+        if timeout_occurred.load(Ordering::SeqCst) {
             Err(GracefulShutdownError::ShutdownTimeout(
                 result.err().map_or(vec![], |e| e.into_subsystem_errors()),
             ))
         } else {
             result
-        };
-
-        result.map_err(GracefulShutdownError::into)
+        }
     }
 
     #[doc(hidden)]
     pub fn get_shutdown_token(&self) -> &ShutdownToken {
-        self.subsys_handle.global_shutdown_token()
+        self.subsys_handle.local_shutdown_token()
     }
 }
 

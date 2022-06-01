@@ -22,6 +22,7 @@ pub struct SubsystemData<ErrType: ErrTypeTraits = crate::BoxedError> {
     subsystems: Mutex<Option<Vec<SubsystemDescriptor<ErrType>>>>,
     shutdown_subsystems: tokio::sync::Mutex<Vec<SubsystemDescriptor<ErrType>>>,
     local_shutdown_token: ShutdownToken,
+    group_shutdown_token: ShutdownToken,
     global_shutdown_token: ShutdownToken,
     cancellation_token: CancellationToken,
     shutdown_guard: Weak<ShutdownGuard>,

@@ -9,6 +9,7 @@ use crate::runner::SubsystemRunner;
 use crate::ErrTypeTraits;
 use crate::ShutdownToken;
 
+use crate::utils::get_subsystem_name;
 #[cfg(doc)]
 use crate::Toplevel;
 
@@ -52,19 +53,13 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     /// }
     /// ```
     ///
-    pub fn start<Err, Fut, Subsys>(&self, name: &'static str, subsystem: Subsys) -> NestedSubsystem
+    pub fn start<Err, Fut, Subsys>(&self, name: &str, subsystem: Subsys) -> NestedSubsystem
     where
         Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
         Fut: 'static + Future<Output = Result<(), Err>> + Send,
         Err: Into<ErrType>,
     {
-        let name = {
-            if !self.data.name.is_empty() {
-                self.data.name.clone() + "/" + name
-            } else {
-                name.to_string()
-            }
-        };
+        let name = get_subsystem_name(&self.data.name, name);
 
         // When we are inside a subsystem, shutdown_guard cannot have gotten dropped, because
         // the SubsystemRunner of the current subsystem keeps it alive.
@@ -78,6 +73,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
         let new_subsystem = Arc::new(SubsystemData::new(
             &name,
             self.global_shutdown_token().clone(),
+            self.group_shutdown_token().clone(),
             self.local_shutdown_token().child_token(),
             self.data.cancellation_token.child_token(),
             self.data.shutdown_guard.clone(),
@@ -87,7 +83,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
         let subsystem_handle = SubsystemHandle::new(new_subsystem.clone());
 
         // Shutdown token
-        let shutdown_token = subsystem_handle.global_shutdown_token().clone();
+        let shutdown_token = subsystem_handle.group_shutdown_token().clone();
 
         // Future
         let subsystem_future = async { subsystem(subsystem_handle).await.map_err(|e| e.into()) };
@@ -200,10 +196,10 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
         self.data.local_shutdown_token.is_shutting_down()
     }
 
-    /// Triggers the shutdown mode of the program.
+    /// Triggers a shutdown.
     ///
-    /// If a submodule itself shall have the capability to initiate a program shutdown,
-    /// this is the method to use.
+    /// This version only propagates up to the next [Toplevel] object.
+    /// To initiate a shutdown for the entire program, see [request_global_shutdown()](SubsystemHandle::request_global_shutdown).
     ///
     /// # Examples
     ///
@@ -216,15 +212,36 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     ///     // This subsystem wait for one second and then stops the program.
     ///     sleep(Duration::from_millis(1000)).await;
     ///
-    ///     // An explicit shutdown request is necessary, because
-    ///     // simply leaving the run() method does NOT initiate a program
-    ///     // shutdown if the return value is Ok(()).
+    ///     // Shut down the parent `Toplevel` object
     ///     subsys.request_shutdown();
     ///
     ///     Ok(())
     /// }
     /// ```
     pub fn request_shutdown(&self) {
+        self.data.group_shutdown_token.shutdown()
+    }
+
+    /// Triggers the shutdown of the entire program.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use miette::Result;
+    /// use tokio::time::{sleep, Duration};
+    /// use tokio_graceful_shutdown::SubsystemHandle;
+    ///
+    /// async fn stop_subsystem(subsys: SubsystemHandle) -> Result<()> {
+    ///     // This subsystem wait for one second and then stops the program.
+    ///     sleep(Duration::from_millis(1000)).await;
+    ///
+    ///     // Shut down all parent `Toplevel` objects.
+    ///     subsys.request_global_shutdown();
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn request_global_shutdown(&self) {
         self.data.global_shutdown_token.shutdown()
     }
 
@@ -282,6 +299,17 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
         &self.data.global_shutdown_token
     }
 
+    /// Provides access to the group local shutdown token.
+    ///
+    /// This token shuts down the parent [Toplevel] object.
+    ///
+    /// This function is usually not required and is there
+    /// to provide lower-level access for specific corner cases.
+    #[doc(hidden)]
+    pub fn group_shutdown_token(&self) -> &ShutdownToken {
+        &self.data.group_shutdown_token
+    }
+
     /// Provides access to the subsystem local shutdown token.
     ///
     /// This function is usually not required and is there
@@ -289,5 +317,14 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     #[doc(hidden)]
     pub fn local_shutdown_token(&self) -> &ShutdownToken {
         &self.data.local_shutdown_token
+    }
+
+    /// The name of the subsystem.
+    ///
+    /// This function is usually not required and is there
+    /// to provide lower-level access for specific corner cases.
+    #[doc(hidden)]
+    pub fn name(&self) -> &str {
+        &self.data.name
     }
 }

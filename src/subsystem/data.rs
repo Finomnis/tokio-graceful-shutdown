@@ -25,6 +25,7 @@ impl<ErrType: ErrTypeTraits> SubsystemData<ErrType> {
     pub fn new(
         name: &str,
         global_shutdown_token: ShutdownToken,
+        group_shutdown_token: ShutdownToken,
         local_shutdown_token: ShutdownToken,
         cancellation_token: CancellationToken,
         shutdown_guard: Weak<ShutdownGuard>,
@@ -33,6 +34,7 @@ impl<ErrType: ErrTypeTraits> SubsystemData<ErrType> {
             name: name.to_string(),
             subsystems: Mutex::new(Some(Vec::new())),
             global_shutdown_token,
+            group_shutdown_token,
             local_shutdown_token,
             cancellation_token,
             shutdown_subsystems: tokio::sync::Mutex::new(Vec::new()),
@@ -229,6 +231,7 @@ mod tests {
 
         let data = SubsystemData::<BoxedError>::new(
             "MySubsys",
+            shutdown_token.clone(),
             shutdown_token.clone(),
             shutdown_token.clone(),
             CancellationToken::new(),
