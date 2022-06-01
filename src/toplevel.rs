@@ -88,7 +88,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// This method is identical to `.new()`, except that the returned [Toplevel] object
     /// will receive shutdown requests from the given [SubsystemHandle] object.
     ///
-    /// Any errors that happen at subsystems inside the new [Toplevel] object will cause
+    /// Any errors caused by subsystems inside the new [Toplevel] object will cause
     /// the [Toplevel] object to initiate a shutdown, but will not propagate up to the
     /// [SubsystemHandle] object.
     ///
@@ -235,7 +235,6 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// # Returns
     ///
     /// An error of type [`GracefulShutdownError`] if an error occurred.
-    /// An implicit `.into()` will be performed to convert it to the desired error wrapping type.
     ///
     pub async fn handle_shutdown_requests(
         mut self,
