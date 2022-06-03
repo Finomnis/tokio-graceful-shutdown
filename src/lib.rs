@@ -113,8 +113,9 @@ mod subsystem;
 mod toplevel;
 mod utils;
 
+use shutdown_token::ShutdownToken;
+
 pub use into_subsystem::IntoSubsystem;
-pub use shutdown_token::ShutdownToken;
 pub use subsystem::NestedSubsystem;
 pub use subsystem::SubsystemHandle;
 pub use toplevel::Toplevel;
