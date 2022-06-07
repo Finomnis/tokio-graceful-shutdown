@@ -44,21 +44,44 @@ where
     }
 }
 
-/// Extends the [std::future::Future] trait with a couple of useful utility functions
+/// Extends the [std::future::Future] trait with a couple of useful utility functions.
 pub trait FutureExt {
-    /// The type of the future
+    /// The type of the future.
     type Future;
 
     /// Cancels the future when a shutdown is initiated.
+    ///
+    /// ## Returns
+    ///
+    /// A future that resolves to the return value of the original future on success, or
+    /// [CancelledByShutdown] when a cancellation happened.
     ///
     /// # Arguments
     ///
     /// * `subsys` - The [SubsystemHandle] to recieve the shutdown request from.
     ///
-    /// # Returns
+    /// # Examples
+    /// ```
+    /// use miette::Result;
+    /// use tokio_graceful_shutdown::{errors::CancelledByShutdown, FutureExt, SubsystemHandle};
+    /// use tokio::time::{sleep, Duration};
     ///
-    /// A future that resolves to the return value of the original future on success, or a
-    /// [CancelOnShutdownError] when a cancellation happened.
+    /// async fn my_subsystem(subsys: SubsystemHandle) -> Result<()> {
+    ///     match sleep(Duration::from_secs(9001))
+    ///         .cancel_on_shutdown(&subsys)
+    ///         .await
+    ///     {
+    ///         Ok(()) => {
+    ///             println!("Sleep finished.");
+    ///         }
+    ///         Err(CancelledByShutdown) => {
+    ///             println!("Sleep got cancelled by shutdown.");
+    ///         }
+    ///     }
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
     fn cancel_on_shutdown(
         self,
         subsys: &SubsystemHandle,
