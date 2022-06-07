@@ -1,4 +1,4 @@
-use tokio_util::sync::CancellationToken;
+use tokio_util::sync::{CancellationToken, WaitForCancellationFuture};
 
 #[derive(Clone)]
 #[doc(hidden)]
@@ -26,8 +26,8 @@ impl ShutdownToken {
         }
     }
 
-    pub async fn wait_for_shutdown(&self) {
-        self.token.cancelled().await
+    pub fn wait_for_shutdown(&self) -> WaitForCancellationFuture<'_> {
+        self.token.cancelled()
     }
 
     pub fn is_shutting_down(&self) -> bool {

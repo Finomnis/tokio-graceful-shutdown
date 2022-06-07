@@ -1,17 +1,21 @@
-use std::{marker::PhantomData, pin::Pin};
+use std::marker::PhantomData;
 
 use crate::{errors::CancelOnShutdownError, SubsystemHandle};
 
 use pin_project_lite::pin_project;
 
+use tokio_util::sync::WaitForCancellationFuture;
+
 pin_project! {
     /// aaa
     #[must_use = "futures do nothing unless polled"]
-    pub struct CancelOnShutdownFuture<'a, T: 'a>{
+    pub struct CancelOnShutdownFuture<'a, 'b, T: 'a>{
         //future: Pin<Box<dyn std::future::Future<Output = Result<T, CancelOnShutdownError>> + Send + Sync >>,
         #[pin]
-        f: T,
-        x: PhantomData<&'a T>
+        future: T,
+        #[pin]
+        cancellation: WaitForCancellationFuture<'b>,
+        _p: PhantomData<&'a T>
     }
 }
 
@@ -27,23 +31,36 @@ pin_project! {
 //     }
 // }
 
-impl<'a, T> std::future::Future for CancelOnShutdownFuture<'a, T>
+impl<'a, 'b, T> std::future::Future for CancelOnShutdownFuture<'a, 'b, T>
 where
     T: std::future::Future + Send + Sync + 'a,
 {
-    type Output = T::Output;
+    type Output = Result<T::Output, CancelOnShutdownError>;
 
     fn poll(
         self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
+        use std::task::Poll;
+
         let mut this = self.project();
-        this.f.as_mut().poll(cx)
+
+        // Abort if there is a shutdown
+        match this.cancellation.as_mut().poll(cx) {
+            Poll::Ready(()) => return Poll::Ready(Err(CancelOnShutdownError::CancelledByShutdown)),
+            Poll::Pending => (),
+        }
+
+        // If there is no shutdown, see if the task is finished
+        match this.future.as_mut().poll(cx) {
+            Poll::Ready(res) => Poll::Ready(Ok(res)),
+            Poll::Pending => Poll::Pending,
+        }
     }
 }
 
 /// Extends the [std::future::Future] trait with a couple of useful utility functions
-pub trait FutureExt<'a> {
+pub trait FutureExt<'a, 'b> {
     /// The return type of the future
     type Output;
 
@@ -59,29 +76,11 @@ pub trait FutureExt<'a> {
     /// [CancelOnShutdownError] when a cancellation happened.
     fn cancel_on_shutdown(
         self,
-        subsys: &SubsystemHandle,
-    ) -> CancelOnShutdownFuture<'a, Self::Output>;
+        subsys: &'b SubsystemHandle,
+    ) -> CancelOnShutdownFuture<'a, 'b, Self::Output>;
 }
 
-fn create_cancel_on_shutdown_future<'a, T>(
-    f: T,
-    subsys: SubsystemHandle,
-) -> CancelOnShutdownFuture<'a, T>
-where
-    T: std::future::Future + Send + Sync + 'a,
-{
-    // let future = Box::pin(async move {
-    //     let x = f;
-    //     tokio::select! {
-    //         _ = subsys.on_shutdown_requested() => Err(CancelOnShutdownError::CancelledByShutdown),
-    //         res = f => Ok(res)
-    //     }
-    // });
-
-    CancelOnShutdownFuture { f, x: PhantomData }
-}
-
-impl<'a, T> FutureExt<'a> for T
+impl<'a, 'b, T> FutureExt<'a, 'b> for T
 where
     T: std::future::Future + Send + Sync + 'a,
 {
@@ -89,11 +88,14 @@ where
 
     fn cancel_on_shutdown(
         self,
-        subsys: &SubsystemHandle,
-    ) -> CancelOnShutdownFuture<'a, Self::Output> {
-        let subsys = subsys.clone();
+        subsys: &'b SubsystemHandle,
+    ) -> CancelOnShutdownFuture<'a, 'b, Self::Output> {
+        let cancellation = subsys.local_shutdown_token().wait_for_shutdown();
 
-        create_cancel_on_shutdown_future(self, subsys)
-        //todo!()
+        CancelOnShutdownFuture {
+            future: self,
+            cancellation,
+            _p: PhantomData,
+        }
     }
 }
