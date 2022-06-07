@@ -1,4 +1,4 @@
-use crate::{errors::CancelOnShutdownError, SubsystemHandle};
+use crate::{errors::CancelledByShutdown, SubsystemHandle};
 
 use pin_project_lite::pin_project;
 
@@ -20,7 +20,7 @@ impl<T> std::future::Future for CancelOnShutdownFuture<'_, T>
 where
     T: std::future::Future,
 {
-    type Output = Result<T::Output, CancelOnShutdownError>;
+    type Output = Result<T::Output, CancelledByShutdown>;
 
     fn poll(
         self: std::pin::Pin<&mut Self>,
@@ -32,7 +32,7 @@ where
 
         // Abort if there is a shutdown
         match this.cancellation.as_mut().poll(cx) {
-            Poll::Ready(()) => return Poll::Ready(Err(CancelOnShutdownError::CancelledByShutdown)),
+            Poll::Ready(()) => return Poll::Ready(Err(CancelledByShutdown)),
             Poll::Pending => (),
         }
 
