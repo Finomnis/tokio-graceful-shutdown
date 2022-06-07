@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use crate::{errors::CancelOnShutdownError, SubsystemHandle};
 
 use pin_project_lite::pin_project;
@@ -7,33 +5,20 @@ use pin_project_lite::pin_project;
 use tokio_util::sync::WaitForCancellationFuture;
 
 pin_project! {
-    /// aaa
+    /// A Future that is resolved once the corresponding task is finished
+    /// or a shutdown is initiated.
     #[must_use = "futures do nothing unless polled"]
-    pub struct CancelOnShutdownFuture<'a, 'b, T: 'a>{
-        //future: Pin<Box<dyn std::future::Future<Output = Result<T, CancelOnShutdownError>> + Send + Sync >>,
+    pub struct CancelOnShutdownFuture<'a, T>{
         #[pin]
         future: T,
         #[pin]
-        cancellation: WaitForCancellationFuture<'b>,
-        _p: PhantomData<&'a T>
+        cancellation: WaitForCancellationFuture<'a>,
     }
 }
 
-// impl<T> std::future::Future for CancelOnShutdownFuture<T> {
-//     type Output = Result<T, CancelOnShutdownError>;
-
-//     fn poll(
-//         self: std::pin::Pin<&mut Self>,
-//         cx: &mut std::task::Context<'_>,
-//     ) -> std::task::Poll<Self::Output> {
-//         let this = self.project();
-//         this.f.poll(cx)
-//     }
-// }
-
-impl<'b, T> std::future::Future for CancelOnShutdownFuture<'_, 'b, T>
+impl<T> std::future::Future for CancelOnShutdownFuture<'_, T>
 where
-    T: std::future::Future + Send + Sync,
+    T: std::future::Future,
 {
     type Output = Result<T::Output, CancelOnShutdownError>;
 
@@ -61,8 +46,8 @@ where
 
 /// Extends the [std::future::Future] trait with a couple of useful utility functions
 pub trait FutureExt {
-    /// The return type of the future
-    type Output;
+    /// The type of the future
+    type Future;
 
     /// Cancels the future when a shutdown is initiated.
     ///
@@ -77,25 +62,18 @@ pub trait FutureExt {
     fn cancel_on_shutdown(
         self,
         subsys: &SubsystemHandle,
-    ) -> CancelOnShutdownFuture<'_, '_, Self::Output>;
+    ) -> CancelOnShutdownFuture<'_, Self::Future>;
 }
 
-impl<T> FutureExt for T
-where
-    T: std::future::Future + Send + Sync,
-{
-    type Output = T;
+impl<T: std::future::Future> FutureExt for T {
+    type Future = T;
 
-    fn cancel_on_shutdown(
-        self,
-        subsys: &SubsystemHandle,
-    ) -> CancelOnShutdownFuture<'_, '_, Self::Output> {
+    fn cancel_on_shutdown(self, subsys: &SubsystemHandle) -> CancelOnShutdownFuture<'_, T> {
         let cancellation = subsys.local_shutdown_token().wait_for_shutdown();
 
         CancelOnShutdownFuture {
             future: self,
             cancellation,
-            _p: PhantomData,
         }
     }
 }
