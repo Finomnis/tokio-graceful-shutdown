@@ -31,9 +31,9 @@ pin_project! {
 //     }
 // }
 
-impl<'a, 'b, T> std::future::Future for CancelOnShutdownFuture<'a, 'b, T>
+impl<'b, T> std::future::Future for CancelOnShutdownFuture<'_, 'b, T>
 where
-    T: std::future::Future + Send + Sync + 'a,
+    T: std::future::Future + Send + Sync,
 {
     type Output = Result<T::Output, CancelOnShutdownError>;
 
@@ -60,7 +60,7 @@ where
 }
 
 /// Extends the [std::future::Future] trait with a couple of useful utility functions
-pub trait FutureExt<'a, 'b> {
+pub trait FutureExt {
     /// The return type of the future
     type Output;
 
@@ -76,20 +76,20 @@ pub trait FutureExt<'a, 'b> {
     /// [CancelOnShutdownError] when a cancellation happened.
     fn cancel_on_shutdown(
         self,
-        subsys: &'b SubsystemHandle,
-    ) -> CancelOnShutdownFuture<'a, 'b, Self::Output>;
+        subsys: &SubsystemHandle,
+    ) -> CancelOnShutdownFuture<'_, '_, Self::Output>;
 }
 
-impl<'a, 'b, T> FutureExt<'a, 'b> for T
+impl<T> FutureExt for T
 where
-    T: std::future::Future + Send + Sync + 'a,
+    T: std::future::Future + Send + Sync,
 {
     type Output = T;
 
     fn cancel_on_shutdown(
         self,
-        subsys: &'b SubsystemHandle,
-    ) -> CancelOnShutdownFuture<'a, 'b, Self::Output> {
+        subsys: &SubsystemHandle,
+    ) -> CancelOnShutdownFuture<'_, '_, Self::Output> {
         let cancellation = subsys.local_shutdown_token().wait_for_shutdown();
 
         CancelOnShutdownFuture {
