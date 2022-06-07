@@ -125,6 +125,15 @@ impl<ErrType: ErrTypeTraits> SubsystemError<ErrType> {
     }
 }
 
+/// This enum contains all the possible errors that could be returned
+/// by [`cancel_on_shutdown()`](crate::FutureExt::cancel_on_shutdown).
+#[derive(Error, Debug, Diagnostic)]
+pub enum CancelOnShutdownError {
+    /// At least one subsystem caused an error.
+    #[error("A shutdown request caused this task to be cancelled")]
+    CancelledByShutdown,
+}
+
 #[cfg(test)]
 mod tests {
     use crate::BoxedError;

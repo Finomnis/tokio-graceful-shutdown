@@ -105,6 +105,7 @@ impl<T> ErrTypeTraits for T where
 
 pub mod errors;
 mod exit_state;
+mod future_ext;
 mod into_subsystem;
 mod runner;
 mod shutdown_token;
@@ -115,6 +116,7 @@ mod utils;
 
 use shutdown_token::ShutdownToken;
 
+pub use future_ext::FutureExt;
 pub use into_subsystem::IntoSubsystem;
 pub use subsystem::NestedSubsystem;
 pub use subsystem::SubsystemHandle;
