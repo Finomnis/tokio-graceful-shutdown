@@ -8,7 +8,7 @@ pin_project! {
     /// A Future that is resolved once the corresponding task is finished
     /// or a shutdown is initiated.
     #[must_use = "futures do nothing unless polled"]
-    pub struct CancelOnShutdownFuture<'a, T>{
+    pub struct CancelOnShutdownFuture<'a, T: std::future::Future>{
         #[pin]
         future: T,
         #[pin]
@@ -16,10 +16,7 @@ pin_project! {
     }
 }
 
-impl<T> std::future::Future for CancelOnShutdownFuture<'_, T>
-where
-    T: std::future::Future,
-{
+impl<T: std::future::Future> std::future::Future for CancelOnShutdownFuture<'_, T> {
     type Output = Result<T::Output, CancelledByShutdown>;
 
     fn poll(
@@ -47,7 +44,7 @@ where
 /// Extends the [std::future::Future] trait with a couple of useful utility functions.
 pub trait FutureExt {
     /// The type of the future.
-    type Future;
+    type Future: std::future::Future;
 
     /// Cancels the future when a shutdown is initiated.
     ///
