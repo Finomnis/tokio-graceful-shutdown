@@ -158,6 +158,7 @@ mod tests {
         examine_report(
             SubsystemError::Failed::<BoxedError>("".into(), SubsystemFailure("".into())).into(),
         );
+        examine_report(CancelledByShutdown.into());
     }
 
     #[test]
