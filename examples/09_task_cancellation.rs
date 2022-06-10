@@ -1,9 +1,11 @@
 //! This example demonstrates how to implement a clean shutdown
 //! of a subsystem.
 //!
-//! The central mechanism here is tokio::select, which can cancel
-//! tasks once one of them finishes. This can be used to cancel
-//! tasks once the shutdown was initiated.
+//! There are two options to cancel tasks on shutdown:
+//!   - with [tokio::select]
+//!   - with [FutureExt::cancel_on_shutdown()]
+//!
+//! In this case we go with `cancel_on_shutdown()`, but `tokio::select` would be equally viable.
 
 use env_logger::{Builder, Env};
 use miette::Result;
