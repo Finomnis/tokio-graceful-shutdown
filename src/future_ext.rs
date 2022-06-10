@@ -41,7 +41,7 @@ impl<T: std::future::Future> std::future::Future for CancelOnShutdownFuture<'_, 
     }
 }
 
-/// Extends the [std::future::Future] trait with a couple of useful utility functions.
+/// Extends the [std::future::Future] trait with a useful utility functions.
 pub trait FutureExt {
     /// The type of the future.
     type Future: std::future::Future;
@@ -50,8 +50,8 @@ pub trait FutureExt {
     ///
     /// ## Returns
     ///
-    /// A future that resolves to the return value of the original future on success, or
-    /// [CancelledByShutdown] when a cancellation happened.
+    /// A future that resolves to either the return value of the original future, or to
+    /// [CancelledByShutdown] when a shutdown happened.
     ///
     /// # Arguments
     ///
