@@ -125,7 +125,7 @@ impl<ErrType: ErrTypeTraits> SubsystemError<ErrType> {
     }
 }
 
-/// The error that happens when a task gets cancelled by
+/// The error that happens when a task gets cancelled through
 /// [`cancel_on_shutdown()`](crate::FutureExt::cancel_on_shutdown).
 #[derive(Error, Debug, Diagnostic)]
 #[error("A shutdown request caused this task to be cancelled")]
