@@ -55,7 +55,7 @@ pub trait FutureExt {
     ///
     /// # Arguments
     ///
-    /// * `subsys` - The [SubsystemHandle] to recieve the shutdown request from.
+    /// * `subsys` - The [SubsystemHandle] to receive the shutdown request from.
     ///
     /// # Examples
     /// ```
