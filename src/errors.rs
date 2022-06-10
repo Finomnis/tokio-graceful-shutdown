@@ -125,6 +125,12 @@ impl<ErrType: ErrTypeTraits> SubsystemError<ErrType> {
     }
 }
 
+/// The error that happens when a task gets cancelled through
+/// [`cancel_on_shutdown()`](crate::FutureExt::cancel_on_shutdown).
+#[derive(Error, Debug, Diagnostic)]
+#[error("A shutdown request caused this task to be cancelled")]
+pub struct CancelledByShutdown;
+
 #[cfg(test)]
 mod tests {
     use crate::BoxedError;
@@ -152,6 +158,7 @@ mod tests {
         examine_report(
             SubsystemError::Failed::<BoxedError>("".into(), SubsystemFailure("".into())).into(),
         );
+        examine_report(CancelledByShutdown.into());
     }
 
     #[test]

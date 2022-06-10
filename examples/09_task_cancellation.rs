@@ -8,7 +8,7 @@
 use env_logger::{Builder, Env};
 use miette::Result;
 use tokio::time::{sleep, Duration};
-use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
+use tokio_graceful_shutdown::{errors::CancelledByShutdown, FutureExt, SubsystemHandle, Toplevel};
 
 struct CountdownSubsystem {}
 impl CountdownSubsystem {
@@ -26,14 +26,14 @@ impl CountdownSubsystem {
     async fn run(self, subsys: SubsystemHandle) -> Result<()> {
         log::info!("Starting countdown ...");
 
-        tokio::select! {
-            _ = subsys.on_shutdown_requested() => {
-                log::info!("Countdown cancelled.");
-            },
-            _ = self.countdown() => {
+        match self.countdown().cancel_on_shutdown(&subsys).await {
+            Ok(()) => {
                 log::info!("Countdown finished.");
             }
-        };
+            Err(CancelledByShutdown) => {
+                log::info!("Countdown cancelled.");
+            }
+        }
 
         Ok(())
     }

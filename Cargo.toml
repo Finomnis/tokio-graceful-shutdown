@@ -29,6 +29,7 @@ tokio = { version = "1", default-features = false, features = [
 tokio-util = { version = "0.7.2", default-features = false }
 futures = "0.3"
 async-recursion = "1.0"
+pin-project-lite = "0.2"
 
 # For 'IntoSubsystem' trait
 async-trait = "0.1"
