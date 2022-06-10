@@ -41,7 +41,7 @@ impl<T: std::future::Future> std::future::Future for CancelOnShutdownFuture<'_, 
     }
 }
 
-/// Extends the [std::future::Future] trait with a useful utility functions.
+/// Extends the [std::future::Future] trait with useful utility functions.
 pub trait FutureExt {
     /// The type of the future.
     type Future: std::future::Future;
