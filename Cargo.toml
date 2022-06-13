@@ -52,6 +52,9 @@ tokio = { version = "1", features = ["full"] }
 # Hyper example
 hyper = { version = "0.14", features = ["full"] }
 
+# Warp example
+warp = "0.3.1"
+
 # For testing unix signals
 [target.'cfg(unix)'.dev-dependencies]
 nix = { version = "0.24", default-features = false, features = ["signal"] }
