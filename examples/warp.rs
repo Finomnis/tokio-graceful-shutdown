@@ -38,7 +38,7 @@ async fn main() -> Result<()> {
     Toplevel::new()
         .start("Warp", warp_subsystem)
         .catch_signals()
-        .handle_shutdown_requests(Duration::from_secs(60 * 5))
+        .handle_shutdown_requests(Duration::from_secs(60))
         .await
         .map_err(Into::into)
 }
