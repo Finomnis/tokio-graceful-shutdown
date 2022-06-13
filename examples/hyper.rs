@@ -2,6 +2,10 @@
 //! server using this crate.
 //!
 //! This example closely follows hyper's "hello" example.
+//!
+//! Note that we have to wait for a long time in `handle_shutdown_requests` because
+//! hyper's graceful shutdown waits for all connections to be closed naturally
+//! instead of terminating them.
 
 use env_logger::{Builder, Env};
 use miette::{miette, Result};
@@ -27,7 +31,7 @@ async fn hyper_subsystem(subsys: SubsystemHandle) -> Result<()> {
         async { Ok::<_, Infallible>(service_fn(hello)) }
     });
 
-    let addr = ([127, 0, 0, 1], 3000).into();
+    let addr = ([127, 0, 0, 1], 12345).into();
     let server = Server::bind(&addr).serve(make_svc);
 
     log::info!("Listening on http://{}", addr);
@@ -50,7 +54,7 @@ async fn main() -> Result<()> {
     Toplevel::new()
         .start("Hyper", hyper_subsystem)
         .catch_signals()
-        .handle_shutdown_requests(Duration::from_millis(4000))
+        .handle_shutdown_requests(Duration::from_secs(60 * 5))
         .await
         .map_err(Into::into)
 }
