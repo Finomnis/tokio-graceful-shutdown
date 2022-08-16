@@ -130,7 +130,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// # Subsystem
     ///
     /// The functionality of the subsystem is represented by the 'subsystem' argument.
-    /// It has to be provided either as an asynchronous function or an asynchronous lambda.
+    /// It has to be provided either as an asynchronous function or an asynchronous closure.
     ///
     /// It gets provided with a [`SubsystemHandle`] object which can be used to interact with this crate.
     ///
@@ -157,7 +157,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         self
     }
 
-    /// Registers signal handlers to initiate an program shutdown when certain operating system
+    /// Registers signal handlers to initiate a program shutdown when certain operating system
     /// signals get received.
     ///
     /// The following signals will be handled:
