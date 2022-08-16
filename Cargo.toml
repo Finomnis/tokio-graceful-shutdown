@@ -17,7 +17,7 @@ exclude = ["/.github/", "/TODO.txt", "/UPCOMING_VERSION_CHANGES.txt"]
 [dependencies]
 # Error definitions
 thiserror = "1.0"
-miette = "4.4"
+miette = "5.3"
 
 # For async utilities
 tokio = { version = "1", default-features = false, features = [
@@ -41,7 +41,7 @@ log = "0.4"
 # Error propagation
 anyhow = "1.0"
 eyre = "0.6"
-miette = { version = "4.4", features = ["fancy"] }
+miette = { version = "5.3", features = ["fancy"] }
 
 # Logging
 env_logger = "0.9"
@@ -57,7 +57,7 @@ warp = "0.3.1"
 
 # For testing unix signals
 [target.'cfg(unix)'.dev-dependencies]
-nix = { version = "0.24", default-features = false, features = ["signal"] }
+nix = { version = "0.25", default-features = false, features = ["signal"] }
 
 # Make leak sanitizer more reliable
 [profile.dev]
