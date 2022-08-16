@@ -12,7 +12,12 @@ categories = ["asynchronous"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-exclude = ["/.github/", "/TODO.txt", "/UPCOMING_VERSION_CHANGES.txt"]
+exclude = [
+    "/.gitignore",
+    "/.github/",
+    "/TODO.txt",
+    "/UPCOMING_VERSION_CHANGES.txt",
+]
 
 [dependencies]
 # Error definitions
