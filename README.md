@@ -2,10 +2,10 @@
 
 [![Crates.io](https://img.shields.io/crates/v/tokio-graceful-shutdown)](https://crates.io/crates/tokio-graceful-shutdown)
 [![Crates.io](https://img.shields.io/crates/d/tokio-graceful-shutdown)](https://crates.io/crates/tokio-graceful-shutdown)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](https://github.com/Finomnis/tokio-graceful-shutdown/blob/main/LICENSE)
+[![License](https://img.shields.io/crates/l/tokio-graceful-shutdown)](https://github.com/Finomnis/tokio-graceful-shutdown/blob/main/LICENSE-MIT)
 [![Build Status](https://img.shields.io/github/workflow/status/Finomnis/tokio-graceful-shutdown/CI/main)](https://github.com/Finomnis/tokio-graceful-shutdown/actions/workflows/ci.yml?query=branch%3Amain)
 [![docs.rs](https://img.shields.io/docsrs/tokio-graceful-shutdown)](https://docs.rs/tokio-graceful-shutdown)
-[![Coverage Status](https://coveralls.io/repos/github/Finomnis/tokio-graceful-shutdown/badge.svg?branch=main)](https://coveralls.io/github/Finomnis/tokio-graceful-shutdown?branch=main)
+[![Coverage Status](https://img.shields.io/coveralls/github/Finomnis/tokio-graceful-shutdown/main)](https://coveralls.io/github/Finomnis/tokio-graceful-shutdown?branch=main)
 
 This crate provides utility functions to perform a graceful shutdown on tokio-rs based services.
 
@@ -64,7 +64,7 @@ Further examples can be seen in the [**examples**](https://github.com/Finomnis/t
 To use this library in your project, add the following to the `[dependencies]` section of `Cargo.toml`:
 ```toml
 [dependencies]
-tokio-graceful-shutdown = "0.10"
+tokio-graceful-shutdown = "0.11"
 ```
 
 To run one of the examples (here `01_normal_shutdown.rs`), simply enter the repository folder and execute:
