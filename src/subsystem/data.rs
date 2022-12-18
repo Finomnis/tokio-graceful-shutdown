@@ -238,8 +238,8 @@ mod tests {
             Arc::downgrade(&shutdown_guard),
         );
 
-        data.prepare_shutdown().await;
-        data.prepare_shutdown().await;
+        drop(data.prepare_shutdown().await);
+        drop(data.prepare_shutdown().await);
 
         assert!(data.subsystems.lock().unwrap().is_none());
     }
