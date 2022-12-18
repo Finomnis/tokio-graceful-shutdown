@@ -19,8 +19,8 @@ on:
     - cron: '22 15 * * 1'
 
 jobs:
-  rust-clippy-analyze:
-    name: Run rust-clippy analyzing
+  clippy:
+    name: Clippy
     runs-on: ubuntu-latest
     permissions:
       contents: read
