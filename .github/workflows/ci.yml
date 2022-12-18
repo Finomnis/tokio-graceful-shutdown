@@ -13,6 +13,8 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: "-D warnings"
     strategy:
       matrix:
         target:
@@ -35,6 +37,8 @@ jobs:
   test:
     name: Test Suite
     runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: "-D warnings"
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
