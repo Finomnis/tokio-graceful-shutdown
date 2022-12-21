@@ -49,10 +49,7 @@ jobs:
       #- uses: Swatinem/rust-cache@v1
 
       - name: Run cargo test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: -- --test-threads 1
+        run: cargo test -- --test-threads 1
 
   lints:
     name: Lints
@@ -67,10 +64,7 @@ jobs:
           components: clippy
 
       - name: Run cargo fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+        run: cargo fmt --all -- --check
 
       - name: Run cargo clippy
         uses: actions-rs/clippy-check@v1
@@ -91,10 +85,7 @@ jobs:
       - name: Run cargo doc
         env:
           RUSTDOCFLAGS: "-Dwarnings"
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --no-deps
+        run: cargo doc --no-deps
 
   leaks:
     name: Memory leaks
@@ -113,20 +104,17 @@ jobs:
       #- uses: Swatinem/rust-cache@v1
 
       - name: Build
-        uses: actions-rs/cargo@v1
         env:
           RUSTFLAGS: "-Z sanitizer=address"
-        with:
-          command: build
-          args: --target x86_64-unknown-linux-gnu --tests
+        run: cargo build --target x86_64-unknown-linux-gnu --tests
 
       - name: Run tests with leak sanitizer
-        uses: actions-rs/cargo@v1
         env:
           RUSTFLAGS: "-Z sanitizer=address"
-        with:
-          command: test
-          args: --target x86_64-unknown-linux-gnu --tests -- --test-threads 1
+        run:
+          cargo test
+          --target x86_64-unknown-linux-gnu --tests
+          -- --test-threads 1
 
   release:
     name: Publish version
@@ -159,12 +147,7 @@ jobs:
         run: test ${{ env.crate_version }} = ${{ env.release_tag_version }}
 
       - name: Cargo login
-        uses: actions-rs/cargo@v1
-        with:
-          command: login
-          args: ${{ secrets.CRATES_IO_TOKEN }}
+        run: cargo login ${{ secrets.CRATES_IO_TOKEN }}
 
       - name: Cargo publish
-        uses: actions-rs/cargo@v1
-        with:
-          command: publish
+        run: cargo publish
