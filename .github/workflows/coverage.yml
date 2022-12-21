@@ -16,13 +16,11 @@ jobs:
       RUST_TEST_THREADS: "1"
     steps:
       - name: Install rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@nightly
         with:
-          toolchain: nightly
           components: llvm-tools-preview
-          override: true
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Install llvm-cov
         uses: actions-rs/install@v0.1
         with:
