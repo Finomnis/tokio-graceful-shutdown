@@ -35,8 +35,10 @@ jobs:
         with:
           components: clippy
 
-      - name: Install required cargo
-        run: cargo install clippy-sarif sarif-fmt
+      - name: Install sarif tools
+        uses: taiki-e/install-action@v1
+        with:
+          tool: clippy-sarif,sarif-fmt
 
       - name: Run rust-clippy
         run:

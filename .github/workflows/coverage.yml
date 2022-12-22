@@ -22,20 +22,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
       - name: Install llvm-cov
-        uses: actions-rs/install@v0.1
-        with:
-          crate: cargo-llvm-cov
-          version: 0.2.3
-          use-tool-cache: true
+        uses: taiki-e/install-action@cargo-llvm-cov
       #- uses: Swatinem/rust-cache@v1
-      - name: Coverage
+      - name: Compute Coverage
         env:
           RUST_LOG: "debug"
-        uses: actions-rs/cargo@v1
-        with:
-          command: llvm-cov
-          args: --all-features --workspace --lcov --output-path lcov.info
-      - name: Coveralls
+        run:
+          cargo llvm-cov
+          --all-features --workspace
+          --lcov --output-path lcov.info
+      - name: Upload to Coveralls
         uses: coverallsapp/github-action@master
         with:
           path-to-lcov: lcov.info
