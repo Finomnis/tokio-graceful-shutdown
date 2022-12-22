@@ -60,10 +60,6 @@ impl<ErrType: ErrTypeTraits> SubsystemRunner<ErrType> {
             }
         };
 
-        let x: i32 = -42;
-        let y: u32 = x.abs() as u32;
-        println!("{}", y);
-
         match &result {
             Ok(()) | Err(SubsystemError::Cancelled(_)) => {}
             Err(SubsystemError::Failed(name, e)) => {
