@@ -25,14 +25,11 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      #- uses: Swatinem/rust-cache@v1
+      - name: Install cross
+        uses: taiki-e/install-action@cross
 
-      - name: Run cargo build
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: true
-          command: build
-          args: --release --target=${{ matrix.target }}
+      - name: Build
+        run: cross build --release --target=${{ matrix.target }}
 
   test:
     name: Test Suite
@@ -67,10 +64,7 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Run cargo clippy
-        uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features -- -D warnings
+        run: cargo clippy --all-features -- -D warnings
 
   docs:
     name: Documentation
