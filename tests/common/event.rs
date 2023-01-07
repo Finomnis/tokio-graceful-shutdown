@@ -5,7 +5,7 @@ pub struct Event {
 }
 
 impl Event {
-    pub fn create() -> (Self, impl FnOnce() -> ()) {
+    pub fn create() -> (Self, impl FnOnce()) {
         let (sender, receiver) = watch::channel(false);
         (Self { receiver }, move || {
             sender.send_replace(true);
