@@ -171,7 +171,7 @@ mod tests {
         };
 
         let matches_related = |data: &Vec<SubsystemError<BoxedError>>| {
-            let mut iter = data.into_iter();
+            let mut iter = data.iter();
 
             let elem = iter.next().unwrap();
             assert_eq!(elem.name(), "a");

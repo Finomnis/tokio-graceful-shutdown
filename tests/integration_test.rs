@@ -944,12 +944,12 @@ async fn subsystem_errors_get_propagated_to_user() {
             assert_eq!("subsys/nested2", name);
             assert_eq!("MyGreatError", format!("{}", e));
         } else {
-            assert!(false, "Incorrect error type!");
+            panic!("Incorrect error type!");
         }
         assert!(matches!(el, SubsystemError::Failed(_, _)));
         assert_eq!("subsys/nested2", el.name());
     } else {
-        assert!(false, "Incorrect return value!");
+        panic!("Incorrect return value!");
     }
 }
 
@@ -1003,7 +1003,7 @@ async fn subsystem_errors_get_propagated_to_user_when_timeout() {
             assert_eq!("subsys/nested2", name);
             assert_eq!("MyGreatError", format!("{}", e));
         } else {
-            assert!(false, "Incorrect error type!");
+            panic!("Incorrect error type!");
         }
         assert!(matches!(el, SubsystemError::Failed(_, _)));
         assert_eq!("subsys/nested2", el.name());
@@ -1012,7 +1012,7 @@ async fn subsystem_errors_get_propagated_to_user_when_timeout() {
         assert!(matches!(el, SubsystemError::Cancelled(_)));
         assert_eq!("subsys/nested3", el.name());
     } else {
-        assert!(false, "Incorrect return value!");
+        panic!("Incorrect return value!");
     }
 }
 

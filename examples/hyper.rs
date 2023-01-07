@@ -42,7 +42,7 @@ async fn hyper_subsystem(subsys: SubsystemHandle) -> Result<()> {
     server
         .with_graceful_shutdown(subsys.on_shutdown_requested())
         .await
-        .or_else(|err| Err(miette! {err}))
+        .map_err(|err| miette! {err})
 }
 
 #[tokio::main]
