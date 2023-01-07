@@ -29,7 +29,7 @@ jobs:
         uses: taiki-e/install-action@cross
 
       - name: Build
-        run: cross build --release --target=${{ matrix.target }}
+        run: cross build --all-features --all-targets --release --target=${{ matrix.target }}
 
   test:
     name: Test Suite
@@ -64,7 +64,7 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Run cargo clippy
-        run: cargo clippy --all-features -- -D warnings
+        run: cargo clippy --all-features --all-targets -- -D warnings
 
   docs:
     name: Documentation
