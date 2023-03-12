@@ -274,6 +274,15 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         }
     }
 
+    /// Provides access to the subsystem handle for this Toplevel.
+    ///
+    /// This allows accessing a more permissive `start` function, as well as starting nested
+    /// subsystems without introducing one additional level of indirection that requires
+    /// `Send + 'static`
+    pub fn subsystem_handle(&self) -> &SubsystemHandle<ErrType> {
+        &self.subsys_handle
+    }
+
     #[doc(hidden)]
     pub fn get_shutdown_token(&self) -> &ShutdownToken {
         self.subsys_handle.local_shutdown_token()
