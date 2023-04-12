@@ -24,11 +24,12 @@ Specifically, it provides:
 ## Usage Example
 
 ```rust
+#[tracing::instrument(name = "Subsys1", skip_all)]
 async fn subsys1(subsys: SubsystemHandle) -> Result<()>
 {
-    log::info!("Subsystem1 started.");
+    tracing::info!("Subsystem1 started.");
     subsys.on_shutdown_requested().await;
-    log::info!("Subsystem1 stopped.");
+    tracing::info!("Subsystem1 stopped.");
     Ok(())
 }
 ```

@@ -14,7 +14,6 @@ use super::SubsystemData;
 use super::SubsystemDescriptor;
 use super::SubsystemIdentifier;
 use crate::errors::SubsystemError;
-use crate::exit_state::prettify_exit_states;
 use crate::exit_state::{join_shutdown_results, ShutdownResults, SubprocessExitState};
 use crate::runner::SubsystemRunner;
 use crate::shutdown_token::ShutdownToken;
@@ -46,6 +45,7 @@ impl<ErrType: ErrTypeTraits> SubsystemData<ErrType> {
     ///
     /// If a shutdown is already running, self.subsystems will be 'None',
     /// and the newly spawned subsystem will be cancelled.
+    #[tracing::instrument(name = "Add Subsystem", skip_all, level = "debug", fields(parent_name = %self.name, subsystem_name = %subsystem.name))]
     pub fn add_subsystem(
         &self,
         subsystem: Arc<SubsystemData<ErrType>>,
@@ -61,7 +61,7 @@ impl<ErrType: ErrTypeTraits> SubsystemData<ErrType> {
                 });
             }
             None => {
-                log::error!("Unable to add subsystem, parent subsystem already shutting down!");
+                tracing::error!("Unable to add subsystem, parent subsystem already shutting down!");
                 subsystem_runner.abort();
             }
         }
@@ -129,16 +129,26 @@ impl<ErrType: ErrTypeTraits> SubsystemData<ErrType> {
                 joinhandles_finished
                     .into_iter()
                     .map(|(name, result)| {
-                        SubprocessExitState::<ErrType>::new(
-                            name,
-                            match &result {
-                                Ok(()) => "OK",
-                                Err(SubsystemError::Cancelled(_)) => "Cancelled",
-                                Err(SubsystemError::Failed(_, _)) => "Failed",
-                                Err(SubsystemError::Panicked(_)) => "Panicked",
-                            },
-                            result,
-                        )
+                        let result_str = match &result {
+                            Ok(()) => {
+                                tracing::debug!("Subsystem '{}' finished", name);
+                                "OK"
+                            }
+                            Err(SubsystemError::Cancelled(_)) => {
+                                tracing::debug!("Subsystem '{}' cancelled", name);
+                                "Cancelled"
+                            }
+                            Err(SubsystemError::Failed(_, _)) => {
+                                tracing::debug!("Subsystem '{}' failed", name);
+                                "Failed"
+                            }
+                            Err(SubsystemError::Panicked(_)) => {
+                                tracing::debug!("Subsystem '{}' panicked", name);
+                                "Panicked"
+                            }
+                        };
+
+                        SubprocessExitState::<ErrType>::new(name, result_str, result)
                     })
                     .collect()
             },
@@ -165,6 +175,7 @@ impl<ErrType: ErrTypeTraits> SubsystemData<ErrType> {
         self.cancellation_token.cancel();
     }
 
+    #[tracing::instrument(name = "System Partial Shutdown", skip_all, level = "debug", fields(name = %self.name))]
     pub async fn perform_partial_shutdown(
         &self,
         subsystem_handle: NestedSubsystem,
@@ -188,9 +199,6 @@ impl<ErrType: ErrTypeTraits> SubsystemData<ErrType> {
         let mut subsystem_vec = vec![subsystem];
         let exit_states = SubsystemData::perform_shutdown_on_subsystems(&mut subsystem_vec).await;
 
-        // Prettify exit states
-        let formatted_exit_states = prettify_exit_states(&exit_states);
-
         // Collect failed subsystems
         let failed_subsystems = exit_states
             .into_iter()
@@ -199,16 +207,6 @@ impl<ErrType: ErrTypeTraits> SubsystemData<ErrType> {
                 Err(e) => Some(e),
             })
             .collect::<Vec<_>>();
-
-        // Print subsystem exit states
-        if failed_subsystems.is_empty() {
-            log::debug!("Partial shutdown successful. Subsystem states:");
-        } else {
-            log::debug!("Some subsystems during partial shutdown failed. Subsystem states:");
-        };
-        for formatted_exit_state in formatted_exit_states {
-            log::debug!("    {}", formatted_exit_state);
-        }
 
         if failed_subsystems.is_empty() {
             Ok(())

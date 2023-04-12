@@ -7,8 +7,8 @@ async fn wait_for_signal_impl() {
     let mut signal_interrupt = signal(SignalKind::interrupt()).unwrap();
 
     tokio::select! {
-        _ = signal_terminate.recv() => log::debug!("Received SIGTERM."),
-        _ = signal_interrupt.recv() => log::debug!("Received SIGINT."),
+        _ = signal_terminate.recv() => tracing::debug!("Received SIGTERM."),
+        _ = signal_interrupt.recv() => tracing::debug!("Received SIGINT."),
     };
 }
 
@@ -18,7 +18,7 @@ async fn wait_for_signal_impl() {
     use tokio::signal::ctrl_c;
 
     ctrl_c().await.unwrap();
-    log::debug!("Received SIGINT.");
+    tracing::debug!("Received SIGINT.");
 }
 
 /// Registers Ctrl+C and SIGTERM handlers to cause a program shutdown.

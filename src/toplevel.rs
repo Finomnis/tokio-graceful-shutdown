@@ -7,7 +7,6 @@ use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use crate::errors::GracefulShutdownError;
-use crate::exit_state::prettify_exit_states;
 use crate::shutdown_token::create_shutdown_token;
 use crate::signal_handling::wait_for_signal;
 use crate::utils::get_subsystem_name;
@@ -190,24 +189,11 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     async fn attempt_clean_shutdown(&self) -> Result<(), GracefulShutdownError<ErrType>> {
         let exit_states = self.subsys_data.perform_shutdown().await;
 
-        // Prettify exit states
-        let formatted_exit_states = prettify_exit_states(&exit_states);
-
         // Collect failed subsystems
         let failed_subsystems = exit_states
             .into_iter()
             .filter_map(|exit_state| exit_state.raw_result.err())
             .collect::<Vec<_>>();
-
-        // Print subsystem exit states
-        if failed_subsystems.is_empty() {
-            log::debug!("Shutdown successful. Subsystem states:");
-        } else {
-            log::debug!("Some subsystems failed. Subsystem states:");
-        };
-        for formatted_exit_state in formatted_exit_states {
-            log::debug!("    {}", formatted_exit_state);
-        }
 
         if failed_subsystems.is_empty() {
             Ok(())
@@ -236,6 +222,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     ///
     /// An error of type [`GracefulShutdownError`] if an error occurred.
     ///
+    #[tracing::instrument(name = "Global System Shutdown", skip_all, level = "debug", fields(timeout = %humantime::format_duration(shutdown_timeout)))]
     pub async fn handle_shutdown_requests(
         mut self,
         shutdown_timeout: Duration,
@@ -251,7 +238,8 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         let cancel_on_timeout = async {
             // Wait for the timeout to happen
             tokio::time::sleep(shutdown_timeout).await;
-            log::error!("Shutdown timed out. Attempting to cleanup stale subsystems ...");
+
+            tracing::error!("Shutdown timed out. Attempting to cleanup stale subsystems ...",);
             timeout_occurred.store(true, Ordering::SeqCst);
             self.subsys_data.cancel_all_subsystems();
             // Await forever, because we don't want to cancel the attempt_clean_shutdown.

@@ -123,22 +123,22 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     ///
     /// async fn countdown() {
     ///     for i in (1..10).rev() {
-    ///         log::info!("Countdown: {}", i);
+    ///         tracing::info!("Countdown: {}", i);
     ///         sleep(Duration::from_millis(1000)).await;
     ///     }
     /// }
     ///
     /// async fn countdown_subsystem(subsys: SubsystemHandle) -> Result<()> {
-    ///     log::info!("Starting countdown ...");
+    ///     tracing::info!("Starting countdown ...");
     ///
     ///     // This cancels the countdown as soon as shutdown
     ///     // mode was entered
     ///     tokio::select! {
     ///         _ = subsys.on_shutdown_requested() => {
-    ///             log::info!("Countdown cancelled.");
+    ///             tracing::info!("Countdown cancelled.");
     ///         },
     ///         _ = countdown() => {
-    ///             log::info!("Countdown finished.");
+    ///             tracing::info!("Countdown finished.");
     ///         }
     ///     };
     ///
@@ -168,17 +168,17 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     ///     tokio::select! {
     ///         // Execute an action. A dummy `sleep` in this case.
     ///         _ = sleep(Duration::from_millis(1000)) => {
-    ///             log::info!("Action finished.");
+    ///             tracing::info!("Action finished.");
     ///         }
     ///         // Perform a shutdown if requested
     ///         _ = subsys.on_shutdown_requested() => {
-    ///             log::info!("Action aborted.");
+    ///             tracing::info!("Action aborted.");
     ///         },
     ///     }
     /// }
     ///
     /// async fn my_subsystem(subsys: SubsystemHandle) -> Result<()> {
-    ///     log::info!("Starting subsystem ...");
+    ///     tracing::info!("Starting subsystem ...");
     ///
     ///     // We cannot do a `tokio::select` with `on_shutdown_requested`
     ///     // here, because a shutdown would cancel the action without giving
@@ -187,7 +187,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     ///         uncancellable_action(&subsys).await;
     ///     }
     ///
-    ///     log::info!("Subsystem stopped.");
+    ///     tracing::info!("Subsystem stopped.");
     ///
     ///     Ok(())
     /// }

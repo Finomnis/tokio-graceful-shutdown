@@ -4,46 +4,48 @@
 //! shutdown, but instead it will be delivered to the task that initiated
 //! the partial shutdown.
 
-use env_logger::{Builder, Env};
 use miette::Result;
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 
+#[tracing::instrument(name = "Subsys3", skip_all)]
 async fn subsys3(subsys: SubsystemHandle) -> Result<()> {
-    log::info!("Subsys3 started.");
+    tracing::info!("Subsys3 started.");
     subsys.on_shutdown_requested().await;
     panic!("Subsystem3 threw an error!")
 }
 
+#[tracing::instrument(name = "Subsys2", skip_all)]
 async fn subsys2(subsys: SubsystemHandle) -> Result<()> {
-    log::info!("Subsys2 started.");
+    tracing::info!("Subsys2 started.");
     subsys.start("Subsys3", subsys3);
     subsys.on_shutdown_requested().await;
-    log::info!("Subsys2 stopped.");
+    tracing::info!("Subsys2 stopped.");
     Ok(())
 }
 
+#[tracing::instrument(name = "Subsys1", skip_all)]
 async fn subsys1(subsys: SubsystemHandle) -> Result<()> {
     // This subsystem shuts down the nested subsystem after 5 seconds.
-    log::info!("Subsys1 started.");
+    tracing::info!("Subsys1 started.");
 
-    log::info!("Starting nested subsystem ...");
+    tracing::info!("Starting nested subsystem ...");
     let nested_subsys = subsys.start("Subsys2", subsys2);
-    log::info!("Nested subsystem started.");
+    tracing::info!("Nested subsystem started.");
 
     tokio::select! {
         _ = subsys.on_shutdown_requested() => (),
         _ = sleep(Duration::from_secs(1)) => {
-            log::info!("Shutting down nested subsystem ...");
+            tracing::info!("Shutting down nested subsystem ...");
             if let Err(err) = subsys.perform_partial_shutdown(nested_subsys).await{
-                log::warn!("Partial shutdown failed: {}", err);
+                tracing::warn!("Partial shutdown failed: {}", err);
             };
-            log::info!("Nested subsystem shut down.");
+            tracing::info!("Nested subsystem shut down.");
             subsys.on_shutdown_requested().await;
         }
     };
 
-    log::info!("Subsys1 stopped.");
+    tracing::info!("Subsys1 stopped.");
 
     Ok(())
 }
@@ -51,7 +53,10 @@ async fn subsys1(subsys: SubsystemHandle) -> Result<()> {
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     // Init logging
-    Builder::from_env(Env::default().default_filter_or("debug")).init();
+    tracing_subscriber::fmt()
+        .pretty()
+        .with_max_level(tracing::Level::TRACE)
+        .init();
 
     // Create toplevel
     Toplevel::new()

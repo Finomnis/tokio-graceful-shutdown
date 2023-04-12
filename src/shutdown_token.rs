@@ -18,9 +18,9 @@ impl ShutdownToken {
     pub fn shutdown(&self) {
         if !self.token.is_cancelled() {
             if self.is_toplevel {
-                log::info!("Initiating shutdown ...");
+                tracing::info!("Initiating shutdown ...");
             } else {
-                log::debug!("Initiating partial shutdown ...");
+                tracing::debug!("Initiating partial shutdown ...");
             }
             self.token.cancel()
         }

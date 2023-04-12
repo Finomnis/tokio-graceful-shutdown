@@ -2,23 +2,24 @@
 //! a graceful shutdown is performed and other subsystems get the chance
 //! to clean up.
 
-use env_logger::{Builder, Env};
 use miette::{miette, Result};
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 
+#[tracing::instrument(name = "Subsys1", skip_all)]
 async fn subsys1(subsys: SubsystemHandle) -> Result<()> {
     subsys.start("Subsys2", subsys2);
-    log::info!("Subsystem1 started.");
+    tracing::info!("Subsystem1 started.");
     subsys.on_shutdown_requested().await;
-    log::info!("Shutting down Subsystem1 ...");
+    tracing::info!("Shutting down Subsystem1 ...");
     sleep(Duration::from_millis(500)).await;
-    log::info!("Subsystem1 stopped.");
+    tracing::info!("Subsystem1 stopped.");
     Ok(())
 }
 
+#[tracing::instrument(name = "Subsys2", skip_all)]
 async fn subsys2(_subsys: SubsystemHandle) -> Result<()> {
-    log::info!("Subsystem2 started.");
+    tracing::info!("Subsystem2 started.");
     sleep(Duration::from_millis(500)).await;
 
     Err(miette!("Subsystem2 threw an error."))
@@ -27,7 +28,10 @@ async fn subsys2(_subsys: SubsystemHandle) -> Result<()> {
 #[tokio::main]
 async fn main() -> Result<()> {
     // Init logging
-    Builder::from_env(Env::default().default_filter_or("debug")).init();
+    tracing_subscriber::fmt()
+        .pretty()
+        .with_max_level(tracing::Level::TRACE)
+        .init();
 
     // Create toplevel
     Toplevel::new()

@@ -40,7 +40,8 @@ pin-project-lite = "0.2.9"
 async-trait = "0.1.57"
 
 # For logging
-log = "0.4.17"
+tracing = { version = "0.1.37", features = ["async-await"] }
+humantime = "2.1.0"
 
 [dev-dependencies]
 # Error propagation
@@ -49,7 +50,7 @@ eyre = "0.6.8"
 miette = { version = "5.3.0", features = ["fancy"] }
 
 # Logging
-env_logger = "0.10.0"
+tracing-subscriber = "0.3.16"
 
 # Tokio
 tokio = { version = "1.20.1", features = ["full"] }

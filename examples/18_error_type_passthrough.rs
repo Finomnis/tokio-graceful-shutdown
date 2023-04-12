@@ -1,7 +1,6 @@
 //! This example shows to pass custom error types all the way through to the top,
 //! to recover them from the return value of `handle_shutdown_requests`.
 
-use env_logger::{Builder, Env};
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{
     errors::{GracefulShutdownError, SubsystemError},
@@ -16,44 +15,49 @@ enum MyError {
     WithoutData,
 }
 
+#[tracing::instrument(name = "Subsys1", skip_all)]
 async fn subsys1(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
-    log::info!("Subsystem1 started.");
+    tracing::info!("Subsystem1 started.");
     sleep(Duration::from_millis(200)).await;
-    log::info!("Subsystem1 stopped.");
+    tracing::info!("Subsystem1 stopped.");
 
     Err(MyError::WithData(42))
 }
 
+#[tracing::instrument(name = "Subsys2", skip_all)]
 async fn subsys2(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
-    log::info!("Subsystem2 started.");
+    tracing::info!("Subsystem2 started.");
     sleep(Duration::from_millis(200)).await;
-    log::info!("Subsystem2 stopped.");
+    tracing::info!("Subsystem2 stopped.");
 
     Err(MyError::WithoutData)
 }
 
+#[tracing::instrument(name = "Subsys3", skip_all)]
 async fn subsys3(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
-    log::info!("Subsystem3 started.");
+    tracing::info!("Subsystem3 started.");
     sleep(Duration::from_millis(200)).await;
-    log::info!("Subsystem3 stopped.");
+    tracing::info!("Subsystem3 stopped.");
 
     panic!("This subsystem panicked.");
 }
 
+#[tracing::instrument(name = "Subsys4", skip_all)]
 async fn subsys4(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
-    log::info!("Subsystem4 started.");
+    tracing::info!("Subsystem4 started.");
     sleep(Duration::from_millis(1000)).await;
-    log::info!("Subsystem4 stopped.");
+    tracing::info!("Subsystem4 stopped.");
 
     // This subsystem would end normally but takes too long and therefore
     // will time out.
     Ok(())
 }
 
+#[tracing::instrument(name = "Subsys5", skip_all)]
 async fn subsys5(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
-    log::info!("Subsystem5 started.");
+    tracing::info!("Subsystem5 started.");
     sleep(Duration::from_millis(200)).await;
-    log::info!("Subsystem5 stopped.");
+    tracing::info!("Subsystem5 stopped.");
 
     // This subsystem ended normally and should not show up in the list of
     // subsystem errors.
@@ -68,10 +72,11 @@ struct Subsys6;
 
 #[async_trait::async_trait]
 impl IntoSubsystem<MyError, MyError> for Subsys6 {
+    #[tracing::instrument(name = "Subsys6", skip_all)]
     async fn run(self, _subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
-        log::info!("Subsystem6 started.");
+        tracing::info!("Subsystem6 started.");
         sleep(Duration::from_millis(200)).await;
-        log::info!("Subsystem6 stopped.");
+        tracing::info!("Subsystem6 stopped.");
 
         Err(MyError::WithData(69))
     }
@@ -80,7 +85,10 @@ impl IntoSubsystem<MyError, MyError> for Subsys6 {
 #[tokio::main]
 async fn main() -> Result<(), miette::Report> {
     // Init logging
-    Builder::from_env(Env::default().default_filter_or("debug")).init();
+    tracing_subscriber::fmt()
+        .pretty()
+        .with_max_level(tracing::Level::TRACE)
+        .init();
 
     // Create toplevel
     let errors = Toplevel::<MyError>::new()
@@ -94,38 +102,45 @@ async fn main() -> Result<(), miette::Report> {
         .handle_shutdown_requests(Duration::from_millis(500))
         .await;
 
+    let mut sum = String::new();
     if let Err(e) = &errors {
         match e {
             GracefulShutdownError::SubsystemsFailed(_) => {
-                log::warn!("Subsystems failed.")
+                sum.push_str(format!("Subsystems failed.\n").as_str());
             }
             GracefulShutdownError::ShutdownTimeout(_) => {
-                log::warn!("Shutdown timed out.")
+                sum.push_str(format!("Shutdown timed out.\n").as_str());
             }
         };
 
         for subsystem_error in e.get_subsystem_errors() {
             match subsystem_error {
                 SubsystemError::Failed(name, e) => {
-                    log::warn!("   Subsystem '{}' failed.", name);
+                    sum.push_str(format!("   Subsystem '{}' failed.\n", name).as_str());
                     match e.get_error() {
                         MyError::WithData(data) => {
-                            log::warn!("      It failed with MyError::WithData({})", data)
+                            sum.push_str(
+                                format!("      It failed with MyError::WithData({})\n", data)
+                                    .as_str(),
+                            );
                         }
                         MyError::WithoutData => {
-                            log::warn!("      It failed with MyError::WithoutData")
+                            sum.push_str(
+                                format!("      It failed with MyError::WithoutData\n").as_str(),
+                            );
                         }
                     }
                 }
                 SubsystemError::Cancelled(name) => {
-                    log::warn!("   Subsystem '{}' was cancelled.", name)
+                    sum.push_str(format!("   Subsystem '{}' was cancelled.\n", name).as_str());
                 }
                 SubsystemError::Panicked(name) => {
-                    log::warn!("   Subsystem '{}' panicked.", name)
+                    sum.push_str(format!("   Subsystem '{}' panicked.\n", name).as_str());
                 }
             }
         }
     };
+    println!("{sum}");
 
     Ok(errors?)
 }

@@ -1,7 +1,6 @@
 //! This example demonstrates how a subsystem can initiate
 //! a shutdown.
 
-use env_logger::{Builder, Env};
 use miette::Result;
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{errors::CancelledByShutdown, FutureExt, SubsystemHandle, Toplevel};
@@ -12,17 +11,19 @@ impl CountdownSubsystem {
         Self {}
     }
 
+    #[tracing::instrument(name = "Subsys Countdown", skip_all)]
     async fn countdown(&self) {
         for i in (1..10).rev() {
-            log::info!("Shutting down in: {}", i);
+            tracing::info!("Shutting down in: {}", i);
             sleep(Duration::from_millis(1000)).await;
         }
     }
 
+    #[tracing::instrument(name = "Subsys", skip_all)]
     async fn run(self, subsys: SubsystemHandle) -> Result<()> {
         match self.countdown().cancel_on_shutdown(&subsys).await {
             Ok(()) => subsys.request_shutdown(),
-            Err(CancelledByShutdown) => log::info!("Countdown cancelled."),
+            Err(CancelledByShutdown) => tracing::info!("Countdown cancelled."),
         }
 
         Ok(())
@@ -32,7 +33,10 @@ impl CountdownSubsystem {
 #[tokio::main]
 async fn main() -> Result<()> {
     // Init logging
-    Builder::from_env(Env::default().default_filter_or("debug")).init();
+    tracing_subscriber::fmt()
+        .pretty()
+        .with_max_level(tracing::Level::TRACE)
+        .init();
 
     // Create toplevel
     Toplevel::new()

@@ -7,7 +7,6 @@
 //!
 //! In this case we go with `cancel_on_shutdown()`, but `tokio::select` would be equally viable.
 
-use env_logger::{Builder, Env};
 use miette::Result;
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{errors::CancelledByShutdown, FutureExt, SubsystemHandle, Toplevel};
@@ -18,22 +17,24 @@ impl CountdownSubsystem {
         Self {}
     }
 
+    #[tracing::instrument(name = "Subsys Countdown", skip_all)]
     async fn countdown(&self) {
         for i in (1..10).rev() {
-            log::info!("Countdown: {}", i);
+            tracing::info!("Countdown: {}", i);
             sleep(Duration::from_millis(1000)).await;
         }
     }
 
+    #[tracing::instrument(name = "Subsys", skip_all)]
     async fn run(self, subsys: SubsystemHandle) -> Result<()> {
-        log::info!("Starting countdown ...");
+        tracing::info!("Starting countdown ...");
 
         match self.countdown().cancel_on_shutdown(&subsys).await {
             Ok(()) => {
-                log::info!("Countdown finished.");
+                tracing::info!("Countdown finished.");
             }
             Err(CancelledByShutdown) => {
-                log::info!("Countdown cancelled.");
+                tracing::info!("Countdown cancelled.");
             }
         }
 
@@ -44,7 +45,10 @@ impl CountdownSubsystem {
 #[tokio::main]
 async fn main() -> Result<()> {
     // Init logging
-    Builder::from_env(Env::default().default_filter_or("debug")).init();
+    tracing_subscriber::fmt()
+        .pretty()
+        .with_max_level(tracing::Level::TRACE)
+        .init();
 
     // Create toplevel
     Toplevel::new()

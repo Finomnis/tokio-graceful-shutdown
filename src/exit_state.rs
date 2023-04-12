@@ -32,32 +32,3 @@ pub fn join_shutdown_results<ErrType: ErrTypeTraits>(
 
     left
 }
-
-pub fn prettify_exit_states<ErrType: ErrTypeTraits>(
-    exit_states: &[SubprocessExitState<ErrType>],
-) -> Vec<String> {
-    let max_subprocess_name_length = exit_states
-        .iter()
-        .map(|code| code.name.len())
-        .max()
-        .unwrap_or(0);
-
-    let mut exit_states = exit_states.iter().collect::<Vec<_>>();
-    exit_states.sort_by_key(|el| el.name.clone());
-
-    exit_states
-        .iter()
-        .map(
-            |SubprocessExitState {
-                 name,
-                 exit_state,
-                 raw_result: _,
-             }| {
-                let required_padding_length = max_subprocess_name_length - name.len();
-                let padding = " ".repeat(required_padding_length);
-
-                name.clone() + &padding + "  => " + exit_state
-            },
-        )
-        .collect::<Vec<_>>()
-}

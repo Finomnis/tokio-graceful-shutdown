@@ -22,6 +22,7 @@ impl<ErrType: ErrTypeTraits> Drop for SubsystemRunner<ErrType> {
 }
 
 impl<ErrType: ErrTypeTraits> SubsystemRunner<ErrType> {
+    #[tracing::instrument(name = "Subsystem Runner", skip_all, level = "debug", fields(subsystem_name = %name))]
     async fn handle_subsystem(
         mut inner_joinhandle: JoinHandle<Result<(), ErrType>>,
         shutdown_token: ShutdownToken,
@@ -62,14 +63,14 @@ impl<ErrType: ErrTypeTraits> SubsystemRunner<ErrType> {
 
         match &result {
             Ok(()) | Err(SubsystemError::Cancelled(_)) => {}
-            Err(SubsystemError::Failed(name, e)) => {
-                log::error!("Error in subsystem '{}': {:?}", name, e);
+            Err(SubsystemError::Failed(_, e)) => {
+                tracing::error!("Subsystem Failed: {:?}", e);
                 if !local_shutdown_token.is_shutting_down() {
                     shutdown_token.shutdown();
                 }
             }
-            Err(SubsystemError::Panicked(name)) => {
-                log::error!("Subsystem '{}' panicked", name);
+            Err(SubsystemError::Panicked(_)) => {
+                tracing::error!("Subsystem panicked");
                 if !local_shutdown_token.is_shutting_down() {
                     shutdown_token.shutdown();
                 }

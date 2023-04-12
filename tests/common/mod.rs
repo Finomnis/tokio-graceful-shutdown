@@ -8,6 +8,9 @@ static INIT: Once = Once::new();
 pub fn setup() {
     INIT.call_once(|| {
         // Init logging
-        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("off")).init();
+        tracing_subscriber::fmt()
+            .pretty()
+            .with_max_level(tracing::Level::TRACE)
+            .init();
     });
 }
