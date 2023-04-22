@@ -130,22 +130,10 @@ impl<ErrType: ErrTypeTraits> SubsystemData<ErrType> {
                     .into_iter()
                     .map(|(name, result)| {
                         let result_str = match &result {
-                            Ok(()) => {
-                                tracing::debug!("Subsystem '{}' finished", name);
-                                "OK"
-                            }
-                            Err(SubsystemError::Cancelled(_)) => {
-                                tracing::debug!("Subsystem '{}' cancelled", name);
-                                "Cancelled"
-                            }
-                            Err(SubsystemError::Failed(_, _)) => {
-                                tracing::debug!("Subsystem '{}' failed", name);
-                                "Failed"
-                            }
-                            Err(SubsystemError::Panicked(_)) => {
-                                tracing::debug!("Subsystem '{}' panicked", name);
-                                "Panicked"
-                            }
+                            Ok(()) => "OK",
+                            Err(SubsystemError::Cancelled(_)) => "Cancelled",
+                            Err(SubsystemError::Failed(_, _)) => "Failed",
+                            Err(SubsystemError::Panicked(_)) => "Panicked",
                         };
 
                         SubprocessExitState::<ErrType>::new(name, result_str, result)

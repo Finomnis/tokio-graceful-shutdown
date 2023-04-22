@@ -7,6 +7,7 @@ use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use crate::errors::GracefulShutdownError;
+use crate::exit_state::prettify_exit_states;
 use crate::shutdown_token::create_shutdown_token;
 use crate::signal_handling::wait_for_signal;
 use crate::utils::get_subsystem_name;
@@ -186,14 +187,30 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
 
     /// Wait for all subsystems to finish.
     /// Then return and print all of their exit codes.
+    #[tracing::instrument(skip(self), level = "debug")]
     async fn attempt_clean_shutdown(&self) -> Result<(), GracefulShutdownError<ErrType>> {
         let exit_states = self.subsys_data.perform_shutdown().await;
+
+        // Prettify exit states
+        let formatted_exit_states = prettify_exit_states(&exit_states);
 
         // Collect failed subsystems
         let failed_subsystems = exit_states
             .into_iter()
             .filter_map(|exit_state| exit_state.raw_result.err())
             .collect::<Vec<_>>();
+
+        let mut log_message = String::new();
+        // Print subsystem exit states
+        if failed_subsystems.is_empty() {
+            log_message.push_str("Shutdown successful. Subsystem states:\n");
+        } else {
+            log_message.push_str("Some subsystems failed. Subsystem states:\n");
+        };
+        for formatted_exit_state in formatted_exit_states {
+            log_message.push_str(format!("    {}\n", formatted_exit_state).as_str());
+        }
+        tracing::debug!("{}", log_message);
 
         if failed_subsystems.is_empty() {
             Ok(())
