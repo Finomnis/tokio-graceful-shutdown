@@ -222,7 +222,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     ///
     /// An error of type [`GracefulShutdownError`] if an error occurred.
     ///
-    #[tracing::instrument(name = "Global System Shutdown", skip(self), level = "debug")]
+    #[tracing::instrument(skip(self), level = "debug")]
     pub async fn handle_shutdown_requests(
         mut self,
         shutdown_timeout: Duration,
