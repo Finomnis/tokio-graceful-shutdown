@@ -41,7 +41,6 @@ async-trait = "0.1.57"
 
 # For logging
 tracing = { version = "0.1.37", features = ["async-await"] }
-humantime = "2.1.0"
 
 [dev-dependencies]
 # Error propagation
