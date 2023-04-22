@@ -10,7 +10,7 @@ pub fn setup() {
         // Init logging
         tracing_subscriber::fmt()
             .pretty()
-            .with_max_level(tracing::Level::TRACE)
+            .with_max_level(tracing::Level::DEBUG)
             .init();
     });
 }
