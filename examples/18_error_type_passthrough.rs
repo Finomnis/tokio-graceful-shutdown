@@ -86,7 +86,6 @@ impl IntoSubsystem<MyError, MyError> for Subsys6 {
 async fn main() -> Result<(), miette::Report> {
     // Init logging
     tracing_subscriber::fmt()
-        .pretty()
         .with_max_level(tracing::Level::TRACE)
         .init();
 

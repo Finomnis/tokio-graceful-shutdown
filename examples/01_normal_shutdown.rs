@@ -35,7 +35,6 @@ async fn subsys2(subsys: SubsystemHandle) -> Result<()> {
 async fn main() -> Result<()> {
     // Init logging
     tracing_subscriber::fmt()
-        .pretty()
         .with_max_level(tracing::Level::TRACE)
         .init();
 
