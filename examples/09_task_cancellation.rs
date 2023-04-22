@@ -17,10 +17,10 @@ impl CountdownSubsystem {
         Self {}
     }
 
-    #[tracing::instrument(name = "Subsys Countdown", skip_all)]
+    #[tracing::instrument(name = "Countdown", skip_all)]
     async fn countdown(&self) {
         for i in (1..10).rev() {
-            tracing::info!("Countdown: {}", i);
+            tracing::info!("{}", i);
             sleep(Duration::from_millis(1000)).await;
         }
     }
