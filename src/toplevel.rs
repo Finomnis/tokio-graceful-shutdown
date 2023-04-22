@@ -187,7 +187,6 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
 
     /// Wait for all subsystems to finish.
     /// Then return and print all of their exit codes.
-    #[tracing::instrument(skip(self), level = "debug")]
     async fn attempt_clean_shutdown(&self) -> Result<(), GracefulShutdownError<ErrType>> {
         let exit_states = self.subsys_data.perform_shutdown().await;
 
@@ -203,10 +202,11 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         let mut log_message = String::new();
         // Print subsystem exit states
         if failed_subsystems.is_empty() {
-            log_message.push_str("Shutdown successful. Subsystem states:\n");
+            log_message.push_str("Shutdown successful.\n");
         } else {
-            log_message.push_str("Some subsystems failed. Subsystem states:\n");
+            log_message.push_str("Some subsystems failed.\n");
         };
+        log_message.push_str("Subsystem states:\n");
         for formatted_exit_state in formatted_exit_states {
             log_message.push_str(format!("    {}\n", formatted_exit_state).as_str());
         }
@@ -239,7 +239,6 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     ///
     /// An error of type [`GracefulShutdownError`] if an error occurred.
     ///
-    #[tracing::instrument(skip(self), level = "debug")]
     pub async fn handle_shutdown_requests(
         mut self,
         shutdown_timeout: Duration,

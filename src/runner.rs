@@ -22,7 +22,6 @@ impl<ErrType: ErrTypeTraits> Drop for SubsystemRunner<ErrType> {
 }
 
 impl<ErrType: ErrTypeTraits> SubsystemRunner<ErrType> {
-    #[tracing::instrument(name = "Subsystem Runner", skip_all, level = "debug", fields(subsystem_name = %name))]
     async fn handle_subsystem(
         mut inner_joinhandle: JoinHandle<Result<(), ErrType>>,
         shutdown_token: ShutdownToken,

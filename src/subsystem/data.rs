@@ -45,7 +45,6 @@ impl<ErrType: ErrTypeTraits> SubsystemData<ErrType> {
     ///
     /// If a shutdown is already running, self.subsystems will be 'None',
     /// and the newly spawned subsystem will be cancelled.
-    #[tracing::instrument(name = "Add Subsystem", skip_all, level = "debug", fields(parent_name = %self.name, subsystem_name = %subsystem.name))]
     pub fn add_subsystem(
         &self,
         subsystem: Arc<SubsystemData<ErrType>>,
@@ -163,7 +162,6 @@ impl<ErrType: ErrTypeTraits> SubsystemData<ErrType> {
         self.cancellation_token.cancel();
     }
 
-    #[tracing::instrument(name = "System Partial Shutdown", skip_all, level = "debug", fields(name = %self.name))]
     pub async fn perform_partial_shutdown(
         &self,
         subsystem_handle: NestedSubsystem,
