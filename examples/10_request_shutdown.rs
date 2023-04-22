@@ -11,7 +11,7 @@ impl CountdownSubsystem {
         Self {}
     }
 
-    #[tracing::instrument(name = "Subsys Countdown", skip_all)]
+    #[tracing::instrument(name = "Countdown", skip_all)]
     async fn countdown(&self) {
         for i in (1..10).rev() {
             tracing::info!("Shutting down in: {}", i);
