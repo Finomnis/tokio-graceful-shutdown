@@ -17,9 +17,6 @@ impl Event {
     }
 
     pub async fn wait(&self) {
-        let mut receiver = self.receiver.clone();
-        while !*receiver.borrow_and_update() {
-            receiver.changed().await.unwrap();
-        }
+        self.receiver.clone().changed().await.unwrap();
     }
 }
