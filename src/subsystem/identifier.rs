@@ -22,6 +22,7 @@ mod tests {
     #[test]
     fn equals_with_itself() {
         let identifier1 = SubsystemIdentifier::create();
+        #[allow(clippy::redundant_clone)]
         let identifier2 = identifier1.clone();
         assert_eq!(identifier1, identifier2);
     }
