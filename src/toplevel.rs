@@ -97,7 +97,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// * `parent` - The subsystemhandle that the [Toplevel] object will receive shutdown
     ///              requests from
     /// * `name` - The name of the nested toplevel object. Can be `""`.
-    pub fn nested(parent: &SubsystemHandle, name: &str) -> Self {
+    pub fn nested(parent: &SubsystemHandle<ErrType>, name: &str) -> Self {
         // Take shutdown tokesn from parent
         let global_shutdown_token = parent.global_shutdown_token().clone();
         let group_shutdown_token = parent.local_shutdown_token().child_token();
