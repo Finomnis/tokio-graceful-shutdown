@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub struct SubsystemIdentifier {
     id: usize,
 }
@@ -22,7 +22,7 @@ mod tests {
     #[test]
     fn equals_with_itself() {
         let identifier1 = SubsystemIdentifier::create();
-        #[allow(clippy::redundant_clone)]
+        #[allow(clippy::clone_on_copy)]
         let identifier2 = identifier1.clone();
         assert_eq!(identifier1, identifier2);
     }

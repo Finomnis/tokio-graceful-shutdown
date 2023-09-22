@@ -53,6 +53,7 @@ struct SubsystemDescriptor<ErrType: ErrTypeTraits = crate::BoxedError> {
 /// A nested subsystem. Can be used to perform a partial shutdown.
 ///
 /// For more information, see [`SubsystemHandle::start()`] and [`SubsystemHandle::perform_partial_shutdown()`].
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub struct NestedSubsystem {
     id: SubsystemIdentifier,
 }
