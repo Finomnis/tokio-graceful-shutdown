@@ -13,6 +13,7 @@ where
     pub(crate) subsystem: Subsys,
     pub(crate) failure_action: ErrorAction,
     pub(crate) panic_action: ErrorAction,
+    #[allow(clippy::type_complexity)]
     _phantom: PhantomData<fn() -> (Fut, ErrType, Err)>,
 }
 
