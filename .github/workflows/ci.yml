@@ -36,17 +36,29 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RUSTFLAGS: "-D warnings"
-    strategy:
-      matrix:
-        rust_version:
-          - "stable"
-          - "1.63.0"
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
 
       - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@${{ matrix.rust_version }}
+        uses: dtolnay/rust-toolchain@stable
+
+      #- uses: Swatinem/rust-cache@v1
+
+      - name: Run cargo test
+        run: cargo test -- --test-threads 1
+
+  test_msrv:
+    name: Test Suite (for MSRV)
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: "-D warnings"
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@1.63.0
 
       #- uses: Swatinem/rust-cache@v1
 
