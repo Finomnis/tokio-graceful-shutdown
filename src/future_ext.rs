@@ -89,7 +89,7 @@ impl<T: std::future::Future> FutureExt for T {
     type Future = T;
 
     fn cancel_on_shutdown(self, subsys: &SubsystemHandle) -> CancelOnShutdownFuture<'_, T> {
-        let cancellation = subsys.local_shutdown_token().wait_for_shutdown();
+        let cancellation = subsys.get_cancellation_token().cancelled();
 
         CancelOnShutdownFuture {
             future: self,

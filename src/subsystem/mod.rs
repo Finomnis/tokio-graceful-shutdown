@@ -1,58 +1,28 @@
-mod data;
-mod handle;
-mod identifier;
+mod error_collector;
+mod nested_subsystem;
+mod subsystem_builder;
+mod subsystem_handle;
 
-use std::sync::Arc;
-use std::sync::Mutex;
-use std::sync::Weak;
+use std::sync::{Arc, Mutex};
 
+pub use subsystem_builder::SubsystemBuilder;
+pub use subsystem_handle::SubsystemHandle;
+
+pub(crate) use subsystem_handle::root_handle;
+
+use crate::{utils::JoinerTokenRef, ErrTypeTraits, ErrorAction};
+
+use atomic::Atomic;
 use tokio_util::sync::CancellationToken;
 
-use crate::errors::PartialShutdownError;
-use crate::runner::SubsystemRunner;
-use crate::shutdown_token::ShutdownToken;
-use crate::utils::ShutdownGuard;
-use crate::ErrTypeTraits;
-
-use self::identifier::SubsystemIdentifier;
-
-/// The data stored per subsystem, like name or nested subsystems
-pub struct SubsystemData<ErrType: ErrTypeTraits = crate::BoxedError> {
-    name: String,
-    subsystems: Mutex<Option<Vec<SubsystemDescriptor<ErrType>>>>,
-    shutdown_subsystems: tokio::sync::Mutex<Vec<SubsystemDescriptor<ErrType>>>,
-    local_shutdown_token: ShutdownToken,
-    group_shutdown_token: ShutdownToken,
-    global_shutdown_token: ShutdownToken,
+pub struct NestedSubsystem<ErrType: ErrTypeTraits> {
+    joiner: JoinerTokenRef,
     cancellation_token: CancellationToken,
-    shutdown_guard: Weak<ShutdownGuard>,
+    errors: Mutex<error_collector::ErrorCollector<ErrType>>,
+    error_actions: Arc<ErrorActions>,
 }
 
-/// The handle given to each subsystem through which the subsystem can interact with this crate.
-pub struct SubsystemHandle<ErrType: ErrTypeTraits = crate::BoxedError> {
-    data: Arc<SubsystemData<ErrType>>,
-}
-// Implement `Clone` manually because the compiler cannot derive `Clone
-// from Generics that don't implement `Clone`.
-// (https://stackoverflow.com/questions/72150623/)
-impl<ErrType: ErrTypeTraits> Clone for SubsystemHandle<ErrType> {
-    fn clone(&self) -> Self {
-        Self {
-            data: self.data.clone(),
-        }
-    }
-}
-
-/// A running subsystem. Can be used to stop the subsystem or get its return value.
-struct SubsystemDescriptor<ErrType: ErrTypeTraits = crate::BoxedError> {
-    id: SubsystemIdentifier,
-    data: Arc<SubsystemData<ErrType>>,
-    subsystem_runner: SubsystemRunner<ErrType>,
-}
-
-/// A nested subsystem. Can be used to perform a partial shutdown.
-///
-/// For more information, see [`SubsystemHandle::start()`] and [`SubsystemHandle::perform_partial_shutdown()`].
-pub struct NestedSubsystem {
-    id: SubsystemIdentifier,
+pub(crate) struct ErrorActions {
+    pub(crate) on_failure: Atomic<ErrorAction>,
+    pub(crate) on_panic: Atomic<ErrorAction>,
 }

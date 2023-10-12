@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use tokio::sync::watch;
 
 pub struct Event {

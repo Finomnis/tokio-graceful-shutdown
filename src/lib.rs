@@ -48,34 +48,36 @@
 //! #[tokio::main]
 //! async fn main() -> Result<()> {
 //!     // Init logging
-//!     Builder::from_env(Env::default().default_filter_or("debug")).init();
+//!     tracing_subscriber::fmt()
+//!         .with_max_level(tracing::Level::TRACE)
+//!         .init();
 //!
-//!     // Create toplevel
-//!     Toplevel::new()
-//!         .start("Countdown", countdown_subsystem)
-//!         .catch_signals()
-//!         .handle_shutdown_requests(Duration::from_millis(1000))
-//!         .await
-//!         .map_err(Into::into)
+//!     // Setup and execute subsystem tree
+//!     Toplevel::new(|s| async move {
+//!         s.start(SubsystemBuilder::new("Countdown", countdown_subsystem))
+//!     })
+//!     .catch_signals()
+//!     .handle_shutdown_requests(Duration::from_millis(1000))
+//!     .await
+//!     .map_err(Into::into)
 //! }
 //! ```
 //!
-//! There are a couple of things to note here.
 //!
-//! For one, the [`Toplevel`] object represents the root object of the subsystem tree
+//! The [`Toplevel`] object represents the root object of the subsystem tree
 //! and is the main entry point of how to interact with this crate.
-//! Subsystems can then be started using the [`start()`](Toplevel::start) functionality of the toplevel object.
+//! Creating a [`Toplevel`] object initially spawns a simple subsystem, which can then
+//! spawn further subsystems recursively.
 //!
 //! The [`catch_signals()`](Toplevel::catch_signals) method signals the `Toplevel` object to listen for SIGINT/SIGTERM/Ctrl+C and initiate a shutdown thereafter.
 //!
 //! [`handle_shutdown_requests()`](Toplevel::handle_shutdown_requests) is the final and most important method of `Toplevel`. It idles until the program enters the shutdown mode. Then, it collects all the return values of the subsystems, determines the global error state and makes sure the shutdown happens within the given timeout.
 //! Lastly, it returns an error value that can be directly used as a return code for `main()`.
 //!
-//! Further, the way to register and start a new submodule ist to provide
-//! a submodule function/lambda to [`Toplevel::start`] or
-//! [`SubsystemHandle::start`].
+//! Further, the way to register and start a new submodule is to provide
+//! a submodule function/lambda to [`SubsystemHandle::start`].
 //! If additional arguments shall to be provided to the submodule, it is necessary to create
-//! a submodule `struct`. Further details can be seen in the `examples` folder of the repository.
+//! a submodule `struct`. Further details can be seen in the `examples` directory of the repository.
 //!
 //! Finally, you can see the [`SubsystemHandle`] object that gets provided to the subsystem.
 //! It is the main way of the subsystem to communicate with this crate.
@@ -83,7 +85,8 @@
 //! to initiate a shutdown.
 //!
 
-#![deny(missing_docs)]
+#![deny(unreachable_pub)]
+//#![deny(missing_docs)]
 #![doc(
     issue_tracker_base_url = "https://github.com/Finomnis/tokio-graceful-shutdown/issues",
     test(no_crate_inject, attr(deny(warnings))),
@@ -104,20 +107,20 @@ impl<T> ErrTypeTraits for T where
 }
 
 pub mod errors;
-mod exit_state;
+
+mod error_action;
 mod future_ext;
 mod into_subsystem;
 mod runner;
-mod shutdown_token;
 mod signal_handling;
 mod subsystem;
 mod toplevel;
 mod utils;
 
-use shutdown_token::ShutdownToken;
-
+pub use error_action::ErrorAction;
 pub use future_ext::FutureExt;
 pub use into_subsystem::IntoSubsystem;
 pub use subsystem::NestedSubsystem;
+pub use subsystem::SubsystemBuilder;
 pub use subsystem::SubsystemHandle;
 pub use toplevel::Toplevel;

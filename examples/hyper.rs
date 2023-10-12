@@ -7,10 +7,9 @@
 //! hyper's graceful shutdown waits for all connections to be closed naturally
 //! instead of terminating them.
 
-use env_logger::{Builder, Env};
 use miette::{miette, Result};
 use tokio::time::Duration;
-use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
+use tokio_graceful_shutdown::{SubsystemBuilder, SubsystemHandle, Toplevel};
 
 use std::convert::Infallible;
 
@@ -34,7 +33,7 @@ async fn hyper_subsystem(subsys: SubsystemHandle) -> Result<()> {
     let addr = ([127, 0, 0, 1], 12345).into();
     let server = Server::bind(&addr).serve(make_svc);
 
-    log::info!("Listening on http://{}", addr);
+    tracing::info!("Listening on http://{}", addr);
 
     // This is the connection between our crate and hyper.
     // Hyper already anticipated our use case and provides a very
@@ -48,13 +47,16 @@ async fn hyper_subsystem(subsys: SubsystemHandle) -> Result<()> {
 #[tokio::main]
 async fn main() -> Result<()> {
     // Init logging
-    Builder::from_env(Env::default().default_filter_or("debug")).init();
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::TRACE)
+        .init();
 
-    // Create toplevel
-    Toplevel::new()
-        .start("Hyper", hyper_subsystem)
-        .catch_signals()
-        .handle_shutdown_requests(Duration::from_secs(60))
-        .await
-        .map_err(Into::into)
+    // Setup and execute subsystem tree
+    Toplevel::new(|s| async move {
+        s.start(SubsystemBuilder::new("Hyper", hyper_subsystem));
+    })
+    .catch_signals()
+    .handle_shutdown_requests(Duration::from_secs(60))
+    .await
+    .map_err(Into::into)
 }

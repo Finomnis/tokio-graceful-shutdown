@@ -1,0 +1,29 @@
+- Search for all TODOs in code
+- Port over documentation
+- Port over tests
+
+
+
+
+
+
+Done:
+
+- Name
+- Error handling
+
+- SubsystemBuilder (or PreparedSubsystem, or something similar)!
+    - Allows creating subsystems:
+        - from FnOnce (non-restartable)
+        - from Fn (restartable)
+        - from `trait Subsystem`
+        - from `trait RestartableSubsystem`
+    - maybe gets passed directly into `start`
+
+- Solution to the entire "restartable subsystems" problem:
+    - Make single subsystems awaitable! (Through the object returned from `start`)
+    - Restart is then trivial to implement.
+        - Make subsystem "Shutdown on Error/Panic"
+        - Start/await it in a loop in the parent subsystem
+
+- Error generic
