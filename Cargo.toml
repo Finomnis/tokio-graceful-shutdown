@@ -1,9 +1,24 @@
 [package]
 name = "tokio-graceful-shutdown"
-version = "0.1.0"
+authors = ["Finomnis <finomnis@gmail.com>"]
+version = "0.14.0"
 edition = "2021"
+rust-version = "1.63"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/Finomnis/tokio-graceful-shutdown"
+description = "Utilities to perform a graceful shutdown on a Tokio based service."
+keywords = ["tokio", "shutdown"]
+categories = ["asynchronous"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+exclude = [
+    "/.gitignore",
+    "/.github/",
+    "/TODO.txt",
+    "/UPCOMING_VERSION_CHANGES.txt",
+]
 
 [dependencies]
 tracing = { version = "0.1.37", default-features = false }
