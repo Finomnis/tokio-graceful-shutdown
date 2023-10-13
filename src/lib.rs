@@ -21,13 +21,12 @@
 //!
 //! ```
 //! use miette::Result;
-//! use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
-//! use env_logger::{Builder, Env};
+//! use tokio_graceful_shutdown::{SubsystemBuilder, SubsystemHandle, Toplevel};
 //! use tokio::time::{sleep, Duration};
 //!
 //! async fn countdown() {
 //!     for i in (1..=5).rev() {
-//!         log::info!("Shutting down in: {}", i);
+//!         tracing::info!("Shutting down in: {}", i);
 //!         sleep(Duration::from_millis(1000)).await;
 //!     }
 //! }
@@ -35,7 +34,7 @@
 //! async fn countdown_subsystem(subsys: SubsystemHandle) -> Result<()> {
 //!     tokio::select! {
 //!         _ = subsys.on_shutdown_requested() => {
-//!             log::info!("Countdown cancelled.");
+//!             tracing::info!("Countdown cancelled.");
 //!         },
 //!         _ = countdown() => {
 //!             subsys.initiate_shutdown();
@@ -54,7 +53,7 @@
 //!
 //!     // Setup and execute subsystem tree
 //!     Toplevel::new(|s| async move {
-//!         s.start(SubsystemBuilder::new("Countdown", countdown_subsystem))
+//!         s.start(SubsystemBuilder::new("Countdown", countdown_subsystem));
 //!     })
 //!     .catch_signals()
 //!     .handle_shutdown_requests(Duration::from_millis(1000))

@@ -26,7 +26,7 @@ type SubsystemFunction<Err, ErrWrapper> =
 /// ```
 /// use miette::Result;
 /// use tokio::time::Duration;
-/// use tokio_graceful_shutdown::{IntoSubsystem, SubsystemHandle, Toplevel};
+/// use tokio_graceful_shutdown::{IntoSubsystem, SubsystemBuilder, SubsystemHandle, Toplevel};
 ///
 /// struct MySubsystem;
 ///
@@ -41,12 +41,15 @@ type SubsystemFunction<Err, ErrWrapper> =
 /// #[tokio::main]
 /// async fn main() -> Result<()> {
 ///     // Create toplevel
-///     Toplevel::new()
-///         .start("Subsys1", MySubsystem{}.into_subsystem())
-///         .catch_signals()
-///         .handle_shutdown_requests(Duration::from_millis(500))
-///         .await
-///         .map_err(Into::into)
+///     Toplevel::new(|s| async move {
+///         s.start(SubsystemBuilder::new(
+///             "Subsys1", MySubsystem{}.into_subsystem()
+///         ));
+///     })
+///     .catch_signals()
+///     .handle_shutdown_requests(Duration::from_millis(500))
+///     .await
+///     .map_err(Into::into)
 /// }
 /// ```
 ///

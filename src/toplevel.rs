@@ -21,7 +21,7 @@ use crate::{
 /// ```
 /// use miette::Result;
 /// use tokio::time::Duration;
-/// use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
+/// use tokio_graceful_shutdown::{SubsystemBuilder, SubsystemHandle, Toplevel};
 ///
 /// async fn my_subsystem(subsys: SubsystemHandle) -> Result<()> {
 ///     subsys.initiate_shutdown();
