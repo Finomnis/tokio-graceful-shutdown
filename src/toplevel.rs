@@ -152,6 +152,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     ) -> Result<(), GracefulShutdownError<ErrType>> {
         let collect_errors = move || {
             let mut errors = vec![];
+            self.errors.close();
             while let Ok(e) = self.errors.try_recv() {
                 errors.push(e);
             }

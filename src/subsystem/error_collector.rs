@@ -18,6 +18,7 @@ impl<ErrType: ErrTypeTraits> ErrorCollector<ErrType> {
         match self {
             ErrorCollector::Collecting(receiver) => {
                 let mut errors = vec![];
+                receiver.close();
                 while let Ok(e) = receiver.try_recv() {
                     errors.push(e);
                 }
@@ -26,6 +27,17 @@ impl<ErrType: ErrTypeTraits> ErrorCollector<ErrType> {
                 errors
             }
             ErrorCollector::Finished(errors) => Arc::clone(errors),
+        }
+    }
+}
+
+impl<ErrType: ErrTypeTraits> Drop for ErrorCollector<ErrType> {
+    fn drop(&mut self) {
+        if let Self::Collecting(receiver) = self {
+            receiver.close();
+            while let Ok(e) = receiver.try_recv() {
+                tracing::warn!("An error got dropped: {e:?}");
+            }
         }
     }
 }
