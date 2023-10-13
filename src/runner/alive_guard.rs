@@ -46,12 +46,11 @@ impl AliveGuard {
 
 impl Drop for Inner {
     fn drop(&mut self) {
-        let finished_callback = self
-            .finished_callback
-            .take()
-            .expect("No `finished` callback was registered in AliveGuard!");
-
-        finished_callback();
+        if let Some(finished_callback) = self.finished_callback.take() {
+            finished_callback();
+        } else {
+            tracing::error!("No `finished` callback was registered in AliveGuard! This should not happen, please report this at https://github.com/Finomnis/tokio-graceful-shutdown/issues.");
+        }
 
         if let Some(cancelled_callback) = self.cancelled_callback.take() {
             cancelled_callback()
@@ -117,12 +116,5 @@ mod tests {
         drop(alive_guard);
 
         assert_eq!(counter.load(Ordering::Relaxed), 2);
-    }
-
-    #[test]
-    #[should_panic(expected = "No `finished` callback was registered in AliveGuard!")]
-    fn panic_if_no_finished_callback_set() {
-        let alive_guard = AliveGuard::new();
-        drop(alive_guard);
     }
 }
