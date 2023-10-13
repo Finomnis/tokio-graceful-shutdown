@@ -19,7 +19,7 @@ impl<ErrType: ErrTypeTraits> NestedSubsystem<ErrType> {
     /// ```
     /// use miette::Result;
     /// use tokio::time::{sleep, Duration};
-    /// use tokio_graceful_shutdown::SubsystemHandle;
+    /// use tokio_graceful_shutdown::{ErrorAction, SubsystemBuilder, SubsystemHandle};
     ///
     /// async fn nested_subsystem(subsys: SubsystemHandle) -> Result<()> {
     ///     // This subsystem does nothing but wait for the shutdown to happen
