@@ -15,6 +15,15 @@ use crate::{utils::JoinerTokenRef, ErrTypeTraits, ErrorAction};
 use atomic::Atomic;
 use tokio_util::sync::CancellationToken;
 
+/// A nested subsystem.
+///
+/// Can be used to control the subsystem or wait for it to finish.
+///
+/// Dropping this value does not perform any action - the subsystem
+/// will be neither cancelled, shut down or detached.
+///
+/// For more information, look through the examples directory in
+/// the source code.
 pub struct NestedSubsystem<ErrType: ErrTypeTraits> {
     joiner: JoinerTokenRef,
     cancellation_token: CancellationToken,

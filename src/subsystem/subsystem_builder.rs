@@ -2,6 +2,8 @@ use std::{borrow::Cow, future::Future, marker::PhantomData};
 
 use crate::{ErrTypeTraits, ErrorAction, SubsystemHandle};
 
+/// Configures a subsystem before it gets spawned through
+/// [`SubsystemHandle::start`].
 pub struct SubsystemBuilder<'a, ErrType, Err, Fut, Subsys>
 where
     ErrType: ErrTypeTraits,
@@ -24,6 +26,14 @@ where
     Fut: 'static + Future<Output = Result<(), Err>> + Send,
     Err: Into<ErrType>,
 {
+    /// Creates a new SubsystemBuilder from a given subsystem
+    /// function.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the subsystem. Primarily to identify the
+    ///            subsystem in error messages.
+    /// * `subsystem` - The subsystem function that the subsystem will execute.
     pub fn new(name: impl Into<Cow<'a, str>>, subsystem: Subsys) -> Self {
         Self {
             name: name.into(),
@@ -34,11 +44,23 @@ where
         }
     }
 
+    /// Sets the way this subsystem should react to failures,
+    /// meaning if it or one of its children return an `Err` value.
+    ///
+    /// The default is [`ErrorAction::Forward`].
+    ///
+    /// For more information, see [ErrorAction].
     pub fn on_failure(mut self, action: ErrorAction) -> Self {
         self.failure_action = action;
         self
     }
 
+    /// Sets the way this subsystem should react if it or one
+    /// of its children panic.
+    ///
+    /// The default is [`ErrorAction::Forward`].
+    ///
+    /// For more information, see [ErrorAction].
     pub fn on_panic(mut self, action: ErrorAction) -> Self {
         self.panic_action = action;
         self

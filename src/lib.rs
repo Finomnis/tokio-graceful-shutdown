@@ -85,7 +85,7 @@
 //!
 
 #![deny(unreachable_pub)]
-//#![deny(missing_docs)]
+#![deny(missing_docs)]
 #![doc(
     issue_tracker_base_url = "https://github.com/Finomnis/tokio-graceful-shutdown/issues",
     test(no_crate_inject, attr(deny(warnings))),

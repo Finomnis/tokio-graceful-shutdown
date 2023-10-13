@@ -25,7 +25,7 @@ struct Inner<ErrType: ErrTypeTraits> {
     children: RemotelyDroppableItems<SubsystemRunner>,
 }
 
-// All the things needed to manage nested subsystems and wait for cancellation
+/// The handle given to each subsystem through which the subsystem can interact with this crate.
 pub struct SubsystemHandle<ErrType: ErrTypeTraits = BoxedError> {
     inner: ManuallyDrop<Inner<ErrType>>,
     // When dropped, redirect Self into this channel.
@@ -40,6 +40,38 @@ pub(crate) struct WeakSubsystemHandle<ErrType: ErrTypeTraits> {
 }
 
 impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
+    /// Start a nested subsystem.
+    ///
+    /// Once called, the subsystem will be started immediately, similar to [`tokio::spawn`].
+    ///
+    /// # Arguments
+    ///
+    /// * `builder` - The [`SubsystemBuilder`] that contains all the information
+    ///               about the subsystem that should be spawned.
+    ///
+    /// # Returns
+    ///
+    /// A [`NestedSubsystem`] that can be used to control or join the subsystem.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use miette::Result;
+    /// use tokio_graceful_shutdown::SubsystemHandle;
+    ///
+    /// async fn nested_subsystem(subsys: SubsystemHandle) -> Result<()> {
+    ///     subsys.on_shutdown_requested().await;
+    ///     Ok(())
+    /// }
+    ///
+    /// async fn my_subsystem(subsys: SubsystemHandle) -> Result<()> {
+    ///     // start a nested subsystem
+    ///     subsys.start(SubsystemBuilder::new("Nested", nested_subsystem));
+    ///
+    ///     subsys.on_shutdown_requested().await;
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn start<Err, Fut, Subsys>(
         &self,
         builder: SubsystemBuilder<ErrType, Err, Fut, Subsys>,
@@ -134,6 +166,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
         }
     }
 
+    /// Waits until all the children of this subsystem are finished.
     pub async fn wait_for_children(&mut self) {
         self.inner.joiner_token.join_children().await
     }
@@ -149,20 +182,125 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
         receiver
     }
 
-    pub fn initiate_shutdown(&self) {
-        self.inner.toplevel_cancellation_token.cancel();
-    }
-
-    pub fn initiate_local_shutdown(&self) {
-        self.inner.cancellation_token.cancel();
-    }
-
+    /// Wait for the shutdown mode to be triggered.
+    ///
+    /// Once the shutdown mode is entered, all existing calls to this
+    /// method will be released and future calls to this method will
+    /// return immediately.
+    ///
+    /// This is the primary method of subsystems to react to
+    /// the shutdown requests. Most often, it will be used in `tokio::select`
+    /// statements to cancel other code as soon as the shutdown is requested.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use miette::Result;
+    /// use tokio::time::{sleep, Duration};
+    /// use tokio_graceful_shutdown::SubsystemHandle;
+    ///
+    /// async fn countdown() {
+    ///     for i in (1..10).rev() {
+    ///         log::info!("Countdown: {}", i);
+    ///         sleep(Duration::from_millis(1000)).await;
+    ///     }
+    /// }
+    ///
+    /// async fn countdown_subsystem(subsys: SubsystemHandle) -> Result<()> {
+    ///     log::info!("Starting countdown ...");
+    ///
+    ///     // This cancels the countdown as soon as shutdown
+    ///     // mode was entered
+    ///     tokio::select! {
+    ///         _ = subsys.on_shutdown_requested() => {
+    ///             log::info!("Countdown cancelled.");
+    ///         },
+    ///         _ = countdown() => {
+    ///             log::info!("Countdown finished.");
+    ///         }
+    ///     };
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
     pub async fn on_shutdown_requested(&self) {
         self.inner.cancellation_token.cancelled().await
     }
 
+    /// Returns whether a shutdown should be performed now.
+    ///
+    /// This method is provided for subsystems that need to query the shutdown
+    /// request state repeatedly.
+    ///
+    /// This can be useful in scenarios where a subsystem depends on the graceful
+    /// shutdown of its nested coroutines before it can run final cleanup steps itself.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use miette::Result;
+    /// use tokio::time::{sleep, Duration};
+    /// use tokio_graceful_shutdown::SubsystemHandle;
+    ///
+    /// async fn uncancellable_action(subsys: &SubsystemHandle) {
+    ///     tokio::select! {
+    ///         // Execute an action. A dummy `sleep` in this case.
+    ///         _ = sleep(Duration::from_millis(1000)) => {
+    ///             log::info!("Action finished.");
+    ///         }
+    ///         // Perform a shutdown if requested
+    ///         _ = subsys.on_shutdown_requested() => {
+    ///             log::info!("Action aborted.");
+    ///         },
+    ///     }
+    /// }
+    ///
+    /// async fn my_subsystem(subsys: SubsystemHandle) -> Result<()> {
+    ///     log::info!("Starting subsystem ...");
+    ///
+    ///     // We cannot do a `tokio::select` with `on_shutdown_requested`
+    ///     // here, because a shutdown would cancel the action without giving
+    ///     // it the chance to react first.
+    ///     while !subsys.is_shutdown_requested() {
+    ///         uncancellable_action(&subsys).await;
+    ///     }
+    ///
+    ///     log::info!("Subsystem stopped.");
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn is_shutdown_requested(&self) -> bool {
         self.inner.cancellation_token.is_cancelled()
+    }
+
+    /// Triggers a shutdown of the entire subsystem tree.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use miette::Result;
+    /// use tokio::time::{sleep, Duration};
+    /// use tokio_graceful_shutdown::SubsystemHandle;
+    ///
+    /// async fn stop_subsystem(subsys: SubsystemHandle) -> Result<()> {
+    ///     // This subsystem wait for one second and then stops the program.
+    ///     sleep(Duration::from_millis(1000)).await;
+    ///
+    ///     // Shut down the entire subsystem tree
+    ///     subsys.initiate_shutdown();
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn initiate_shutdown(&self) {
+        self.inner.toplevel_cancellation_token.cancel();
+    }
+
+    /// Triggers a shutdown of the current subsystem and all
+    /// of its children.
+    pub fn initiate_local_shutdown(&self) {
+        self.inner.cancellation_token.cancel();
     }
 
     pub(crate) fn get_cancellation_token(&self) -> &CancellationToken {
