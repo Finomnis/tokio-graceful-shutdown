@@ -1,10 +1,7 @@
-use std::{
-    future::Future,
-    sync::{mpsc, Arc},
-    time::Duration,
-};
+use std::{future::Future, sync::Arc, time::Duration};
 
 use atomic::Atomic;
+use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
@@ -27,7 +24,7 @@ use crate::{
 /// use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
 ///
 /// async fn my_subsystem(subsys: SubsystemHandle) -> Result<()> {
-///     subsys.request_shutdown();
+///     subsys.initiate_shutdown();
 ///     Ok(())
 /// }
 ///
@@ -47,7 +44,7 @@ use crate::{
 pub struct Toplevel<ErrType: ErrTypeTraits = BoxedError> {
     root_handle: SubsystemHandle<ErrType>,
     toplevel_subsys: NestedSubsystem<ErrType>,
-    errors: mpsc::Receiver<SubsystemError<ErrType>>,
+    errors: mpsc::UnboundedReceiver<SubsystemError<ErrType>>,
 }
 
 impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
@@ -65,7 +62,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
         Fut: 'static + Future<Output = ()> + Send,
     {
-        let (error_sender, errors) = mpsc::channel();
+        let (error_sender, errors) = mpsc::unbounded_channel();
 
         let root_handle = subsystem::root_handle(move |e| {
             match &e {
@@ -77,7 +74,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
                 }
             };
 
-            if let Err(mpsc::SendError(e)) = error_sender.send(e) {
+            if let Err(mpsc::error::SendError(e)) = error_sender.send(e) {
                 tracing::warn!("An error got dropped: {e:?}");
             };
         });
@@ -150,7 +147,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// An error of type [`GracefulShutdownError`] if an error occurred.
     ///
     pub async fn handle_shutdown_requests(
-        self,
+        mut self,
         shutdown_timeout: Duration,
     ) -> Result<(), GracefulShutdownError<ErrType>> {
         let collect_errors = move || {

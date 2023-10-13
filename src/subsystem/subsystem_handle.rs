@@ -1,11 +1,11 @@
 use std::{
     future::Future,
     mem::ManuallyDrop,
-    sync::{atomic::Ordering, mpsc, Arc, Mutex},
+    sync::{atomic::Ordering, Arc, Mutex},
 };
 
 use atomic::Atomic;
-use tokio::sync::oneshot;
+use tokio::sync::{mpsc, oneshot};
 use tokio_util::sync::CancellationToken;
 
 use crate::{
@@ -72,7 +72,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     {
         let alive_guard = AliveGuard::new();
 
-        let (error_sender, errors) = mpsc::channel();
+        let (error_sender, errors) = mpsc::unbounded_channel();
 
         let cancellation_token = self.inner.cancellation_token.child_token();
 
@@ -92,7 +92,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
                 match error_action {
                     ErrorAction::Forward => Some(e),
                     ErrorAction::CatchAndLocalShutdown => {
-                        if let Err(mpsc::SendError(e)) = error_sender.send(e) {
+                        if let Err(mpsc::error::SendError(e)) = error_sender.send(e) {
                             tracing::warn!("An error got dropped: {e:?}");
                         };
                         cancellation_token.cancel();

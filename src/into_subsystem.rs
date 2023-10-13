@@ -33,7 +33,7 @@ type SubsystemFunction<Err, ErrWrapper> =
 /// #[async_trait::async_trait]
 /// impl IntoSubsystem<miette::Report> for MySubsystem {
 ///     async fn run(self, subsys: SubsystemHandle) -> Result<()> {
-///         subsys.request_shutdown();
+///         subsys.initiate_shutdown();
 ///         Ok(())
 ///     }
 /// }

@@ -1,14 +1,16 @@
-use std::sync::{mpsc, Arc};
+use std::sync::Arc;
+
+use tokio::sync::mpsc;
 
 use crate::{errors::SubsystemError, ErrTypeTraits};
 
 pub(crate) enum ErrorCollector<ErrType: ErrTypeTraits> {
-    Collecting(mpsc::Receiver<SubsystemError<ErrType>>),
+    Collecting(mpsc::UnboundedReceiver<SubsystemError<ErrType>>),
     Finished(Arc<[SubsystemError<ErrType>]>),
 }
 
 impl<ErrType: ErrTypeTraits> ErrorCollector<ErrType> {
-    pub(crate) fn new(receiver: mpsc::Receiver<SubsystemError<ErrType>>) -> Self {
+    pub(crate) fn new(receiver: mpsc::UnboundedReceiver<SubsystemError<ErrType>>) -> Self {
         Self::Collecting(receiver)
     }
 
