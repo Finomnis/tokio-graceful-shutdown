@@ -783,7 +783,7 @@ async fn subsystem_errors_get_propagated_to_user() {
 
         errors.sort_by_key(|el| el.name().to_string());
 
-        let mut iter = errors.into_iter();
+        let mut iter = errors.iter();
 
         let el = iter.next().unwrap();
         assert!(matches!(el, SubsystemError::Panicked(_)));
@@ -843,7 +843,7 @@ async fn subsystem_errors_get_propagated_to_user_when_timeout() {
 
         errors.sort_by_key(|el| el.name().to_string());
 
-        let mut iter = errors.into_iter();
+        let mut iter = errors.iter();
 
         let el = iter.next().unwrap();
         assert!(matches!(el, SubsystemError::Panicked(_)));
