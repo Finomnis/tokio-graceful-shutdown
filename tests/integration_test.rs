@@ -907,9 +907,10 @@ async fn shutdown_through_signal() {
         async {
             let result = Toplevel::new(move |s| async move {
                 s.start(SubsystemBuilder::new("subsys", subsystem));
-                sleep(Duration::from_millis(1000))
+                assert!(sleep(Duration::from_millis(1000))
                     .cancel_on_shutdown(&s)
-                    .await;
+                    .await
+                    .is_err());
                 assert!(s.is_shutdown_requested());
             })
             .catch_signals()
