@@ -288,18 +288,18 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     ///     sleep(Duration::from_millis(1000)).await;
     ///
     ///     // Shut down the entire subsystem tree
-    ///     subsys.initiate_shutdown();
+    ///     subsys.request_shutdown();
     ///
     ///     Ok(())
     /// }
     /// ```
-    pub fn initiate_shutdown(&self) {
+    pub fn request_shutdown(&self) {
         self.inner.toplevel_cancellation_token.cancel();
     }
 
     /// Triggers a shutdown of the current subsystem and all
     /// of its children.
-    pub fn initiate_local_shutdown(&self) {
+    pub fn request_local_shutdown(&self) {
         self.inner.cancellation_token.cancel();
     }
 

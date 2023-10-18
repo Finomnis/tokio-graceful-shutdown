@@ -22,7 +22,7 @@ impl CountdownSubsystem {
 
     async fn run(self, subsys: SubsystemHandle) -> Result<()> {
         match self.countdown().cancel_on_shutdown(&subsys).await {
-            Ok(()) => subsys.initiate_shutdown(),
+            Ok(()) => subsys.request_shutdown(),
             Err(CancelledByShutdown) => tracing::info!("Countdown cancelled."),
         }
 

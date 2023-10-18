@@ -4,8 +4,6 @@ use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{SubsystemBuilder, SubsystemHandle, Toplevel};
 use tracing_test::traced_test;
 
-mod common;
-
 /// Error types
 type BoxedError = Box<dyn Error + Sync + Send>;
 type BoxedResult = Result<(), BoxedError>;
@@ -22,7 +20,7 @@ async fn normal_shutdown() {
     let toplevel = Toplevel::new(move |s: SubsystemHandle| async move {
         s.start(SubsystemBuilder::new("subsys", subsystem));
     });
-    let shutdown_token = toplevel.get_shutdown_token().clone();
+    let shutdown_token = toplevel._get_shutdown_token().clone();
 
     tokio::join!(
         async {

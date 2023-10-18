@@ -37,7 +37,7 @@
 //!             tracing::info!("Countdown cancelled.");
 //!         },
 //!         _ = countdown() => {
-//!             subsys.initiate_shutdown();
+//!             subsys.request_shutdown();
 //!         }
 //!     };
 //!

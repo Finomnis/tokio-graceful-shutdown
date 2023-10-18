@@ -24,7 +24,7 @@ use crate::{
 /// use tokio_graceful_shutdown::{SubsystemBuilder, SubsystemHandle, Toplevel};
 ///
 /// async fn my_subsystem(subsys: SubsystemHandle) -> Result<()> {
-///     subsys.initiate_shutdown();
+///     subsys.request_shutdown();
 ///     Ok(())
 /// }
 ///
@@ -165,7 +165,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
                 tracing::info!("All subsystems finished.");
 
                 // Not really necessary, but for good measure.
-                self.root_handle.initiate_shutdown();
+                self.root_handle.request_shutdown();
 
                 let errors = collect_errors();
                 let result = if errors.is_empty() {
@@ -203,7 +203,8 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     }
 
     #[doc(hidden)]
-    pub fn get_shutdown_token(&self) -> &CancellationToken {
+    // Only for unit tests; not intended for public use
+    pub fn _get_shutdown_token(&self) -> &CancellationToken {
         self.root_handle.get_cancellation_token()
     }
 }
