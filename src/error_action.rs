@@ -31,6 +31,8 @@ mod tests {
     #[test]
     fn derive_traits() {
         let x = ErrorAction::CatchAndLocalShutdown;
-        assert!(x.clone() == x);
+        #[allow(clippy::clone_on_copy)]
+        let y = x.clone();
+        assert!(y == x);
     }
 }
