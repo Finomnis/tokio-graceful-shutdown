@@ -1,10 +1,10 @@
 //! The SubsystemRunner is a little tricky, so here some explanation.
 //!
 //! A two-layer `tokio::spawn` is required to make this work reliably; the inner `spawn` is the actual subsystem,
-//! and the outer `spawn` carries out the duty of propagating the `StopReason`.
+//! and the outer `spawn` carries out the duty of propagating the `StopReason` and cleaning up.
 //!
-//! Further, everything in here reacts properly to being dropped, including the `AliveGuard` (propagating `StopReason::Cancel` in that case)
-//! and runner itself, who cancels the subsystem on drop.
+//! Further, everything in here reacts properly to being dropped, including
+//! the runner itself, who cancels the subsystem on drop.
 
 use std::{future::Future, sync::Arc};
 
