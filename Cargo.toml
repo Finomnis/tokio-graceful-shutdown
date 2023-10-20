@@ -48,7 +48,7 @@ miette = { version = "5.10.0", features = ["fancy"] }
 tracing-subscriber = "0.3.17"
 tracing-test = { version = "0.2.4", features = [
     "no-env-filter",
-], git = "https://github.com/Finomnis/tracing-test.git", branch = "fix_coverage" }
+], branch = "fix_coverage", git = "https://github.com/Finomnis/tracing-test.git" }
 
 # Tokio
 tokio = { version = "1.32.0", features = ["full"] }
