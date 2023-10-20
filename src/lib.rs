@@ -91,6 +91,8 @@
     test(no_crate_inject, attr(deny(warnings))),
     test(attr(allow(dead_code)))
 )]
+// Required for test coverage
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 type BoxedError = Box<dyn std::error::Error + Send + Sync + 'static>;
 

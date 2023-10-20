@@ -1,3 +1,6 @@
+// Required for test coverage
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
+
 use anyhow::anyhow;
 use tokio::time::{sleep, timeout, Duration};
 use tokio_graceful_shutdown::{

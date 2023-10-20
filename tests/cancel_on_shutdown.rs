@@ -1,3 +1,6 @@
+// Required for test coverage
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
+
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{
     errors::CancelledByShutdown, FutureExt, SubsystemBuilder, SubsystemHandle, Toplevel,
