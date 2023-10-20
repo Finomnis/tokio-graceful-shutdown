@@ -49,7 +49,7 @@ where
     ///
     /// The default is [`ErrorAction::Forward`].
     ///
-    /// For more information, see [ErrorAction].
+    /// For more information, see [`ErrorAction`].
     pub fn on_failure(mut self, action: ErrorAction) -> Self {
         self.failure_action = action;
         self
@@ -60,7 +60,7 @@ where
     ///
     /// The default is [`ErrorAction::Forward`].
     ///
-    /// For more information, see [ErrorAction].
+    /// For more information, see [`ErrorAction`].
     pub fn on_panic(mut self, action: ErrorAction) -> Self {
         self.panic_action = action;
         self
