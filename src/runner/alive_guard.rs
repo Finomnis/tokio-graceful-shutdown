@@ -68,6 +68,7 @@ mod tests {
 
     #[test]
     #[traced_test]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn finished_callback() {
         let alive_guard = AliveGuard::new();
 
@@ -85,6 +86,7 @@ mod tests {
 
     #[test]
     #[traced_test]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn cancel_callback() {
         let alive_guard = AliveGuard::new();
 
@@ -103,6 +105,7 @@ mod tests {
 
     #[test]
     #[traced_test]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn both_callbacks() {
         let alive_guard = AliveGuard::new();
 
@@ -124,6 +127,7 @@ mod tests {
 
     #[test]
     #[traced_test]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn no_callback() {
         let alive_guard = AliveGuard::new();
         drop(alive_guard);

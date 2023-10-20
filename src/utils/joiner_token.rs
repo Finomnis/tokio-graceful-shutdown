@@ -187,6 +187,7 @@ mod tests {
 
     #[test]
     #[traced_test]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn counters() {
         let (root, _) = JoinerToken::<BoxedError>::new(|_| None);
         assert_eq!(0, root.count());
@@ -221,6 +222,7 @@ mod tests {
 
     #[test]
     #[traced_test]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn counters_weak() {
         let (root, weak_root) = JoinerToken::<BoxedError>::new(|_| None);
         assert_eq!(0, weak_root.count());
@@ -293,6 +295,7 @@ mod tests {
 
     #[tokio::test]
     #[traced_test]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     async fn join() {
         let (superroot, _) = JoinerToken::<BoxedError>::new(|_| None);
 
@@ -335,6 +338,7 @@ mod tests {
 
     #[tokio::test]
     #[traced_test]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     async fn join_through_ref() {
         let (root, joiner) = JoinerToken::<BoxedError>::new(|_| None);
 
@@ -372,6 +376,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn debug_print() {
         let (root, _) = JoinerToken::<BoxedError>::new(|_| None);
         assert_eq!(format!("{:?}", root), "JoinerToken(children = 0)");
@@ -384,6 +389,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn debug_print_ref() {
         let (root, root_ref) = JoinerToken::<BoxedError>::new(|_| None);
         assert_eq!(

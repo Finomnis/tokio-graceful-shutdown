@@ -51,6 +51,7 @@ mod tests {
 
     #[test]
     #[traced_test]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn normal() {
         let (sender, receiver) = mpsc::unbounded_channel();
         let mut error_collector = ErrorCollector::<String>::new(receiver);
@@ -71,6 +72,7 @@ mod tests {
 
     #[test]
     #[traced_test]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn double_finish() {
         let (sender, receiver) = mpsc::unbounded_channel();
         let mut error_collector = ErrorCollector::<String>::new(receiver);
@@ -97,6 +99,7 @@ mod tests {
 
     #[test]
     #[traced_test]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn no_finish() {
         let (sender, receiver) = mpsc::unbounded_channel();
         let error_collector = ErrorCollector::<String>::new(receiver);

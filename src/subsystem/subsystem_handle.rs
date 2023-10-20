@@ -362,6 +362,7 @@ mod tests {
     use crate::subsystem::SubsystemBuilder;
 
     #[tokio::test]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     async fn recursive_cancellation() {
         let root_handle = root_handle::<BoxedError>(|_| {});
 
@@ -388,6 +389,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     async fn recursive_cancellation_2() {
         let root_handle = root_handle(|_| {});
 

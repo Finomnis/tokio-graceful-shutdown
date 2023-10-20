@@ -132,6 +132,7 @@ mod tests {
 
     use super::*;
 
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn examine_report(report: miette::Report) {
         println!("{}", report);
         println!("{:?}", report);
@@ -142,6 +143,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn errors_can_be_converted_to_diagnostic() {
         examine_report(GracefulShutdownError::ShutdownTimeout::<BoxedError>(Box::new([])).into());
         examine_report(GracefulShutdownError::SubsystemsFailed::<BoxedError>(Box::new([])).into());
@@ -154,6 +156,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn extract_related_from_graceful_shutdown_error() {
         let related = || {
             Box::new([
@@ -185,6 +188,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn extract_contained_error_from_convert_subsystem_failure() {
         let msg = "MyFailure".to_string();
         let failure = SubsystemFailure(msg.clone());

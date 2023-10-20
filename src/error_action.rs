@@ -29,6 +29,7 @@ pub enum ErrorAction {
 mod tests {
     use super::*;
     #[test]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn derive_traits() {
         let x = ErrorAction::CatchAndLocalShutdown;
         #[allow(clippy::clone_on_copy)]

@@ -86,6 +86,7 @@ mod tests {
     use crate::{utils::JoinerToken, BoxedError};
 
     #[test]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn insert_and_drop() {
         let items = RemotelyDroppableItems::new();
 
@@ -109,6 +110,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn drop_token() {
         let items = RemotelyDroppableItems::new();
 
