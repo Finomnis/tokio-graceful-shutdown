@@ -26,7 +26,7 @@ jobs:
       #- uses: Swatinem/rust-cache@v1
       - name: Compute Coverage
         run:
-          cargo llvm-cov --all-features --workspace --ignore-filename-regex tests --codecov --output-path codecov.json
+          cargo llvm-cov --all-features --workspace --ignore-filename-regex tests.rs --codecov --output-path codecov.json
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
