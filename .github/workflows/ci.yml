@@ -48,6 +48,23 @@ jobs:
       - name: Run cargo test
         run: cargo test -- --test-threads 1
 
+  msrv:
+    name: Minimum Supported Rust Version
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: "-D warnings"
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install MSRV toolchain
+        uses: dtolnay/rust-toolchain@1.63.0
+
+      #- uses: Swatinem/rust-cache@v1
+
+      - name: Run cargo build
+        run: cargo build
+
   lints:
     name: Lints
     runs-on: ubuntu-latest
@@ -115,7 +132,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     if: github.event_name == 'release'
-    needs: [build, test, lints, docs, leaks]
+    needs: [build, test, msrv, lints, docs, leaks]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3

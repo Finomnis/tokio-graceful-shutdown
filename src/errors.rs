@@ -1,5 +1,7 @@
 //! All the errors that can be caused by this crate.
 
+use std::sync::Arc;
+
 use miette::Diagnostic;
 use thiserror::Error;
 
@@ -11,22 +13,24 @@ use crate::ErrTypeTraits;
 pub enum GracefulShutdownError<ErrType: ErrTypeTraits = crate::BoxedError> {
     /// At least one subsystem caused an error.
     #[error("at least one subsystem returned an error")]
-    SubsystemsFailed(#[related] Vec<SubsystemError<ErrType>>),
+    #[diagnostic(code(graceful_shutdown::failed))]
+    SubsystemsFailed(#[related] Box<[SubsystemError<ErrType>]>),
     /// The shutdown did not finish within the given timeout.
     #[error("shutdown timed out")]
-    ShutdownTimeout(#[related] Vec<SubsystemError<ErrType>>),
+    #[diagnostic(code(graceful_shutdown::timeout))]
+    ShutdownTimeout(#[related] Box<[SubsystemError<ErrType>]>),
 }
 
 impl<ErrType: ErrTypeTraits> GracefulShutdownError<ErrType> {
     /// Converts the error into a list of subsystem errors that occurred.
-    pub fn into_subsystem_errors(self) -> Vec<SubsystemError<ErrType>> {
+    pub fn into_subsystem_errors(self) -> Box<[SubsystemError<ErrType>]> {
         match self {
             GracefulShutdownError::SubsystemsFailed(rel) => rel,
             GracefulShutdownError::ShutdownTimeout(rel) => rel,
         }
     }
     /// Queries the list of subsystem errors that occurred.
-    pub fn get_subsystem_errors(&self) -> &Vec<SubsystemError<ErrType>> {
+    pub fn get_subsystem_errors(&self) -> &[SubsystemError<ErrType>] {
         match self {
             GracefulShutdownError::SubsystemsFailed(rel) => rel,
             GracefulShutdownError::ShutdownTimeout(rel) => rel,
@@ -34,21 +38,14 @@ impl<ErrType: ErrTypeTraits> GracefulShutdownError<ErrType> {
     }
 }
 
-/// This enum contains all the possible errors that a partial shutdown
+/// This enum contains all the possible errors that joining a subsystem
 /// could cause.
 #[derive(Debug, Error, Diagnostic)]
-pub enum PartialShutdownError<ErrType: ErrTypeTraits = crate::BoxedError> {
+pub enum SubsystemJoinError<ErrType: ErrTypeTraits = crate::BoxedError> {
     /// At least one subsystem caused an error.
+    #[diagnostic(code(graceful_shutdown::subsystem_join::failed))]
     #[error("at least one subsystem returned an error")]
-    SubsystemsFailed(#[related] Vec<SubsystemError<ErrType>>),
-    /// The given nested subsystem does not seem to be a child of
-    /// the parent subsystem.
-    #[error("unable to find nested subsystem in given subsystem")]
-    SubsystemNotFound,
-    /// A partial shutdown can not be performed because the entire program
-    /// is already shutting down.
-    #[error("unable to perform partial shutdown, the program is already shutting down")]
-    AlreadyShuttingDown,
+    SubsystemsFailed(#[related] Arc<[SubsystemError<ErrType>]>),
 }
 
 /// A wrapper type that carries the errors returned by subsystems.
@@ -100,14 +97,13 @@ impl<ErrType> std::error::Error for SubsystemFailure<ErrType> where
 #[derive(Debug, Error, Diagnostic)]
 pub enum SubsystemError<ErrType: ErrTypeTraits = crate::BoxedError> {
     /// The subsystem returned an error value. Carries the actual error as the second argument.
+    #[diagnostic(code(graceful_shutdown::subsystem::failed))]
     #[error("Error in subsystem '{0}'")]
-    Failed(String, #[source] SubsystemFailure<ErrType>),
-    /// The subsystem was cancelled. Should only happen if the shutdown timeout is exceeded.
-    #[error("Subsystem '{0}' was aborted")]
-    Cancelled(String),
+    Failed(Arc<str>, #[source] SubsystemFailure<ErrType>),
     /// The subsystem panicked.
+    #[diagnostic(code(graceful_shutdown::subsystem::panicked))]
     #[error("Subsystem '{0}' panicked")]
-    Panicked(String),
+    Panicked(Arc<str>),
 }
 
 impl<ErrType: ErrTypeTraits> SubsystemError<ErrType> {
@@ -119,7 +115,6 @@ impl<ErrType: ErrTypeTraits> SubsystemError<ErrType> {
     pub fn name(&self) -> &str {
         match self {
             SubsystemError::Failed(name, _) => name,
-            SubsystemError::Cancelled(name) => name,
             SubsystemError::Panicked(name) => name,
         }
     }
@@ -148,12 +143,9 @@ mod tests {
 
     #[test]
     fn errors_can_be_converted_to_diagnostic() {
-        examine_report(GracefulShutdownError::ShutdownTimeout::<BoxedError>(vec![]).into());
-        examine_report(GracefulShutdownError::SubsystemsFailed::<BoxedError>(vec![]).into());
-        examine_report(PartialShutdownError::AlreadyShuttingDown::<BoxedError>.into());
-        examine_report(PartialShutdownError::SubsystemNotFound::<BoxedError>.into());
-        examine_report(PartialShutdownError::SubsystemsFailed::<BoxedError>(vec![]).into());
-        examine_report(SubsystemError::Cancelled::<BoxedError>("".into()).into());
+        examine_report(GracefulShutdownError::ShutdownTimeout::<BoxedError>(Box::new([])).into());
+        examine_report(GracefulShutdownError::SubsystemsFailed::<BoxedError>(Box::new([])).into());
+        examine_report(SubsystemJoinError::SubsystemsFailed::<BoxedError>(Arc::new([])).into());
         examine_report(SubsystemError::Panicked::<BoxedError>("".into()).into());
         examine_report(
             SubsystemError::Failed::<BoxedError>("".into(), SubsystemFailure("".into())).into(),
@@ -164,18 +156,18 @@ mod tests {
     #[test]
     fn extract_related_from_graceful_shutdown_error() {
         let related = || {
-            vec![
-                SubsystemError::Cancelled("a".into()),
+            Box::new([
+                SubsystemError::Failed("a".into(), SubsystemFailure(String::from("A").into())),
                 SubsystemError::Panicked("b".into()),
-            ]
+            ])
         };
 
-        let matches_related = |data: &Vec<SubsystemError<BoxedError>>| {
+        let matches_related = |data: &[SubsystemError<BoxedError>]| {
             let mut iter = data.iter();
 
             let elem = iter.next().unwrap();
             assert_eq!(elem.name(), "a");
-            assert!(matches!(elem, SubsystemError::Cancelled(_)));
+            assert!(matches!(elem, SubsystemError::Failed(_, _)));
 
             let elem = iter.next().unwrap();
             assert_eq!(elem.name(), "b");

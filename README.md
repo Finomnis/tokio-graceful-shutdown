@@ -40,17 +40,19 @@ This subsystem can now be executed like this:
 ```rust
 #[tokio::main]
 async fn main() -> Result<()> {
-    Toplevel::new()
-        .start("Subsys1", subsys1)
-        .catch_signals()
-        .handle_shutdown_requests(Duration::from_millis(1000))
-        .await
-        .map_err(Into::into)
+    Toplevel::new(|s| async move {
+        s.start(SubsystemBuilder::new("Subsys1", subsys1))
+    })
+    .catch_signals()
+    .handle_shutdown_requests(Duration::from_millis(1000))
+    .await
+    .map_err(Into::into)
 }
 ```
 
 The `Toplevel` object is the root object of the subsystem tree.
-Subsystems can then be started using the `start()` functionality of the toplevel object.
+Subsystems can then be started in it using the `start()` method
+of its `SubsystemHandle` object.
 
 The `catch_signals()` method signals the `Toplevel` object to listen for SIGINT/SIGTERM/Ctrl+C and initiate a shutdown thereafter.
 

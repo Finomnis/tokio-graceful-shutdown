@@ -1,5 +1,6 @@
 //! This example demonstrates how to implement a clean shutdown
-//! of a subsystem.
+//! of a subsystem, through the example of a countdown that
+//! gets cancelled on shutdown.
 //!
 //! There are two options to cancel tasks on shutdown:
 //!   - with [tokio::select]
@@ -7,10 +8,11 @@
 //!
 //! In this case we go with `cancel_on_shutdown()`, but `tokio::select` would be equally viable.
 
-use env_logger::{Builder, Env};
 use miette::Result;
 use tokio::time::{sleep, Duration};
-use tokio_graceful_shutdown::{errors::CancelledByShutdown, FutureExt, SubsystemHandle, Toplevel};
+use tokio_graceful_shutdown::{
+    errors::CancelledByShutdown, FutureExt, SubsystemBuilder, SubsystemHandle, Toplevel,
+};
 
 struct CountdownSubsystem {}
 impl CountdownSubsystem {
@@ -20,20 +22,20 @@ impl CountdownSubsystem {
 
     async fn countdown(&self) {
         for i in (1..10).rev() {
-            log::info!("Countdown: {}", i);
+            tracing::info!("Countdown: {}", i);
             sleep(Duration::from_millis(1000)).await;
         }
     }
 
     async fn run(self, subsys: SubsystemHandle) -> Result<()> {
-        log::info!("Starting countdown ...");
+        tracing::info!("Starting countdown ...");
 
         match self.countdown().cancel_on_shutdown(&subsys).await {
             Ok(()) => {
-                log::info!("Countdown finished.");
+                tracing::info!("Countdown finished.");
             }
             Err(CancelledByShutdown) => {
-                log::info!("Countdown cancelled.");
+                tracing::info!("Countdown cancelled.");
             }
         }
 
@@ -44,13 +46,18 @@ impl CountdownSubsystem {
 #[tokio::main]
 async fn main() -> Result<()> {
     // Init logging
-    Builder::from_env(Env::default().default_filter_or("debug")).init();
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::TRACE)
+        .init();
 
-    // Create toplevel
-    Toplevel::new()
-        .start("Countdown", |h| CountdownSubsystem::new().run(h))
-        .catch_signals()
-        .handle_shutdown_requests(Duration::from_millis(1000))
-        .await
-        .map_err(Into::into)
+    // Setup and execute subsystem tree
+    Toplevel::new(|s| async move {
+        s.start(SubsystemBuilder::new("Countdown", |h| {
+            CountdownSubsystem::new().run(h)
+        }));
+    })
+    .catch_signals()
+    .handle_shutdown_requests(Duration::from_millis(1000))
+    .await
+    .map_err(Into::into)
 }

@@ -7,47 +7,49 @@
 //! There is no real programming knowledge to be gained here, this example is just
 //! to demonstrate the robustness of the system.
 
-use env_logger::{Builder, Env};
 use miette::Result;
 use tokio::time::{sleep, Duration};
-use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
+use tokio_graceful_shutdown::{SubsystemBuilder, SubsystemHandle, Toplevel};
 
 async fn subsys1(subsys: SubsystemHandle) -> Result<()> {
-    subsys.start("Subsys2", subsys2);
-    subsys.start("Subsys3", subsys3);
-    log::info!("Subsystem1 started.");
+    subsys.start(SubsystemBuilder::new("Subsys2", subsys2));
+    subsys.start(SubsystemBuilder::new("Subsys3", subsys3));
+    tracing::info!("Subsystem1 started.");
     subsys.on_shutdown_requested().await;
-    log::info!("Shutting down Subsystem1 ...");
+    tracing::info!("Shutting down Subsystem1 ...");
     sleep(Duration::from_millis(200)).await;
     panic!("Subsystem1 panicked!");
 }
 
 async fn subsys2(_subsys: SubsystemHandle) -> Result<()> {
-    log::info!("Subsystem2 started.");
+    tracing::info!("Subsystem2 started.");
     sleep(Duration::from_millis(500)).await;
 
     panic!("Subsystem2 panicked!")
 }
 
 async fn subsys3(subsys: SubsystemHandle) -> Result<()> {
-    log::info!("Subsystem3 started.");
+    tracing::info!("Subsystem3 started.");
     subsys.on_shutdown_requested().await;
-    log::info!("Shutting down Subsystem3 ...");
+    tracing::info!("Shutting down Subsystem3 ...");
     sleep(Duration::from_millis(500)).await;
-    log::info!("Subsystem3 shut down successfully.");
+    tracing::info!("Subsystem3 shut down successfully.");
     Ok(())
 }
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     // Init logging
-    Builder::from_env(Env::default().default_filter_or("debug")).init();
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::TRACE)
+        .init();
 
-    // Create toplevel
-    Toplevel::new()
-        .start("Subsys1", subsys1)
-        .catch_signals()
-        .handle_shutdown_requests(Duration::from_millis(1000))
-        .await
-        .map_err(Into::into)
+    // Setup and execute subsystem tree
+    Toplevel::new(|s| async move {
+        s.start(SubsystemBuilder::new("Subsys1", subsys1));
+    })
+    .catch_signals()
+    .handle_shutdown_requests(Duration::from_millis(1000))
+    .await
+    .map_err(Into::into)
 }

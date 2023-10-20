@@ -4,43 +4,41 @@
 //! This isn't really a usecase related to this library, but seems to be used regularly,
 //! so I included it anyway.
 
-use env_logger::{Builder, Env};
 use miette::Result;
 use tokio::time::{sleep, Duration};
-use tokio_graceful_shutdown::{SubsystemHandle, Toplevel};
+use tokio_graceful_shutdown::{ErrorAction, SubsystemBuilder, SubsystemHandle, Toplevel};
 
 async fn subsys1(subsys: SubsystemHandle) -> Result<()> {
     // This subsystem panics every two seconds.
     // It should get restarted constantly.
 
-    log::info!("Subsystem1 started.");
+    tracing::info!("Subsystem1 started.");
     tokio::select! {
         _ = subsys.on_shutdown_requested() => (),
         _ = sleep(Duration::from_secs(2)) => {
             panic!("Subsystem1 panicked!");
         }
     };
-    log::info!("Subsystem1 stopped.");
+    tracing::info!("Subsystem1 stopped.");
 
     Ok(())
 }
 
 async fn subsys1_keepalive(subsys: SubsystemHandle) -> Result<()> {
     loop {
-        let subsys_result = Toplevel::nested(&subsys, "")
-            .start("Subsys1", subsys1)
-            .handle_shutdown_requests(Duration::from_millis(50))
-            .await;
+        let nested_subsys = subsys.start(
+            SubsystemBuilder::new("Subsys1", subsys1)
+                .on_failure(ErrorAction::CatchAndLocalShutdown)
+                .on_panic(ErrorAction::CatchAndLocalShutdown),
+        );
 
-        if let Err(err) = &subsys_result {
-            log::error!("Subsystem1 failed: {}", err);
-        }
-
-        if subsys.is_shutdown_requested() {
+        if let Err(err) = nested_subsys.join().await {
+            tracing::error!("Subsystem1 failed: {:?}", miette::Report::from(err));
+        } else {
             break;
         }
 
-        log::info!("Restarting subsystem1 ...");
+        tracing::info!("Restarting subsystem1 ...");
     }
 
     Ok(())
@@ -49,13 +47,16 @@ async fn subsys1_keepalive(subsys: SubsystemHandle) -> Result<()> {
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     // Init logging
-    Builder::from_env(Env::default().default_filter_or("debug")).init();
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::TRACE)
+        .init();
 
-    // Create toplevel
-    Toplevel::new()
-        .start("Subsys1Keepalive", subsys1_keepalive)
-        .catch_signals()
-        .handle_shutdown_requests(Duration::from_millis(1000))
-        .await
-        .map_err(Into::into)
+    // Setup and execute subsystem tree
+    Toplevel::new(|s| async move {
+        s.start(SubsystemBuilder::new("Subsys1Keepalive", subsys1_keepalive));
+    })
+    .catch_signals()
+    .handle_shutdown_requests(Duration::from_millis(1000))
+    .await
+    .map_err(Into::into)
 }

@@ -1,122 +1,112 @@
+//! The SubsystemRunner is a little tricky, so here some explanation.
+//!
+//! A two-layer `tokio::spawn` is required to make this work reliably; the inner `spawn` is the actual subsystem,
+//! and the outer `spawn` carries out the duty of propagating the `StopReason` and cleaning up.
+//!
+//! Further, everything in here reacts properly to being dropped, including
+//! the runner itself, who cancels the subsystem on drop.
+
+use std::{future::Future, sync::Arc};
+
 use crate::{
     errors::{SubsystemError, SubsystemFailure},
-    utils::ShutdownGuard,
-    ErrTypeTraits, ShutdownToken,
+    ErrTypeTraits, SubsystemHandle,
 };
-use std::{future::Future, sync::Arc};
-use tokio::task::{JoinError, JoinHandle};
-use tokio_util::sync::CancellationToken;
 
-pub struct SubsystemRunner<ErrType: ErrTypeTraits = crate::BoxedError> {
-    outer_joinhandle: JoinHandle<Result<(), SubsystemError<ErrType>>>,
-    cancellation_token: CancellationToken,
+mod alive_guard;
+pub(crate) use self::alive_guard::AliveGuard;
+
+pub(crate) struct SubsystemRunner {
+    aborthandle: tokio::task::AbortHandle,
 }
 
-/// Dropping the SubsystemRunner cancels the task.
-///
-/// In consequence, this means that dropping the Toplevel object cancels all tasks.
-impl<ErrType: ErrTypeTraits> Drop for SubsystemRunner<ErrType> {
+impl SubsystemRunner {
+    pub(crate) fn new<Fut, Subsys, ErrType: ErrTypeTraits, Err>(
+        name: Arc<str>,
+        subsystem: Subsys,
+        subsystem_handle: SubsystemHandle<ErrType>,
+        guard: AliveGuard,
+    ) -> Self
+    where
+        Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
+        Fut: 'static + Future<Output = Result<(), Err>> + Send,
+        Err: Into<ErrType>,
+    {
+        let future = async { run_subsystem(name, subsystem, subsystem_handle, guard).await };
+        let aborthandle = tokio::spawn(future).abort_handle();
+        SubsystemRunner { aborthandle }
+    }
+}
+
+impl Drop for SubsystemRunner {
     fn drop(&mut self) {
-        self.abort();
+        self.aborthandle.abort()
     }
 }
 
-impl<ErrType: ErrTypeTraits> SubsystemRunner<ErrType> {
-    async fn handle_subsystem(
-        mut inner_joinhandle: JoinHandle<Result<(), ErrType>>,
-        shutdown_token: ShutdownToken,
-        local_shutdown_token: ShutdownToken,
-        name: String,
-        cancellation_token: CancellationToken,
-        shutdown_guard: Arc<ShutdownGuard>,
-    ) -> Result<(), SubsystemError<ErrType>> {
-        /// Maps the complicated return value of the subsystem joinhandle to an appropriate error
-        fn map_subsystem_result<ErrType: ErrTypeTraits>(
-            name: &str,
-            result: Result<Result<(), ErrType>, JoinError>,
-        ) -> Result<(), SubsystemError<ErrType>> {
-            match result {
-                Ok(Ok(())) => Ok(()),
-                Ok(Err(e)) => Err(SubsystemError::Failed(
-                    name.to_string(),
-                    SubsystemFailure(e),
-                )),
-                Err(e) => Err(if e.is_cancelled() {
-                    SubsystemError::Cancelled(name.to_string())
-                } else {
-                    SubsystemError::Panicked(name.to_string())
-                }),
+async fn run_subsystem<Fut, Subsys, ErrType: ErrTypeTraits, Err>(
+    name: Arc<str>,
+    subsystem: Subsys,
+    mut subsystem_handle: SubsystemHandle<ErrType>,
+    guard: AliveGuard,
+) where
+    Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
+    Fut: 'static + Future<Output = Result<(), Err>> + Send,
+    Err: Into<ErrType>,
+{
+    let mut redirected_subsystem_handle = subsystem_handle.delayed_clone();
+
+    let future = async { subsystem(subsystem_handle).await.map_err(|e| e.into()) };
+    let join_handle = tokio::spawn(future);
+
+    // Abort on drop
+    guard.on_cancel({
+        let abort_handle = join_handle.abort_handle();
+        let name = Arc::clone(&name);
+        move || {
+            if !abort_handle.is_finished() {
+                tracing::warn!("Subsystem cancelled: '{}'", name);
+            }
+            abort_handle.abort();
+        }
+    });
+
+    let failure = match join_handle.await {
+        Ok(Ok(())) => None,
+        Ok(Err(e)) => Some(SubsystemError::Failed(name, SubsystemFailure(e))),
+        Err(e) => {
+            if e.is_panic() {
+                Some(SubsystemError::Panicked(name))
+            } else {
+                // Don't do anything in case of a cancellation;
+                // cancellations can't be forwarded (because the
+                // current function we are in will be cancelled
+                // simultaneously)
+                None
             }
         }
+    };
 
-        let joinhandle_ref = &mut inner_joinhandle;
-        let result = tokio::select! {
-            result = joinhandle_ref => {
-                map_subsystem_result(&name, result)
-            },
-            _ = cancellation_token.cancelled() => {
-                inner_joinhandle.abort();
-                map_subsystem_result(&name, inner_joinhandle.await)
-            }
-        };
+    // Retrieve the handle that was passed into the subsystem.
+    // Originally it was intended to pass the handle as reference, but due
+    // to complications (https://stackoverflow.com/questions/77172947/async-lifetime-issues-of-pass-by-reference-parameters)
+    // it was decided to pass ownership instead.
+    //
+    // It is still important that the handle does not leak out of the subsystem.
+    let subsystem_handle = match redirected_subsystem_handle.try_recv() {
+        Ok(s) => s,
+        Err(_) => panic!("The SubsystemHandle object must not be leaked out of the subsystem!"),
+    };
 
-        match &result {
-            Ok(()) | Err(SubsystemError::Cancelled(_)) => {}
-            Err(SubsystemError::Failed(name, e)) => {
-                log::error!("Error in subsystem '{}': {:?}", name, e);
-                if !local_shutdown_token.is_shutting_down() {
-                    shutdown_token.shutdown();
-                }
-            }
-            Err(SubsystemError::Panicked(name)) => {
-                log::error!("Subsystem '{}' panicked", name);
-                if !local_shutdown_token.is_shutting_down() {
-                    shutdown_token.shutdown();
-                }
-            }
-        };
-
-        drop(shutdown_guard);
-
-        result
+    // Raise potential errors
+    let joiner_token = subsystem_handle.joiner_token;
+    if let Some(failure) = failure {
+        joiner_token.raise_failure(failure);
     }
 
-    pub fn new<Fut: 'static + Future<Output = Result<(), ErrType>> + Send>(
-        name: String,
-        shutdown_token: ShutdownToken,
-        local_shutdown_token: ShutdownToken,
-        cancellation_token: CancellationToken,
-        subsystem_future: Fut,
-        shutdown_guard: Arc<ShutdownGuard>,
-    ) -> Self {
-        // Spawn to nested tasks.
-        // This enables us to catch panics, as panics get returned through a JoinHandle.
-        let inner_joinhandle = tokio::spawn(subsystem_future);
-        let outer_joinhandle = tokio::spawn(Self::handle_subsystem(
-            inner_joinhandle,
-            shutdown_token,
-            local_shutdown_token,
-            name,
-            cancellation_token.clone(),
-            shutdown_guard,
-        ));
-
-        Self {
-            outer_joinhandle,
-            cancellation_token,
-        }
-    }
-
-    pub async fn join(&mut self) -> Result<(), SubsystemError<ErrType>> {
-        // Safety: we are in full control over the outer_joinhandle and the
-        // code it runs. Therefore, if this either returns a panic or a cancelled,
-        // it's a programming error on our side.
-        // Therefore using unwrap() here is the correct way of handling it.
-        // (this and the fact that unreachable code would decrease our test coverage)
-        (&mut self.outer_joinhandle).await.unwrap()
-    }
-
-    pub fn abort(&self) {
-        self.cancellation_token.cancel();
-    }
+    // Wait for children to finish before we destroy the `SubsystemHandle` object.
+    // Otherwise the children would be cancelled immediately.
+    //
+    // This is the main mechanism that forwards a cancellation to all the children.
+    joiner_token.downgrade().join().await;
 }
