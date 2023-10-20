@@ -62,10 +62,12 @@ impl Drop for Inner {
 mod tests {
 
     use std::sync::atomic::{AtomicU32, Ordering};
+    use tracing_test::traced_test;
 
     use super::*;
 
     #[test]
+    #[traced_test]
     fn finished_callback() {
         let alive_guard = AliveGuard::new();
 
@@ -82,6 +84,7 @@ mod tests {
     }
 
     #[test]
+    #[traced_test]
     fn cancel_callback() {
         let alive_guard = AliveGuard::new();
 
@@ -99,6 +102,7 @@ mod tests {
     }
 
     #[test]
+    #[traced_test]
     fn both_callbacks() {
         let alive_guard = AliveGuard::new();
 
@@ -116,5 +120,14 @@ mod tests {
         drop(alive_guard);
 
         assert_eq!(counter.load(Ordering::Relaxed), 2);
+    }
+
+    #[test]
+    #[traced_test]
+    fn no_callback() {
+        let alive_guard = AliveGuard::new();
+        drop(alive_guard);
+
+        assert!(logs_contain("No `finished` callback was registered in AliveGuard! This should not happen, please report this at https://github.com/Finomnis/tokio-graceful-shutdown/issues."));
     }
 }
