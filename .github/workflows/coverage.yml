@@ -8,8 +8,8 @@ concurrency:
   group: coverage-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  coveralls:
-    name: Coveralls
+  coverage:
+    name: Codecov.io
     continue-on-error: true
     runs-on: ubuntu-latest
     env:
@@ -25,14 +25,10 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
       #- uses: Swatinem/rust-cache@v1
       - name: Compute Coverage
-        env:
-          RUST_LOG: "debug"
         run:
-          cargo llvm-cov
-          --all-features --workspace
-          --lcov --output-path lcov.info
-      - name: Upload to Coveralls
-        uses: coverallsapp/github-action@master
+          cargo llvm-cov --all-features --workspace --ignore-filename-regex tests --codecov --output-path codecov.info
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
         with:
-          path-to-lcov: lcov.info
-          github-token: ${{ secrets.github_token }}
+          files: codecov.json
+          fail_ci_if_error: true
