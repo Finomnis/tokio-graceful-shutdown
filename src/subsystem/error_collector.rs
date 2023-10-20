@@ -41,3 +41,6 @@ impl<ErrType: ErrTypeTraits> Drop for ErrorCollector<ErrType> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

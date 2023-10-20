@@ -24,15 +24,3 @@ pub enum ErrorAction {
     /// Do not forward the error to the parent subsystem.
     CatchAndLocalShutdown,
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn derive_traits() {
-        let x = ErrorAction::CatchAndLocalShutdown;
-        #[allow(clippy::clone_on_copy)]
-        let y = x.clone();
-        assert!(y == x);
-    }
-}
