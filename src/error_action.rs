@@ -24,3 +24,6 @@ pub enum ErrorAction {
     /// Do not forward the error to the parent subsystem.
     CatchAndLocalShutdown,
 }
+
+#[cfg(test)]
+mod tests;
