@@ -2,7 +2,13 @@ use crate::BoxedError;
 
 use super::*;
 
-fn examine_report(report: miette::Report) {
+fn examine_report(
+    error: impl miette::Diagnostic + std::error::Error + std::fmt::Debug + Sync + Send + 'static,
+) {
+    println!("{}", error);
+    println!("{:?}", error);
+    // Convert to report
+    let report: miette::Report = error.into();
     println!("{}", report);
     println!("{:?}", report);
     // Convert to std::error::Error
@@ -13,14 +19,21 @@ fn examine_report(report: miette::Report) {
 
 #[test]
 fn errors_can_be_converted_to_diagnostic() {
-    examine_report(GracefulShutdownError::ShutdownTimeout::<BoxedError>(Box::new([])).into());
-    examine_report(GracefulShutdownError::SubsystemsFailed::<BoxedError>(Box::new([])).into());
-    examine_report(SubsystemJoinError::SubsystemsFailed::<BoxedError>(Arc::new([])).into());
-    examine_report(SubsystemError::Panicked::<BoxedError>("".into()).into());
-    examine_report(
-        SubsystemError::Failed::<BoxedError>("".into(), SubsystemFailure("".into())).into(),
-    );
-    examine_report(CancelledByShutdown.into());
+    examine_report(GracefulShutdownError::ShutdownTimeout::<BoxedError>(
+        Box::new([]),
+    ));
+    examine_report(GracefulShutdownError::SubsystemsFailed::<BoxedError>(
+        Box::new([]),
+    ));
+    examine_report(SubsystemJoinError::SubsystemsFailed::<BoxedError>(
+        Arc::new([]),
+    ));
+    examine_report(SubsystemError::Panicked::<BoxedError>("".into()));
+    examine_report(SubsystemError::Failed::<BoxedError>(
+        "".into(),
+        SubsystemFailure("".into()),
+    ));
+    examine_report(CancelledByShutdown);
 }
 
 #[test]
