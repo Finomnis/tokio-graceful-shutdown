@@ -124,6 +124,7 @@ impl<ErrType: ErrTypeTraits> SubsystemError<ErrType> {
 /// [`cancel_on_shutdown()`](crate::FutureExt::cancel_on_shutdown).
 #[derive(Error, Debug, Diagnostic)]
 #[error("A shutdown request caused this task to be cancelled")]
+#[diagnostic(code(graceful_shutdown::future::cancelled_by_shutdown))]
 pub struct CancelledByShutdown;
 
 #[cfg(test)]

@@ -7,6 +7,8 @@ fn examine_report(
 ) {
     println!("{}", error);
     println!("{:?}", error);
+    println!("{:?}", error.source());
+    println!("{}", error.code().unwrap());
     // Convert to report
     let report: miette::Report = error.into();
     println!("{}", report);
