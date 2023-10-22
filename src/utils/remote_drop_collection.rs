@@ -62,10 +62,10 @@ impl<T> Drop for RemoteDrop<T> {
             // Important: lock first, then read the offset.
             let mut data = data.lock().unwrap();
 
-            if let Some(offset) = self.offset.upgrade() {
+            self.offset.upgrade().map(|offset| {
                 let offset = offset.load(Ordering::Acquire);
 
-                if let Some(last_item) = data.pop() {
+                data.pop().map(|last_item| {
                     if offset != data.len() {
                         // There must have been at least two items, and we are not at the end.
                         // So swap first before dropping.
@@ -73,8 +73,8 @@ impl<T> Drop for RemoteDrop<T> {
                         last_item.offset.store(offset, Ordering::Release);
                         data[offset] = last_item;
                     }
-                }
-            }
+                });
+            });
         }
     }
 }
