@@ -1,3 +1,5 @@
+use tracing_test::traced_test;
+
 use crate::BoxedError;
 
 use super::*;
@@ -75,4 +77,14 @@ fn extract_contained_error_from_convert_subsystem_failure() {
     assert_eq!(&msg, failure.get_error());
     assert_eq!(msg, *failure);
     assert_eq!(msg, failure.into_error());
+}
+
+#[test]
+#[traced_test]
+fn handle_dropped_errors() {
+    handle_dropped_error(Err(mpsc::error::SendError(BoxedError::from(String::from(
+        "ABC",
+    )))));
+
+    assert!(logs_contain("An error got dropped: \"ABC\""));
 }

@@ -2,6 +2,20 @@ use super::*;
 use crate::{utils::JoinerToken, BoxedError};
 
 #[test]
+fn single_item() {
+    let items = RemotelyDroppableItems::new();
+
+    let (count1, _) = JoinerToken::<BoxedError>::new(|_| None);
+    assert_eq!(0, count1.count());
+
+    let token1 = items.insert(count1.child_token(|_| None));
+    assert_eq!(1, count1.count());
+
+    drop(token1);
+    assert_eq!(0, count1.count());
+}
+
+#[test]
 fn insert_and_drop() {
     let items = RemotelyDroppableItems::new();
 

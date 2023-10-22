@@ -131,15 +131,14 @@ pub struct CancelledByShutdown;
 // This function contains code that stems from the principle
 // of defensive coding - meaning, handle potential errors
 // gracefully, even if they should not happen.
-// Therefore, not entering this if-block should not cause
-// a reduced code coverage.
-#[cfg_attr(coverage_nightly, coverage(off))]
+// Therefore it is in this special function, so we don't
+// get coverage problems.
 pub(crate) fn handle_dropped_error<ErrType: ErrTypeTraits>(
     result: Result<(), mpsc::error::SendError<ErrType>>,
 ) {
     if let Err(mpsc::error::SendError(e)) = result {
         tracing::warn!("An error got dropped: {e:?}");
-    };
+    }
 }
 
 #[cfg(test)]
