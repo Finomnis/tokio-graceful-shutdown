@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use miette::Diagnostic;
 use thiserror::Error;
+use tokio::sync::mpsc;
 
 use crate::ErrTypeTraits;
 
@@ -126,6 +127,14 @@ impl<ErrType: ErrTypeTraits> SubsystemError<ErrType> {
 #[error("A shutdown request caused this task to be cancelled")]
 #[diagnostic(code(graceful_shutdown::future::cancelled_by_shutdown))]
 pub struct CancelledByShutdown;
+
+pub(crate) fn handle_dropped_error<ErrType: ErrTypeTraits>(
+    result: Result<(), mpsc::error::SendError<ErrType>>,
+) {
+    if let Err(mpsc::error::SendError(e)) = result {
+        tracing::warn!("An error got dropped: {e:?}");
+    };
+}
 
 #[cfg(test)]
 mod tests;
