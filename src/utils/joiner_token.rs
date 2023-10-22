@@ -70,9 +70,7 @@ impl<ErrType: ErrTypeTraits> JoinerToken<ErrType> {
         (Self { inner }, weak_ref)
     }
 
-    // Requires `mut` access to prevent children from being spawned
-    // while waiting
-    pub(crate) async fn join_children(&mut self) {
+    pub(crate) async fn join_children(&self) {
         let mut subscriber = self.inner.counter.subscribe();
 
         // Ignore errors; if the channel got closed, that definitely means

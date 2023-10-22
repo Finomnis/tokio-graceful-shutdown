@@ -165,7 +165,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     }
 
     /// Waits until all the children of this subsystem are finished.
-    pub async fn wait_for_children(&mut self) {
+    pub async fn wait_for_children(&self) {
         self.inner.joiner_token.join_children().await
     }
 

@@ -70,7 +70,7 @@ async fn wait_for_children() {
         BoxedResult::Ok(())
     };
 
-    let subsys1 = move |mut subsys: SubsystemHandle| async move {
+    let subsys1 = move |subsys: SubsystemHandle| async move {
         subsys.start(SubsystemBuilder::new("nested1", nested_subsys1));
 
         sleep(Duration::from_millis(100)).await;
@@ -94,6 +94,67 @@ async fn wait_for_children() {
         s.start(SubsystemBuilder::new("subsys", subsys1));
     })
     .handle_shutdown_requests(Duration::from_millis(500))
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+#[traced_test]
+async fn request_local_shutdown() {
+    let (nested1_started, set_nested1_started) = Event::create();
+    let (nested1_finished, set_nested1_finished) = Event::create();
+    let (nested2_started, set_nested2_started) = Event::create();
+    let (nested2_finished, set_nested2_finished) = Event::create();
+    let (global_finished, set_global_finished) = Event::create();
+
+    let nested_subsys2 = move |subsys: SubsystemHandle| async move {
+        set_nested2_started();
+        subsys.on_shutdown_requested().await;
+        set_nested2_finished();
+        BoxedResult::Ok(())
+    };
+
+    let nested_subsys1 = move |subsys: SubsystemHandle| async move {
+        subsys.start(SubsystemBuilder::new("nested2", nested_subsys2));
+        set_nested1_started();
+        subsys.on_shutdown_requested().await;
+        set_nested1_finished();
+        BoxedResult::Ok(())
+    };
+
+    let subsys1 = move |subsys: SubsystemHandle| async move {
+        subsys.start(SubsystemBuilder::new("nested1", nested_subsys1));
+
+        sleep(Duration::from_millis(100)).await;
+
+        assert!(nested1_started.get());
+        assert!(!nested1_finished.get());
+        assert!(nested2_started.get());
+        assert!(!nested2_finished.get());
+        assert!(!global_finished.get());
+
+        subsys.request_local_shutdown();
+        sleep(Duration::from_millis(200)).await;
+
+        assert!(nested1_finished.get());
+        assert!(nested2_finished.get());
+        assert!(!global_finished.get());
+
+        subsys.request_shutdown();
+        sleep(Duration::from_millis(50)).await;
+
+        assert!(global_finished.get());
+
+        BoxedResult::Ok(())
+    };
+
+    Toplevel::new(move |s| async move {
+        s.start(SubsystemBuilder::new("subsys", subsys1));
+
+        s.on_shutdown_requested().await;
+        set_global_finished();
+    })
+    .handle_shutdown_requests(Duration::from_millis(100))
     .await
     .unwrap();
 }
