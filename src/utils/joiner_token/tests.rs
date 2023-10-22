@@ -116,7 +116,7 @@ fn counters_weak() {
 async fn join() {
     let (superroot, _) = JoinerToken::<BoxedError>::new(|_| None);
 
-    let (mut root, _) = superroot.child_token(|_| None);
+    let (root, _) = superroot.child_token(|_| None);
 
     let (child1, _) = root.child_token(|_| None);
     let (child2, _) = child1.child_token(|_| None);

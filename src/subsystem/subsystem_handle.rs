@@ -9,7 +9,7 @@ use tokio::sync::{mpsc, oneshot};
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    errors::SubsystemError,
+    errors::{handle_dropped_error, SubsystemError},
     runner::{AliveGuard, SubsystemRunner},
     utils::{remote_drop_collection::RemotelyDroppableItems, JoinerToken},
     BoxedError, ErrTypeTraits, ErrorAction, NestedSubsystem, SubsystemBuilder,
@@ -124,9 +124,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
                 match error_action {
                     ErrorAction::Forward => Some(e),
                     ErrorAction::CatchAndLocalShutdown => {
-                        if let Err(mpsc::error::SendError(e)) = error_sender.send(e) {
-                            tracing::warn!("An error got dropped: {e:?}");
-                        };
+                        handle_dropped_error(error_sender.send(e));
                         cancellation_token.cancel();
                         None
                     }
@@ -167,7 +165,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     }
 
     /// Waits until all the children of this subsystem are finished.
-    pub async fn wait_for_children(&mut self) {
+    pub async fn wait_for_children(&self) {
         self.inner.joiner_token.join_children().await
     }
 

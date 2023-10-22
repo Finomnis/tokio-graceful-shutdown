@@ -4,20 +4,21 @@ use std::sync::Arc;
 
 use miette::Diagnostic;
 use thiserror::Error;
+use tokio::sync::mpsc;
 
 use crate::ErrTypeTraits;
 
 /// This enum contains all the possible errors that could be returned
 /// by [`handle_shutdown_requests()`](crate::Toplevel::handle_shutdown_requests).
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Debug, Error, Diagnostic)]
 pub enum GracefulShutdownError<ErrType: ErrTypeTraits = crate::BoxedError> {
     /// At least one subsystem caused an error.
-    #[error("at least one subsystem returned an error")]
     #[diagnostic(code(graceful_shutdown::failed))]
+    #[error("at least one subsystem returned an error")]
     SubsystemsFailed(#[related] Box<[SubsystemError<ErrType>]>),
     /// The shutdown did not finish within the given timeout.
-    #[error("shutdown timed out")]
     #[diagnostic(code(graceful_shutdown::timeout))]
+    #[error("shutdown timed out")]
     ShutdownTimeout(#[related] Box<[SubsystemError<ErrType>]>),
 }
 
@@ -124,7 +125,34 @@ impl<ErrType: ErrTypeTraits> SubsystemError<ErrType> {
 /// [`cancel_on_shutdown()`](crate::FutureExt::cancel_on_shutdown).
 #[derive(Error, Debug, Diagnostic)]
 #[error("A shutdown request caused this task to be cancelled")]
+#[diagnostic(code(graceful_shutdown::future::cancelled_by_shutdown))]
 pub struct CancelledByShutdown;
+
+// This function contains code that stems from the principle
+// of defensive coding - meaning, handle potential errors
+// gracefully, even if they should not happen.
+// Therefore it is in this special function, so we don't
+// get coverage problems.
+pub(crate) fn handle_dropped_error<ErrType: ErrTypeTraits>(
+    result: Result<(), mpsc::error::SendError<ErrType>>,
+) {
+    if let Err(mpsc::error::SendError(e)) = result {
+        tracing::warn!("An error got dropped: {e:?}");
+    }
+}
+
+// This function contains code that stems from the principle
+// of defensive coding - meaning, handle potential errors
+// gracefully, even if they should not happen.
+// Therefore it is in this special function, so we don't
+// get coverage problems.
+pub(crate) fn handle_unhandled_stopreason<ErrType: ErrTypeTraits>(
+    maybe_stop_reason: Option<SubsystemError<ErrType>>,
+) {
+    if let Some(stop_reason) = maybe_stop_reason {
+        tracing::warn!("Unhandled stop reason: {:?}", stop_reason);
+    }
+}
 
 #[cfg(test)]
 mod tests;

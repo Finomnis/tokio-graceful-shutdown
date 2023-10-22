@@ -2,7 +2,10 @@ use std::{fmt::Debug, sync::Arc};
 
 use tokio::sync::watch;
 
-use crate::{errors::SubsystemError, ErrTypeTraits};
+use crate::{
+    errors::{handle_unhandled_stopreason, SubsystemError},
+    ErrTypeTraits,
+};
 
 struct Inner<ErrType: ErrTypeTraits> {
     counter: watch::Sender<(bool, u32)>,
@@ -67,9 +70,7 @@ impl<ErrType: ErrTypeTraits> JoinerToken<ErrType> {
         (Self { inner }, weak_ref)
     }
 
-    // Requires `mut` access to prevent children from being spawned
-    // while waiting
-    pub(crate) async fn join_children(&mut self) {
+    pub(crate) async fn join_children(&self) {
         let mut subscriber = self.inner.counter.subscribe();
 
         // Ignore errors; if the channel got closed, that definitely means
@@ -126,9 +127,7 @@ impl<ErrType: ErrTypeTraits> JoinerToken<ErrType> {
             maybe_parent = parent.parent.as_ref();
         }
 
-        if let Some(stop_reason) = maybe_stop_reason {
-            tracing::warn!("Unhandled stop reason: {:?}", stop_reason);
-        }
+        handle_unhandled_stopreason(maybe_stop_reason);
     }
 
     pub(crate) fn downgrade(self) -> JoinerTokenRef {

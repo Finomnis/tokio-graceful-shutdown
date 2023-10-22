@@ -1,8 +1,18 @@
+use tracing_test::traced_test;
+
 use crate::BoxedError;
 
 use super::*;
 
-fn examine_report(report: miette::Report) {
+fn examine_report(
+    error: impl miette::Diagnostic + std::error::Error + std::fmt::Debug + Sync + Send + 'static,
+) {
+    println!("{}", error);
+    println!("{:?}", error);
+    println!("{:?}", error.source());
+    println!("{}", error.code().unwrap());
+    // Convert to report
+    let report: miette::Report = error.into();
     println!("{}", report);
     println!("{:?}", report);
     // Convert to std::error::Error
@@ -13,14 +23,21 @@ fn examine_report(report: miette::Report) {
 
 #[test]
 fn errors_can_be_converted_to_diagnostic() {
-    examine_report(GracefulShutdownError::ShutdownTimeout::<BoxedError>(Box::new([])).into());
-    examine_report(GracefulShutdownError::SubsystemsFailed::<BoxedError>(Box::new([])).into());
-    examine_report(SubsystemJoinError::SubsystemsFailed::<BoxedError>(Arc::new([])).into());
-    examine_report(SubsystemError::Panicked::<BoxedError>("".into()).into());
-    examine_report(
-        SubsystemError::Failed::<BoxedError>("".into(), SubsystemFailure("".into())).into(),
-    );
-    examine_report(CancelledByShutdown.into());
+    examine_report(GracefulShutdownError::ShutdownTimeout::<BoxedError>(
+        Box::new([]),
+    ));
+    examine_report(GracefulShutdownError::SubsystemsFailed::<BoxedError>(
+        Box::new([]),
+    ));
+    examine_report(SubsystemJoinError::SubsystemsFailed::<BoxedError>(
+        Arc::new([]),
+    ));
+    examine_report(SubsystemError::Panicked::<BoxedError>("".into()));
+    examine_report(SubsystemError::Failed::<BoxedError>(
+        "".into(),
+        SubsystemFailure("".into()),
+    ));
+    examine_report(CancelledByShutdown);
 }
 
 #[test]
@@ -60,4 +77,24 @@ fn extract_contained_error_from_convert_subsystem_failure() {
     assert_eq!(&msg, failure.get_error());
     assert_eq!(msg, *failure);
     assert_eq!(msg, failure.into_error());
+}
+
+#[test]
+#[traced_test]
+fn handle_dropped_errors() {
+    handle_dropped_error(Err(mpsc::error::SendError(BoxedError::from(String::from(
+        "ABC",
+    )))));
+
+    assert!(logs_contain("An error got dropped: \"ABC\""));
+}
+
+#[test]
+#[traced_test]
+fn handle_unhandled_stopreasons() {
+    handle_unhandled_stopreason(Some(SubsystemError::<BoxedError>::Panicked(Arc::from(
+        "def",
+    ))));
+
+    assert!(logs_contain("Unhandled stop reason: Panicked(\"def\")"));
 }

@@ -5,7 +5,7 @@ use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    errors::{GracefulShutdownError, SubsystemError},
+    errors::{handle_dropped_error, GracefulShutdownError, SubsystemError},
     signal_handling::wait_for_signal,
     subsystem::{self, ErrorActions},
     BoxedError, ErrTypeTraits, ErrorAction, NestedSubsystem, SubsystemHandle,
@@ -74,9 +74,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
                 }
             };
 
-            if let Err(mpsc::error::SendError(e)) = error_sender.send(e) {
-                tracing::warn!("An error got dropped: {e:?}");
-            };
+            handle_dropped_error(error_sender.send(e));
         });
 
         let toplevel_subsys = root_handle.start_with_abs_name(
@@ -181,7 +179,12 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         );
 
         match tokio::time::timeout(shutdown_timeout, self.toplevel_subsys.join()).await {
-            Ok(Ok(())) => {
+            Ok(result) => {
+                // An `Err` here would indicate a programming error,
+                // because the toplevel subsys doesn't catch any errors;
+                // it only forwards them.
+                assert!(result.is_ok());
+
                 let errors = collect_errors();
                 if errors.is_empty() {
                     tracing::info!("Shutdown finished.");
@@ -190,10 +193,6 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
                     tracing::warn!("Shutdown finished with errors.");
                     Err(GracefulShutdownError::SubsystemsFailed(errors))
                 }
-            }
-            Ok(Err(_)) => {
-                // This can't happen because the toplevel subsys doesn't catch any errors; it only forwards them.
-                unreachable!();
             }
             Err(_) => {
                 tracing::error!("Shutdown timed out!");

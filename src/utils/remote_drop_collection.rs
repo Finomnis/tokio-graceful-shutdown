@@ -62,18 +62,22 @@ impl<T> Drop for RemoteDrop<T> {
             // Important: lock first, then read the offset.
             let mut data = data.lock().unwrap();
 
-            if let Some(offset) = self.offset.upgrade() {
-                let offset = offset.load(Ordering::Acquire);
+            let offset = self
+                .offset
+                .upgrade()
+                .expect("Trying to delete non-existent item! Please report this.")
+                .load(Ordering::Acquire);
 
-                if let Some(last_item) = data.pop() {
-                    if offset != data.len() {
-                        // There must have been at least two items, and we are not at the end.
-                        // So swap first before dropping.
+            let last_item = data
+                .pop()
+                .expect("Trying to delete non-existent item! Please report this.");
 
-                        last_item.offset.store(offset, Ordering::Release);
-                        data[offset] = last_item;
-                    }
-                }
+            if offset != data.len() {
+                // There must have been at least two items, and we are not at the end.
+                // So swap first before dropping.
+
+                last_item.offset.store(offset, Ordering::Release);
+                data[offset] = last_item;
             }
         }
     }
