@@ -132,6 +132,7 @@ async fn request_local_shutdown() {
         assert!(nested2_started.get());
         assert!(!nested2_finished.get());
         assert!(!global_finished.get());
+        assert!(!subsys.is_shutdown_requested());
 
         subsys.request_local_shutdown();
         sleep(Duration::from_millis(200)).await;
@@ -139,11 +140,13 @@ async fn request_local_shutdown() {
         assert!(nested1_finished.get());
         assert!(nested2_finished.get());
         assert!(!global_finished.get());
+        assert!(subsys.is_shutdown_requested());
 
         subsys.request_shutdown();
         sleep(Duration::from_millis(50)).await;
 
         assert!(global_finished.get());
+        assert!(subsys.is_shutdown_requested());
 
         BoxedResult::Ok(())
     };
