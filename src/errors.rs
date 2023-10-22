@@ -10,15 +10,15 @@ use crate::ErrTypeTraits;
 
 /// This enum contains all the possible errors that could be returned
 /// by [`handle_shutdown_requests()`](crate::Toplevel::handle_shutdown_requests).
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Debug, Error, Diagnostic)]
 pub enum GracefulShutdownError<ErrType: ErrTypeTraits = crate::BoxedError> {
     /// At least one subsystem caused an error.
-    #[error("at least one subsystem returned an error")]
     #[diagnostic(code(graceful_shutdown::failed))]
+    #[error("at least one subsystem returned an error")]
     SubsystemsFailed(#[related] Box<[SubsystemError<ErrType>]>),
     /// The shutdown did not finish within the given timeout.
-    #[error("shutdown timed out")]
     #[diagnostic(code(graceful_shutdown::timeout))]
+    #[error("shutdown timed out")]
     ShutdownTimeout(#[related] Box<[SubsystemError<ErrType>]>),
 }
 
@@ -128,6 +128,12 @@ impl<ErrType: ErrTypeTraits> SubsystemError<ErrType> {
 #[diagnostic(code(graceful_shutdown::future::cancelled_by_shutdown))]
 pub struct CancelledByShutdown;
 
+// This function contains code that stems from the principle
+// of defensive coding - meaning, handle potential errors
+// gracefully, even if they should not happen.
+// Therefore, not entering this if-block should not cause
+// a reduced code coverage.
+#[cfg_attr(coverage_nightly, coverage(off))]
 pub(crate) fn handle_dropped_error<ErrType: ErrTypeTraits>(
     result: Result<(), mpsc::error::SendError<ErrType>>,
 ) {
