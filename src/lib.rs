@@ -91,8 +91,6 @@
     test(no_crate_inject, attr(deny(warnings))),
     test(attr(allow(dead_code)))
 )]
-// Allows functions to be ignored by the coverage algorithm
-#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 type BoxedError = Box<dyn std::error::Error + Send + Sync + 'static>;
 
