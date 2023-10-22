@@ -75,15 +75,10 @@ async fn run_subsystem<Fut, Subsys, ErrType: ErrTypeTraits, Err>(
         Ok(Ok(())) => None,
         Ok(Err(e)) => Some(SubsystemError::Failed(name, SubsystemFailure(e))),
         Err(e) => {
-            if e.is_panic() {
-                Some(SubsystemError::Panicked(name))
-            } else {
-                // Don't do anything in case of a cancellation;
-                // cancellations can't be forwarded (because the
-                // current function we are in will be cancelled
-                // simultaneously)
-                None
-            }
+            // We can assume that this is a panic, because a cancellation
+            // can never happen as long as we still hold `guard`.
+            assert!(e.is_panic());
+            Some(SubsystemError::Panicked(name))
         }
     };
 
@@ -95,7 +90,10 @@ async fn run_subsystem<Fut, Subsys, ErrType: ErrTypeTraits, Err>(
     // It is still important that the handle does not leak out of the subsystem.
     let subsystem_handle = match redirected_subsystem_handle.try_recv() {
         Ok(s) => s,
-        Err(_) => panic!("The SubsystemHandle object must not be leaked out of the subsystem!"),
+        Err(_) => {
+            tracing::error!("The SubsystemHandle object must not be leaked out of the subsystem!");
+            panic!("The SubsystemHandle object must not be leaked out of the subsystem!");
+        }
     };
 
     // Raise potential errors
