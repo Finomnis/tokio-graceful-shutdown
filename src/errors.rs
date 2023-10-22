@@ -141,5 +141,18 @@ pub(crate) fn handle_dropped_error<ErrType: ErrTypeTraits>(
     }
 }
 
+// This function contains code that stems from the principle
+// of defensive coding - meaning, handle potential errors
+// gracefully, even if they should not happen.
+// Therefore it is in this special function, so we don't
+// get coverage problems.
+pub(crate) fn handle_unhandled_stopreason<ErrType: ErrTypeTraits>(
+    maybe_stop_reason: Option<SubsystemError<ErrType>>,
+) {
+    if let Some(stop_reason) = maybe_stop_reason {
+        tracing::warn!("Unhandled stop reason: {:?}", stop_reason);
+    }
+}
+
 #[cfg(test)]
 mod tests;

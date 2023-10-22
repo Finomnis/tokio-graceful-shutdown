@@ -88,3 +88,13 @@ fn handle_dropped_errors() {
 
     assert!(logs_contain("An error got dropped: \"ABC\""));
 }
+
+#[test]
+#[traced_test]
+fn handle_unhandled_stopreasons() {
+    handle_unhandled_stopreason(Some(SubsystemError::<BoxedError>::Panicked(Arc::from(
+        "def",
+    ))));
+
+    assert!(logs_contain("Unhandled stop reason: Panicked(\"def\")"));
+}
