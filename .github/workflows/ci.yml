@@ -57,8 +57,10 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install llvm-cov
-        uses: taiki-e/install-action@cargo-msrv
+      - name: Install cargo-msrv
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-msrv
 
       #- uses: Swatinem/rust-cache@v1
 
