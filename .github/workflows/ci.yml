@@ -57,13 +57,15 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install MSRV toolchain
-        uses: dtolnay/rust-toolchain@1.63.0
+      - name: Install cargo-msrv
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-msrv
 
       #- uses: Swatinem/rust-cache@v1
 
-      - name: Run cargo build
-        run: cargo build
+      - name: Check MSRV
+        run: cargo msrv verify
 
   lints:
     name: Lints
