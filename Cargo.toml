@@ -52,7 +52,7 @@ tracing-test = { version = "0.2.4", features = ["no-env-filter"] }
 tokio = { version = "1.32.0", features = ["full"] }
 
 # Hyper example
-hyper = { version = "0.14.20", features = ["full"] }
+hyper = { version = "1.0.1", features = ["full"] }
 
 # Warp example
 warp = "0.3.1"
