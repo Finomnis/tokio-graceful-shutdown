@@ -304,6 +304,18 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     pub(crate) fn get_cancellation_token(&self) -> &CancellationToken {
         &self.inner.cancellation_token
     }
+
+    /// Creates a cancellation token that will get triggered once the
+    /// subsystem shuts down.
+    ///
+    /// This is intended for more lightweight situations where
+    /// creating full-blown subsystems would be too much overhead,
+    /// like spawning connection handlers of a webserver.
+    ///
+    /// For more information, see the [hyper example](https://github.com/Finomnis/tokio-graceful-shutdown/blob/main/examples/hyper.rs).
+    pub fn create_cancellation_token(&self) -> CancellationToken {
+        self.inner.cancellation_token.child_token()
+    }
 }
 
 impl<ErrType: ErrTypeTraits> Drop for SubsystemHandle<ErrType> {
