@@ -143,7 +143,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     if: github.event_name == 'release'
-    needs: [build, test, msrv, lints, docs, leaks]
+    needs: [build, test, msrv, lints, docs, leaks, semver]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
