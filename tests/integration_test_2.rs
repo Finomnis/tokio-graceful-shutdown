@@ -225,3 +225,25 @@ async fn cancellation_token() {
         .await;
     assert!(result.is_ok());
 }
+
+#[tokio::test]
+#[traced_test]
+async fn cancellation_token_does_not_propagate_up() {
+    let subsystem = |subsys: SubsystemHandle| async move {
+        let cancellation_token = subsys.create_cancellation_token();
+
+        cancellation_token.cancel();
+        assert!(!subsys.is_shutdown_requested());
+
+        BoxedResult::Ok(())
+    };
+
+    let toplevel = Toplevel::new(move |s| async move {
+        s.start(SubsystemBuilder::new("subsys", subsystem));
+    });
+
+    let result = toplevel
+        .handle_shutdown_requests(Duration::from_millis(400))
+        .await;
+    assert!(result.is_ok());
+}
