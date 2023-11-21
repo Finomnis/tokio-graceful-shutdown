@@ -199,3 +199,29 @@ async fn shutdown_through_signal_2() {
         },
     );
 }
+
+#[tokio::test]
+#[traced_test]
+async fn cancellation_token() {
+    let subsystem = |subsys: SubsystemHandle| async move {
+        let cancellation_token = subsys.create_cancellation_token();
+
+        assert!(!cancellation_token.is_cancelled());
+        subsys.on_shutdown_requested().await;
+        assert!(cancellation_token.is_cancelled());
+
+        BoxedResult::Ok(())
+    };
+
+    let toplevel = Toplevel::new(move |s| async move {
+        s.start(SubsystemBuilder::new("subsys", subsystem));
+
+        sleep(Duration::from_millis(100)).await;
+        s.request_shutdown();
+    });
+
+    let result = toplevel
+        .handle_shutdown_requests(Duration::from_millis(400))
+        .await;
+    assert!(result.is_ok());
+}
