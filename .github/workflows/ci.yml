@@ -60,15 +60,16 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
+      - name: Install cargo-binstall
+        uses: taiki-e/install-action@cargo-binstall
+
       - name: Install cargo-msrv
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-msrv
+        run: cargo binstall --version 0.16.0-beta.17 --no-confirm cargo-msrv
 
       #- uses: Swatinem/rust-cache@v1
 
       - name: Check MSRV
-        run: cargo msrv verify
+        run: cargo msrv verify --log-target=stdout --output-format=json
 
   semver:
     name: Semantic Versioning
@@ -79,6 +80,62 @@ jobs:
         uses: actions/checkout@v3
       - name: Check semver
         uses: obi1kenobi/cargo-semver-checks-action@v2
+
+  min-versions:
+    name: Minimal Dependency Versions
+    runs-on: ubuntu-latest
+    needs: [lints, docs]
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install nightly toolchain
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Install cargo-hack
+        uses: taiki-e/install-action@cargo-hack
+      - name: Install cargo-minimal-versions
+        uses: taiki-e/install-action@cargo-minimal-versions
+
+      - name: Check with minimal versions
+        run: cargo minimal-versions check --workspace --ignore-private
+
+      - name: Test with minimal versions
+        run: cargo minimal-versions test -- --test-threads 1
+
+  min-versions-msrv:
+    name: Minimal Depencency Versions (MSRV)
+    runs-on: ubuntu-latest
+    needs: [lints, docs]
+    env:
+      RUSTFLAGS: "-D warnings"
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install nightly toolchain
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Install cargo-binstall
+        uses: taiki-e/install-action@cargo-binstall
+      - name: Install cargo-msrv
+        run: cargo binstall --version 0.16.0-beta.17 --no-confirm cargo-msrv
+      - name: Install cargo-hack
+        uses: taiki-e/install-action@cargo-hack
+      - name: Install cargo-minimal-versions
+        uses: taiki-e/install-action@cargo-minimal-versions
+
+      - name: Determine MSRV
+        run: echo "MSRV=$(cargo msrv show --output-format=minimal)" >> $GITHUB_ENV
+
+      - name: Show MSRV
+        run: echo $MSRV
+
+      - name: Install MSRV Rust version
+        run: rustup toolchain install $MSRV
+
+      - name: Check with minimal versions
+        run: cargo +$MSRV minimal-versions check --workspace --ignore-private
 
   lints:
     name: Lints
@@ -148,7 +205,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     if: github.event_name == 'release'
-    needs: [build, test, msrv, lints, docs, leaks, semver]
+    needs: [build, test, msrv, lints, docs, leaks, semver, min-versions, min-versions-msrv]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
