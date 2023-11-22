@@ -60,15 +60,16 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
+      - name: Install cargo-binstall
+        uses: taiki-e/install-action@cargo-binstall
+
       - name: Install cargo-msrv
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-msrv
+        run: cargo binstall --version 0.16.0-beta.17 --no-confirm cargo-msrv
 
       #- uses: Swatinem/rust-cache@v1
 
       - name: Check MSRV
-        run: cargo msrv verify
+        run: cargo msrv verify --log-target=stdout --output-format=json
 
   semver:
     name: Semantic Versioning
@@ -112,10 +113,11 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
+
+      - name: Install cargo-binstall
+        uses: taiki-e/install-action@cargo-binstall
       - name: Install cargo-msrv
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-msrv
+        run: cargo binstall --version 0.16.0-beta.17 --no-confirm cargo-msrv
       - name: Install cargo-hack
         uses: taiki-e/install-action@cargo-hack
       - name: Install cargo-minimal-versions
@@ -124,10 +126,10 @@ jobs:
       #- uses: Swatinem/rust-cache@v1
 
       - name: Check with minimal versions
-        run: cargo msrv verify -- cargo minimal-versions check --workspace --ignore-private
+        run: cargo msrv verify --log-target=stdout --output-format=json -- cargo minimal-versions check --workspace --ignore-private
 
       - name: Test with minimal versions
-        run: cargo msrv verify -- cargo minimal-versions test -- --test-threads 1
+        run: cargo msrv verify --log-target=stdout --output-format=json -- cargo minimal-versions test -- --test-threads 1
 
   lints:
     name: Lints
