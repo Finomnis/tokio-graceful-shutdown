@@ -102,6 +102,33 @@ jobs:
       - name: Test with minimal versions
         run: cargo minimal-versions test -- --test-threads 1
 
+  min-versions-msrv:
+    name: Minimal Depencency Versions (MSRV)
+    runs-on: ubuntu-latest
+    needs: [lints, docs]
+    env:
+      RUSTFLAGS: "-D warnings"
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install cargo-msrv
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-msrv
+      - name: Install cargo-hack
+        uses: taiki-e/install-action@cargo-hack
+      - name: Install cargo-minimal-versions
+        uses: taiki-e/install-action@cargo-minimal-versions
+
+      #- uses: Swatinem/rust-cache@v1
+
+      - name: Check with minimal versions
+        run: cargo msrv verify -- cargo minimal-versions check --workspace --ignore-private
+
+      - name: Test with minimal versions
+        run: cargo msrv verify -- cargo minimal-versions test -- --test-threads 1
+
   lints:
     name: Lints
     runs-on: ubuntu-latest
@@ -170,7 +197,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     if: github.event_name == 'release'
-    needs: [build, test, msrv, lints, docs, leaks, semver, min-versions]
+    needs: [build, test, msrv, lints, docs, leaks, semver, min-versions, min-versions-msrv]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
