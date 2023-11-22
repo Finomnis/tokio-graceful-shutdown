@@ -58,9 +58,13 @@ tokio-util = { version = "0.7.10", default-features = false, features = ["rt"] }
 bytes = "1.5.0"
 http-body-util = "0.1.0"
 
+futures-util = "0.3.16" # Required to fix minimal-versions
+tower = "0.4.1"         # Required to fix minimal-versions
+
 # Warp example
 warp = "0.3.6"
-headers = "0.3.1" # Required to fix min-versions
+headers = "0.3.5"          # Required to fix minimal-versions
+serde_urlencoded = "0.7.1" # Required to fix minimal-versions
 
 # For testing unix signals
 [target.'cfg(unix)'.dev-dependencies]
