@@ -113,7 +113,6 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-
       - name: Install cargo-binstall
         uses: taiki-e/install-action@cargo-binstall
       - name: Install cargo-msrv
@@ -123,13 +122,15 @@ jobs:
       - name: Install cargo-minimal-versions
         uses: taiki-e/install-action@cargo-minimal-versions
 
+      - name: Install MSRV Rust version
+        run: rustup toolchain install $(cargo msrv show --output-format=minimal)
       #- uses: Swatinem/rust-cache@v1
 
       - name: Check with minimal versions
-        run: cargo msrv verify --log-target=stdout --output-format=json -- cargo minimal-versions check --workspace --ignore-private
+        run: cargo +$(cargo msrv show --output-format=minimal) minimal-versions check --workspace --ignore-private
 
       - name: Test with minimal versions
-        run: cargo msrv verify --log-target=stdout --output-format=json -- cargo minimal-versions test -- --test-threads 1
+        run: cargo +$(cargo msrv show --output-format=minimal) minimal-versions test -- --test-threads 1
 
   lints:
     name: Lints
