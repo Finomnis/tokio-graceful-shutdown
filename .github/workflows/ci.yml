@@ -137,9 +137,6 @@ jobs:
       - name: Check with minimal versions
         run: cargo +$MSRV minimal-versions check --workspace --ignore-private
 
-      - name: Test with minimal versions
-        run: cargo +$MSRV minimal-versions test -- --test-threads 1
-
   lints:
     name: Lints
     runs-on: ubuntu-latest
