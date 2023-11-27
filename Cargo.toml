@@ -63,7 +63,7 @@ tower = "0.4.1"         # Required to fix minimal-versions
 
 # Warp example
 warp = "0.3.6"
-headers = "0.3.5"          # Required to fix minimal-versions
+headers = "0.4.0"          # Required to fix minimal-versions
 serde_urlencoded = "0.7.1" # Required to fix minimal-versions
 
 # For testing unix signals
