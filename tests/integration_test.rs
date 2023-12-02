@@ -42,7 +42,6 @@ async fn normal_shutdown() {
 async fn use_subsystem_struct() {
     struct MySubsystem;
 
-    #[async_trait::async_trait]
     impl IntoSubsystem<BoxedError> for MySubsystem {
         async fn run(self, subsys: SubsystemHandle) -> BoxedResult {
             subsys.on_shutdown_requested().await;

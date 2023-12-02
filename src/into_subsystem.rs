@@ -1,18 +1,9 @@
 use core::future::Future;
 use std::pin::Pin;
 
-use async_trait::async_trait;
-
 use crate::{BoxedError, ErrTypeTraits, SubsystemHandle};
 
-type SubsystemFuture<Err> = dyn Future<Output = Result<(), Err>> + Send + 'static;
-type SubsystemFunction<Err, ErrWrapper> =
-    dyn FnOnce(SubsystemHandle<ErrWrapper>) -> Pin<Box<SubsystemFuture<Err>>> + Send + 'static;
-
-#[async_trait]
 /// Allows a struct to be used as a subsystem.
-///
-/// Implementing this trait requires the `async_trait` dependency.
 ///
 /// Using a struct that does not implement this trait as a subsystem is possible
 /// by wrapping it in an async closure. This trait exists primarily
@@ -30,7 +21,6 @@ type SubsystemFunction<Err, ErrWrapper> =
 ///
 /// struct MySubsystem;
 ///
-/// #[async_trait::async_trait]
 /// impl IntoSubsystem<miette::Report> for MySubsystem {
 ///     async fn run(self, subsys: SubsystemHandle) -> Result<()> {
 ///         subsys.request_shutdown();
@@ -67,13 +57,17 @@ where
     ///
     /// For more information about subsystem functions, see
     /// [`SubsystemHandle::start()`](crate::SubsystemHandle::start).
-    async fn run(self, subsys: SubsystemHandle<ErrWrapper>) -> Result<(), Err>;
+    fn run(
+        self,
+        subsys: SubsystemHandle<ErrWrapper>,
+    ) -> impl std::future::Future<Output = Result<(), Err>> + Send;
 
     /// Converts the object into a type that can be passed into
     /// [`SubsystemHandle::start()`](crate::SubsystemHandle::start).
-    fn into_subsystem(self) -> Box<SubsystemFunction<Err, ErrWrapper>> {
-        Box::new(|handle: SubsystemHandle<ErrWrapper>| {
-            Box::pin(async move { self.run(handle).await })
-        })
+    fn into_subsystem(
+        self,
+    ) -> impl FnOnce(SubsystemHandle<ErrWrapper>) -> Pin<Box<dyn Future<Output = Result<(), Err>> + Send>>
+    {
+        |handle: SubsystemHandle<ErrWrapper>| Box::pin(async move { self.run(handle).await })
     }
 }

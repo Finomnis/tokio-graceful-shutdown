@@ -3,10 +3,8 @@
 //!
 //! There are two ways of using structs as subsystems, by either
 //! wrapping them in a closure, or by implementing the
-//! IntoSubsystem trait. Note, though, that the IntoSubsystem
-//! trait requires an additional dependency, `async-trait`.
+//! IntoSubsystem trait.
 
-use async_trait::async_trait;
 use miette::Result;
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{IntoSubsystem, SubsystemBuilder, SubsystemHandle, Toplevel};
@@ -30,7 +28,6 @@ struct Subsystem2 {
     arg: u32,
 }
 
-#[async_trait]
 impl IntoSubsystem<miette::Report> for Subsystem2 {
     async fn run(self, subsys: SubsystemHandle) -> Result<()> {
         tracing::info!("Subsystem2 started. Extra argument: {}", self.arg);
