@@ -102,10 +102,14 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// The following signals will be handled:
     ///
     /// - On Windows:
-    ///     - Ctrl+C (SIGINT)
+    ///     - `CTRL_C`
+    ///     - `CTRL_BREAK`
+    ///     - `CTRL_CLOSE`
+    ///     - `CTRL_SHUTDOWN`
     ///
     /// - On Unix:
-    ///     - SIGINT and SIGTERM
+    ///     - `SIGINT`
+    ///     - `SIGTERM`
     ///
     /// # Caveats
     ///
