@@ -104,7 +104,7 @@ jobs:
         run: cargo minimal-versions test -- --test-threads 1
 
   min-versions-msrv:
-    name: Minimal Depencency Versions (MSRV)
+    name: Minimal Dependency Versions (MSRV)
     runs-on: ubuntu-latest
     needs: [lints, docs]
     env:
