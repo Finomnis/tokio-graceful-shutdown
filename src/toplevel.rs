@@ -110,7 +110,6 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// - On Unix:
     ///     - `SIGINT`
     ///     - `SIGTERM`
-    ///     - `SIGHUP`
     ///
     /// # Caveats
     ///

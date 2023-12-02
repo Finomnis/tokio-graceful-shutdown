@@ -7,12 +7,10 @@ async fn wait_for_signal_impl() {
     // https://www.gnu.org/software/libc/manual/html_node/Termination-Signals.html
     let mut signal_terminate = signal(SignalKind::terminate()).unwrap();
     let mut signal_interrupt = signal(SignalKind::interrupt()).unwrap();
-    let mut signal_hangup = signal(SignalKind::hangup()).unwrap();
 
     tokio::select! {
         _ = signal_terminate.recv() => tracing::debug!("Received SIGTERM."),
         _ = signal_interrupt.recv() => tracing::debug!("Received SIGINT."),
-        _ = signal_hangup.recv() => tracing::debug!("Received SIGHUP."),
     };
 }
 

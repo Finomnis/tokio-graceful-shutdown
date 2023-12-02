@@ -200,44 +200,6 @@ async fn shutdown_through_signal_2() {
     );
 }
 
-#[cfg(unix)]
-#[tokio::test]
-#[traced_test]
-async fn shutdown_through_signal_3() {
-    use nix::sys::signal::{self, Signal};
-    use nix::unistd::Pid;
-    use tokio_graceful_shutdown::FutureExt;
-
-    let subsystem = |subsys: SubsystemHandle| async move {
-        subsys.on_shutdown_requested().await;
-        sleep(Duration::from_millis(200)).await;
-        BoxedResult::Ok(())
-    };
-
-    tokio::join!(
-        async {
-            sleep(Duration::from_millis(100)).await;
-
-            // Send SIGINT to ourselves.
-            signal::kill(Pid::this(), Signal::SIGHUP).unwrap();
-        },
-        async {
-            let result = Toplevel::new(move |s| async move {
-                s.start(SubsystemBuilder::new("subsys", subsystem));
-                assert!(sleep(Duration::from_millis(1000))
-                    .cancel_on_shutdown(&s)
-                    .await
-                    .is_err());
-                assert!(s.is_shutdown_requested());
-            })
-            .catch_signals()
-            .handle_shutdown_requests(Duration::from_millis(400))
-            .await;
-            assert!(result.is_ok());
-        },
-    );
-}
-
 #[tokio::test]
 #[traced_test]
 async fn cancellation_token() {
