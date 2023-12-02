@@ -29,16 +29,15 @@ async fn wait_for_signal_impl() {
     let mut signal_shutdown = windows::ctrl_shutdown().unwrap();
 
     tokio::select! {
-        _ = signal_c.recv() => tracing::debug!("Received CTRL_C_EVENT."),
-        _ = signal_break.recv() => tracing::debug!("Received CTRL_BREAK_EVENT."),
-        _ = signal_close.recv() => tracing::debug!("Received CTRL_CLOSE_EVENT."),
-        _ = signal_shutdown.recv() => tracing::debug!("Received CTRL_SHUTDOWN_EVENT."),
+        _ = signal_c.recv() => tracing::debug!("Received CTRL_C."),
+        _ = signal_break.recv() => tracing::debug!("Received CTRL_BREAK."),
+        _ = signal_close.recv() => tracing::debug!("Received CTRL_CLOSE."),
+        _ = signal_shutdown.recv() => tracing::debug!("Received CTRL_SHUTDOWN."),
     };
 }
 
-/// Registers Ctrl+C and SIGTERM handlers to cause a program shutdown.
-/// Further, registers a custom panic handler to also initiate a shutdown.
-/// Otherwise, a multi-threaded system would deadlock on panik.
+/// Registers signal handlers and waits for a signal that
+/// indicates a shutdown request.
 pub(crate) async fn wait_for_signal() {
     wait_for_signal_impl().await
 }
