@@ -69,7 +69,7 @@ where
     }
 
     /// Detaches the subsystem from the parent, causing a shutdown request to not
-    /// be propagated from the parent to the child.
+    /// automatically be propagated from the parent to the child.
     ///
     /// If this option is set, the parent needs to call [`NestedSubsystem::initiate_shutdown`](crate::NestedSubsystem::initiate_shutdown)
     /// manually to perform a correct shutdown. So use this option with care.
