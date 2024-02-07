@@ -87,6 +87,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
                 on_failure: Atomic::new(ErrorAction::Forward),
                 on_panic: Atomic::new(ErrorAction::Forward),
             },
+            false,
         );
 
         Self {
