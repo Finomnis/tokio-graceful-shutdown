@@ -5,7 +5,7 @@ use pin_project_lite::pin_project;
 use tokio_util::sync::WaitForCancellationFuture;
 
 pin_project! {
-    /// A Future that is resolved once the corresponding task is finished
+    /// A future that is resolved once the corresponding task is finished
     /// or a shutdown is initiated.
     #[must_use = "futures do nothing unless polled"]
     pub struct CancelOnShutdownFuture<'a, T: std::future::Future>{

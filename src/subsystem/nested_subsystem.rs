@@ -2,7 +2,7 @@ use std::sync::atomic::Ordering;
 
 use crate::{errors::SubsystemJoinError, ErrTypeTraits, ErrorAction};
 
-use super::NestedSubsystem;
+use super::{NestedSubsystem, SubsystemFinishedFuture};
 
 impl<ErrType: ErrTypeTraits> NestedSubsystem<ErrType> {
     /// Wait for the subsystem to be finished.
@@ -68,7 +68,7 @@ impl<ErrType: ErrTypeTraits> NestedSubsystem<ErrType> {
     /// Changes the way this subsystem should react to failures,
     /// meaning if it or one of its children returns an `Err` value.
     ///
-    /// For more information, see [ErrorAction].
+    /// For more information, see [`ErrorAction`].
     pub fn change_failure_action(&self, action: ErrorAction) {
         self.error_actions
             .on_failure
@@ -78,8 +78,16 @@ impl<ErrType: ErrTypeTraits> NestedSubsystem<ErrType> {
     /// Changes the way this subsystem should react if it or one
     /// of its children panic.
     ///
-    /// For more information, see [ErrorAction].
+    /// For more information, see [`ErrorAction`].
     pub fn change_panic_action(&self, action: ErrorAction) {
         self.error_actions.on_panic.store(action, Ordering::Relaxed);
+    }
+
+    /// Returns a future that resolves once the subsystem is finished.
+    ///
+    /// Similar to [`join`](NestedSubsystem::join), but more light-weight
+    /// as it does not return any information about subsystem errors.
+    pub fn finished(&self) -> SubsystemFinishedFuture {
+        SubsystemFinishedFuture::new(self.joiner.clone())
     }
 }
