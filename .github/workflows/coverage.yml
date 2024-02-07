@@ -20,7 +20,7 @@ jobs:
         with:
           components: llvm-tools-preview
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Install llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
       #- uses: Swatinem/rust-cache@v1
@@ -28,12 +28,12 @@ jobs:
         run:
           cargo llvm-cov --all-features --workspace --ignore-filename-regex tests.rs --codecov --output-path codecov.json
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           files: codecov.json
           fail_ci_if_error: true
       - name: Archive code coverage results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: code-coverage-report
           path: codecov.json
