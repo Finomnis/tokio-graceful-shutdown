@@ -71,8 +71,9 @@ where
     /// Detaches the subsystem from the parent, causing a shutdown request to not
     /// be propagated from the parent to the child automatically.
     ///
-    /// If this option is set, the parent needs to call [`NestedSubsystem::initiate_shutdown`](crate::NestedSubsystem::initiate_shutdown)
-    /// manually to perform a correct shutdown. So use this option with care.
+    /// If this option is set, the parent needs to call [`initiate_shutdown()`](crate::NestedSubsystem::initiate_shutdown)
+    /// on the child during shutdown, otherwise the child will not
+    /// react to the shutdown request. So use this option with care.
     pub fn detached(mut self) -> Self {
         self.detached = true;
         self
