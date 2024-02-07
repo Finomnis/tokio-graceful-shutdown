@@ -86,7 +86,7 @@ impl<ErrType: ErrTypeTraits> NestedSubsystem<ErrType> {
     /// Returns a future that resolves once the subsystem is finished.
     ///
     /// Similar to [`join`](NestedSubsystem::join), but more light-weight
-    /// as does not perform any error handling.
+    /// as it does not return any information about subsystem errors.
     pub fn finished(&self) -> SubsystemFinishedFuture {
         SubsystemFinishedFuture::new(self.joiner.clone())
     }
