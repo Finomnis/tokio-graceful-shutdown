@@ -6,7 +6,10 @@ pub mod common;
 
 use std::{
     error::Error,
-    sync::{Arc, Mutex},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
 };
 
 use crate::common::Event;
@@ -240,6 +243,40 @@ async fn cancellation_token_does_not_propagate_up() {
 
     let toplevel = Toplevel::new(move |s| async move {
         s.start(SubsystemBuilder::new("subsys", subsystem));
+    });
+
+    let result = toplevel
+        .handle_shutdown_requests(Duration::from_millis(400))
+        .await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+#[traced_test]
+async fn subsystem_finished_works_correctly() {
+    let subsystem = |subsys: SubsystemHandle| async move {
+        subsys.on_shutdown_requested().await;
+        BoxedResult::Ok(())
+    };
+
+    let toplevel = Toplevel::new(move |s| async move {
+        let nested = s.start(SubsystemBuilder::new("subsys", subsystem));
+        let nested_finished = nested.finished();
+
+        let is_finished = AtomicBool::new(false);
+        tokio::join!(
+            async {
+                nested_finished.await;
+                is_finished.store(true, Ordering::Release);
+            },
+            async {
+                sleep(Duration::from_millis(20)).await;
+                assert!(!is_finished.load(Ordering::Acquire));
+                nested.initiate_shutdown();
+                sleep(Duration::from_millis(20)).await;
+                assert!(is_finished.load(Ordering::Acquire));
+            }
+        );
     });
 
     let result = toplevel

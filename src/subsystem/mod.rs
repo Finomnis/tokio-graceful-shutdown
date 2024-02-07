@@ -1,9 +1,14 @@
 mod error_collector;
 mod nested_subsystem;
 mod subsystem_builder;
+mod subsystem_finished_future;
 mod subsystem_handle;
 
-use std::sync::{Arc, Mutex};
+use std::{
+    future::Future,
+    pin::Pin,
+    sync::{Arc, Mutex},
+};
 
 pub use subsystem_builder::SubsystemBuilder;
 pub use subsystem_handle::SubsystemHandle;
@@ -34,4 +39,10 @@ pub struct NestedSubsystem<ErrType: ErrTypeTraits> {
 pub(crate) struct ErrorActions {
     pub(crate) on_failure: Atomic<ErrorAction>,
     pub(crate) on_panic: Atomic<ErrorAction>,
+}
+
+/// A future that is resolved once the corresponding subsystem is finished.
+#[must_use = "futures do nothing unless polled"]
+pub struct SubsystemFinishedFuture {
+    future: Pin<Box<dyn Future<Output = ()> + Send + Sync>>,
 }
