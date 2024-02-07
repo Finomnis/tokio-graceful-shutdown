@@ -83,7 +83,6 @@ async fn nested3(subsys: SubsystemHandle, nested2_finished: SubsystemFinishedFut
 }
 
 async fn root(subsys: SubsystemHandle) -> Result<()> {
-    // This subsystem shuts down the nested subsystem after 5 seconds.
     tracing::info!("Root started.");
 
     tracing::info!("Starting nested subsystems ...");

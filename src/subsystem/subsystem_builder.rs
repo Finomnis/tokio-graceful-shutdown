@@ -15,6 +15,7 @@ where
     pub(crate) subsystem: Subsys,
     pub(crate) failure_action: ErrorAction,
     pub(crate) panic_action: ErrorAction,
+    pub(crate) detached: bool,
     #[allow(clippy::type_complexity)]
     _phantom: PhantomData<fn() -> (Fut, ErrType, Err)>,
 }
@@ -40,6 +41,7 @@ where
             subsystem,
             failure_action: ErrorAction::Forward,
             panic_action: ErrorAction::Forward,
+            detached: false,
             _phantom: Default::default(),
         }
     }
@@ -63,6 +65,16 @@ where
     /// For more information, see [`ErrorAction`].
     pub fn on_panic(mut self, action: ErrorAction) -> Self {
         self.panic_action = action;
+        self
+    }
+
+    /// Detaches the subsystem from the parent, causing a shutdown request to not
+    /// be propagated from the parent to the child.
+    ///
+    /// If this option is set, the parent needs to call [`NestedSubsystem::initiate_shutdown`](crate::NestedSubsystem::initiate_shutdown)
+    /// manually to perform a correct shutdown. So use this option with care.
+    pub fn detached(mut self) -> Self {
+        self.detached = true;
         self
     }
 }

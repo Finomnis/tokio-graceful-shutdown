@@ -284,3 +284,48 @@ async fn subsystem_finished_works_correctly() {
         .await;
     assert!(result.is_ok());
 }
+
+#[tokio::test]
+#[traced_test]
+async fn shutdown_does_not_propagate_to_detached_subsystem() {
+    let (nested_started, set_nested_started) = Event::create();
+    let (nested_finished, set_nested_finished) = Event::create();
+
+    let detached_subsystem = |subsys: SubsystemHandle| async move {
+        set_nested_started();
+        subsys.on_shutdown_requested().await;
+        set_nested_finished();
+        BoxedResult::Ok(())
+    };
+
+    let subsystem = |subsys: SubsystemHandle| async move {
+        let nested = subsys.start(SubsystemBuilder::new("detached", detached_subsystem).detached());
+        sleep(Duration::from_millis(20)).await;
+        assert!(nested_started.get());
+        assert!(!nested_finished.get());
+
+        subsys.on_shutdown_requested().await;
+
+        sleep(Duration::from_millis(20)).await;
+        assert!(!nested_finished.get());
+
+        nested.initiate_shutdown();
+
+        sleep(Duration::from_millis(20)).await;
+        assert!(nested_finished.get());
+
+        BoxedResult::Ok(())
+    };
+
+    let toplevel = Toplevel::new(move |s| async move {
+        s.start(SubsystemBuilder::new("subsys", subsystem));
+
+        sleep(Duration::from_millis(100)).await;
+        s.request_shutdown();
+    });
+
+    let result = toplevel
+        .handle_shutdown_requests(Duration::from_millis(400))
+        .await;
+    assert!(result.is_ok());
+}
