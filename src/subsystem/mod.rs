@@ -42,6 +42,8 @@ pub(crate) struct ErrorActions {
 }
 
 /// A future that is resolved once the corresponding subsystem is finished.
+///
+/// Returned by [`NestedSubsystem::finished`].
 #[must_use = "futures do nothing unless polled"]
 pub struct SubsystemFinishedFuture {
     future: Pin<Box<dyn Future<Output = ()> + Send + Sync>>,
