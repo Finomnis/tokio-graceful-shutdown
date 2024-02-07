@@ -1,6 +1,8 @@
-//! This example demonstrates how a parent subsystem could orchestrate the shutdown order of its children manually.
+//! This example demonstrates how a parent subsystem could orchestrate
+//! the shutdown order of its children manually.
 //!
-//! This is done by spawning the children in 'detached' mode to prevent that the shutdown signal gets passed to the children.
+//! This is done by spawning the children in 'detached' mode to prevent
+//! that the shutdown signal gets passed to the children.
 //! Then, the parent calls `initialize_shutdown` on each child manually.
 
 use miette::Result;
