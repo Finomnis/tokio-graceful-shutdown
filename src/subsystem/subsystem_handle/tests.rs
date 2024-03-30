@@ -1,7 +1,6 @@
 use tokio::time::{sleep, timeout, Duration};
 
 use super::*;
-use crate::subsystem::SubsystemBuilder;
 
 #[tokio::test]
 async fn recursive_cancellation() {
