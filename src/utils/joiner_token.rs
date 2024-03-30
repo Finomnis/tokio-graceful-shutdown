@@ -20,6 +20,7 @@ pub(crate) struct JoinerToken<ErrType: ErrTypeTraits> {
 
 /// A reference version that does not keep the content alive; purely for
 /// joining the subtree.
+#[derive(Clone)]
 pub(crate) struct JoinerTokenRef {
     counter: watch::Receiver<(bool, u32)>,
 }

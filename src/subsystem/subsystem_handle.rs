@@ -88,6 +88,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
                 on_failure: Atomic::new(builder.failure_action),
                 on_panic: Atomic::new(builder.panic_action),
             },
+            builder.detached,
         )
     }
 
@@ -96,6 +97,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
         name: Arc<str>,
         subsystem: Subsys,
         error_actions: ErrorActions,
+        detached: bool,
     ) -> NestedSubsystem<ErrType>
     where
         Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
@@ -106,7 +108,11 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
 
         let (error_sender, errors) = mpsc::unbounded_channel();
 
-        let cancellation_token = self.inner.cancellation_token.child_token();
+        let cancellation_token = if detached {
+            CancellationToken::new()
+        } else {
+            self.inner.cancellation_token.child_token()
+        };
 
         let error_actions = Arc::new(error_actions);
 

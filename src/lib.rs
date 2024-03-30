@@ -121,5 +121,6 @@ pub use future_ext::FutureExt;
 pub use into_subsystem::IntoSubsystem;
 pub use subsystem::NestedSubsystem;
 pub use subsystem::SubsystemBuilder;
+pub use subsystem::SubsystemFinishedFuture;
 pub use subsystem::SubsystemHandle;
 pub use toplevel::Toplevel;
