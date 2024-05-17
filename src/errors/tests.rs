@@ -4,9 +4,7 @@ use crate::BoxedError;
 
 use super::*;
 
-fn examine_report(
-    error: impl miette::Diagnostic + Sync + Send + 'static,
-) {
+fn examine_report(error: impl miette::Diagnostic + Sync + Send + 'static) {
     println!("{}", error);
     println!("{:?}", error);
     println!("{:?}", error.source());
