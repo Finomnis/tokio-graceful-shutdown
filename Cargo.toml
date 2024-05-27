@@ -69,7 +69,7 @@ unicode-linebreak = ">= 0.1.5" # Required to fix minimal-versions
 
 # For testing unix signals
 [target.'cfg(unix)'.dev-dependencies]
-nix = { version = "0.28.0", default-features = false, features = ["signal"] }
+nix = { version = "0.29.0", default-features = false, features = ["signal"] }
 
 # Make leak sanitizer more reliable
 [profile.dev]
