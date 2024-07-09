@@ -67,7 +67,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         let root_handle = subsystem::root_handle(move |e| {
             match &e {
                 SubsystemError::Panicked(name) => {
-                    tracing::error!("Uncaught panic from subsytem '{name}'.")
+                    tracing::error!("Uncaught panic from subsystem '{name}'.")
                 }
                 SubsystemError::Failed(name, e) => {
                     tracing::error!("Uncaught error from subsystem '{name}': {e}",)
