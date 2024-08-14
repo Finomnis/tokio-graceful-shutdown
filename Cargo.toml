@@ -41,7 +41,7 @@ bytemuck = { version = "1.14.0", features = ["derive"] }
 [dev-dependencies]
 # Error propagation
 anyhow = "1.0.75"
-eyre = "0.6.8"
+eyre = "0.6.12"
 miette = { version = "7.2.0", features = ["fancy"] }
 
 # Logging
