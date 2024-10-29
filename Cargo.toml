@@ -20,6 +20,9 @@ exclude = [
     "/UPCOMING_VERSION_CHANGES.txt",
 ]
 
+[features]
+tokio-unstable = ["tokio/tracing"]
+
 [dependencies]
 tracing = { version = "0.1.37", default-features = false }
 
@@ -66,6 +69,9 @@ warp = "0.3.6"
 headers = ">= 0.3.5"           # Required to fix minimal-versions
 serde_urlencoded = ">= 0.7.1"  # Required to fix minimal-versions
 unicode-linebreak = ">= 0.1.5" # Required to fix minimal-versions
+
+# tokio-console
+console-subscriber = "0.2.0"
 
 # For testing unix signals
 [target.'cfg(unix)'.dev-dependencies]

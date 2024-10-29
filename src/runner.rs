@@ -8,6 +8,8 @@
 
 use std::{future::Future, sync::Arc};
 
+use tokio::task::AbortHandle;
+
 use crate::{
     errors::{SubsystemError, SubsystemFailure},
     ErrTypeTraits, SubsystemHandle,
@@ -32,10 +34,34 @@ impl SubsystemRunner {
         Fut: 'static + Future<Output = Result<(), Err>> + Send,
         Err: Into<ErrType>,
     {
-        let future = async { run_subsystem(name, subsystem, subsystem_handle, guard).await };
-        let aborthandle = tokio::spawn(future).abort_handle();
+        let future = {
+            let name = Arc::clone(&name);
+            async move { run_subsystem(name, subsystem, subsystem_handle, guard).await }
+        };
+
+        let aborthandle = spawn(future, name);
         SubsystemRunner { aborthandle }
     }
+}
+
+#[cfg(not(feature = "tokio-unstable"))]
+fn spawn<F: Future + Send + 'static>(f: F, _name: Arc<str>) -> AbortHandle
+where
+    <F as Future>::Output: Send,
+{
+    tokio::spawn(f).abort_handle()
+}
+
+#[cfg(feature = "tokio-unstable")]
+fn spawn<F: Future + Send + 'static>(f: F, name: Arc<str>) -> AbortHandle
+where
+    <F as Future>::Output: Send,
+{
+    tokio::task::Builder::new()
+        .name(&name)
+        .spawn(f)
+        .expect("spawning a task does not fail")
+        .abort_handle()
 }
 
 impl Drop for SubsystemRunner {
