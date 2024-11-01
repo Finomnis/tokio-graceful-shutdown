@@ -22,6 +22,11 @@ jobs:
           - aarch64-unknown-linux-gnu
           - x86_64-pc-windows-gnu
           - x86_64-unknown-linux-gnu
+        features:
+          - flags: "--all-features"
+            env: 'RUSTFLAGS="--cfg tokio_unstable"'
+          - flags: ""
+          - flags: "--no-default-features"
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -30,11 +35,18 @@ jobs:
         uses: taiki-e/install-action@cross
 
       - name: Build
-        run: cross build --all-features --all-targets --release --target=${{ matrix.target }}
+        run: ${{ matrix.features.env }} cross build ${{ matrix.features.flags }} --all-targets --release --target=${{ matrix.target }}
 
   test:
     name: Test Suite
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        features:
+          - flags: "--all-features"
+            env: 'RUSTFLAGS="--cfg tokio_unstable"'
+          - flags: ""
+          - flags: "--no-default-features"
     needs: [lints, docs]
     env:
       RUSTFLAGS: "-D warnings"
@@ -45,10 +57,8 @@ jobs:
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      #- uses: Swatinem/rust-cache@v1
-
       - name: Run cargo test
-        run: cargo test -- --test-threads 1
+        run: ${{ matrix.features.env }} cargo test ${{ matrix.features.flags }} -- --test-threads 1
 
   msrv:
     name: Minimum Supported Rust Version
@@ -65,8 +75,6 @@ jobs:
 
       - name: Install cargo-msrv
         run: cargo binstall --version 0.16.0-beta.17 --no-confirm cargo-msrv
-
-      #- uses: Swatinem/rust-cache@v1
 
       - name: Check MSRV
         run: cargo msrv verify --log-target=stdout --output-format=json
@@ -140,6 +148,12 @@ jobs:
   lints:
     name: Lints
     runs-on: ubuntu-latest
+    matrix:
+      features:
+        - flags: "--all-features"
+          env: 'RUSTFLAGS="--cfg tokio_unstable"'
+        - flags: ""
+        - flags: "--no-default-features"
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -153,7 +167,7 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Run cargo clippy
-        run: cargo clippy --all-features --all-targets -- -D warnings
+        run: ${{ matrix.features.env }} cargo clippy ${{ matrix.features.flags }} --all-targets -- -D warnings
 
   docs:
     name: Documentation
@@ -185,18 +199,16 @@ jobs:
       - name: Install nightly toolchain
         uses: dtolnay/rust-toolchain@nightly
 
-      #- uses: Swatinem/rust-cache@v1
-
       - name: Build
         env:
           RUSTFLAGS: "-Z sanitizer=address"
-        run: cargo build --target x86_64-unknown-linux-gnu --tests
+        run: ${{ matrix.features.env }} cargo build ${{ matrix.features.flags }} --target x86_64-unknown-linux-gnu --tests
 
       - name: Run tests with leak sanitizer
         env:
           RUSTFLAGS: "-Z sanitizer=address"
         run:
-          cargo test
+          ${{ matrix.features.env }} cargo test ${{ matrix.features.flags }}
           --target x86_64-unknown-linux-gnu --tests
           -- --test-threads 1
 
