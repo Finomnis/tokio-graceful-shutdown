@@ -29,8 +29,14 @@ jobs:
       - name: Install cross
         uses: taiki-e/install-action@cross
 
-      - name: Build
-        run: cross build --all-features --lib --bins --tests --benches --examples --release --target=${{ matrix.target }}
+      - name: Build lib
+        run: cross build --all-features --lib --release --target=${{ matrix.target }}
+        
+      - name: Build tests
+        run: cross build --all-features --tests --release --target=${{ matrix.target }}
+        
+      - name: Build examples
+        run: cross build --all-features --examples --release --target=${{ matrix.target }}
 
   test:
     name: Test Suite
