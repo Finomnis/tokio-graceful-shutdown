@@ -30,13 +30,23 @@ jobs:
         uses: taiki-e/install-action@cross
 
       - name: Build lib
-        run: cross build --all-features --lib --release --target=${{ matrix.target }}
-        
-      - name: Build tests
-        run: cross build --all-features --tests --release --target=${{ matrix.target }}
-        
+        run: cross build --all-features --release --target=${{ matrix.target }}
+
+  build-examples:
+    name: Build Examples
+    runs-on: ubuntu-latest
+    needs: [lints, docs]
+    env:
+      RUSTFLAGS: "-D warnings"
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Build examples
-        run: cross build --all-features --examples --release --target=${{ matrix.target }}
+        run: cargo build --examples
 
   test:
     name: Test Suite
@@ -50,8 +60,6 @@ jobs:
 
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
-
-      #- uses: Swatinem/rust-cache@v1
 
       - name: Run cargo test
         run: cargo test -- --test-threads 1
@@ -71,8 +79,6 @@ jobs:
 
       - name: Install cargo-msrv
         run: cargo binstall --version 0.16.0-beta.17 --no-confirm cargo-msrv
-
-      #- uses: Swatinem/rust-cache@v1
 
       - name: Check MSRV
         run: cargo msrv verify --log-target=stdout --output-format=json
@@ -191,8 +197,6 @@ jobs:
       - name: Install nightly toolchain
         uses: dtolnay/rust-toolchain@nightly
 
-      #- uses: Swatinem/rust-cache@v1
-
       - name: Build
         env:
           RUSTFLAGS: "-Z sanitizer=address"
@@ -211,7 +215,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     if: github.event_name == 'release'
-    needs: [build, test, msrv, lints, docs, leaks, semver, min-versions, min-versions-msrv]
+    needs: [build, build-examples, test, msrv, lints, docs, leaks, semver, min-versions, min-versions-msrv]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
