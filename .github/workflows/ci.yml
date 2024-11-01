@@ -32,7 +32,7 @@ jobs:
       - name: Build
         run: cross build --all-features --release --target=${{ matrix.target }}
 
-  build-examples:
+  build-all:
     name: Build Examples
     runs-on: ubuntu-latest
     needs: [lints, docs]
@@ -45,8 +45,8 @@ jobs:
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Build examples
-        run: cargo build --examples
+      - name: Build
+        run: cargo build --all-features --all-targets --release
 
   test:
     name: Test Suite
@@ -215,7 +215,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     if: github.event_name == 'release'
-    needs: [build, build-examples, test, msrv, lints, docs, leaks, semver, min-versions, min-versions-msrv]
+    needs: [build, build-all, test, msrv, lints, docs, leaks, semver, min-versions, min-versions-msrv]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
