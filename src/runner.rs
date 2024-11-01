@@ -60,7 +60,7 @@ where
     tokio::task::Builder::new()
         .name(&name)
         .spawn(f)
-        .expect("spawning a task does not fail")
+        .expect("a task should be spawned")
         .abort_handle()
 }
 
