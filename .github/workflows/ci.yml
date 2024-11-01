@@ -148,12 +148,13 @@ jobs:
   lints:
     name: Lints
     runs-on: ubuntu-latest
-    matrix:
-      features:
-        - flags: "--all-features"
-          env: 'RUSTFLAGS="--cfg tokio_unstable"'
-        - flags: ""
-        - flags: "--no-default-features"
+    strategy:
+      matrix:
+        features:
+          - flags: "--all-features"
+            env: 'RUSTFLAGS="--cfg tokio_unstable"'
+          - flags: ""
+          - flags: "--no-default-features"
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
