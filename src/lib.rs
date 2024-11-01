@@ -124,3 +124,6 @@ pub use subsystem::SubsystemBuilder;
 pub use subsystem::SubsystemFinishedFuture;
 pub use subsystem::SubsystemHandle;
 pub use toplevel::Toplevel;
+
+mod tokio_unstable;
+use tokio_unstable::spawn;

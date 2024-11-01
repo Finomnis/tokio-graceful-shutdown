@@ -1,0 +1,61 @@
+//! This example demonstrates how to use the tokio-console application for tracing tokio tasks's
+//! runtime behaviour. Subsystems will appear under their registration names.
+//!
+//! Run this example with:
+//!
+//! ```
+//! RUSTFLAGS="--cfg tokio_unstable" cargo run --features "tokio-unstable" --example tokio_console
+//! ```
+//!
+//! Then, open the `tokio-console` application (see https://crates.io/crates/tokio-console) to
+//! follow the subsystem tasks live.
+
+use miette::Result;
+use tokio::time::{sleep, Duration};
+use tokio_graceful_shutdown::{FutureExt, SubsystemBuilder, SubsystemHandle, Toplevel};
+use tracing_subscriber::prelude::*;
+
+async fn subsys(subsys: SubsystemHandle) -> Result<()> {
+    tracing::info!("Parent started.");
+
+    let mut iteration = 0;
+    while !subsys.is_shutdown_requested() {
+        subsys.start(SubsystemBuilder::new(format!("child{iteration}"), child));
+        iteration += 1;
+
+        sleep(Duration::from_millis(1000))
+            .cancel_on_shutdown(&subsys)
+            .await
+            .ok();
+    }
+
+    tracing::info!("Parent stopped.");
+    Ok(())
+}
+
+async fn child(subsys: SubsystemHandle) -> Result<()> {
+    sleep(Duration::from_millis(3000))
+        .cancel_on_shutdown(&subsys)
+        .await
+        .ok();
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let console_layer = console_subscriber::spawn();
+    // Init logging
+    tracing_subscriber::registry()
+        .with(console_layer)
+        .with(tracing_subscriber::fmt::layer().compact())
+        .init();
+
+    // Setup and execute subsystem tree
+    Toplevel::new(|s| async move {
+        s.start(SubsystemBuilder::new("parent", subsys));
+    })
+    .catch_signals()
+    .handle_shutdown_requests(Duration::from_millis(1000))
+    .await
+    .map_err(Into::into)
+}

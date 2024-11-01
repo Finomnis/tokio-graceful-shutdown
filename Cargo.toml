@@ -80,3 +80,7 @@ nix = { version = "0.29.0", default-features = false, features = ["signal"] }
 # Make leak sanitizer more reliable
 [profile.dev]
 opt-level = 1
+
+# Define `tokio_unstable` config for linter
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tokio_unstable)'] }
