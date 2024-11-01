@@ -22,11 +22,6 @@ jobs:
           - aarch64-unknown-linux-gnu
           - x86_64-pc-windows-gnu
           - x86_64-unknown-linux-gnu
-        features:
-          - flags: "--all-features"
-            env: 'RUSTFLAGS="--cfg tokio_unstable"'
-          - flags: ""
-          - flags: "--no-default-features"
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -35,14 +30,14 @@ jobs:
         uses: taiki-e/install-action@cross
 
       - name: Build
-        run: cross build --all-features --release --target=${{ matrix.target }}
+        run: cross build --release --target=${{ matrix.target }}
 
   build-examples:
     name: Build Examples
     runs-on: ubuntu-latest
     needs: [lints, docs]
     env:
-      RUSTFLAGS: "-D warnings"
+      RUSTFLAGS: "-D warnings --cfg tokio_unstable"
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -56,13 +51,6 @@ jobs:
   test:
     name: Test Suite
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        features:
-          - flags: "--all-features"
-            env: 'RUSTFLAGS="--cfg tokio_unstable"'
-          - flags: ""
-          - flags: "--no-default-features"
     needs: [lints, docs]
     env:
       RUSTFLAGS: "-D warnings"
@@ -74,7 +62,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Run cargo test
-        run: ${{ matrix.features.env }} cargo test ${{ matrix.features.flags }} -- --test-threads 1
+        run: cargo test -- --test-threads 1
 
   msrv:
     name: Minimum Supported Rust Version
@@ -164,13 +152,6 @@ jobs:
   lints:
     name: Lints
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        features:
-          - flags: "--all-features"
-            env: 'RUSTFLAGS="--cfg tokio_unstable"'
-          - flags: ""
-          - flags: "--no-default-features"
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -184,7 +165,7 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Run cargo clippy
-        run: ${{ matrix.features.env }} cargo clippy ${{ matrix.features.flags }} --all-targets -- -D warnings
+        run: cargo clippy --all-targets -- -D warnings
 
   docs:
     name: Documentation
@@ -219,13 +200,13 @@ jobs:
       - name: Build
         env:
           RUSTFLAGS: "-Z sanitizer=address"
-        run: ${{ matrix.features.env }} cargo build ${{ matrix.features.flags }} --target x86_64-unknown-linux-gnu --tests
+        run: cargo build --target x86_64-unknown-linux-gnu --tests
 
       - name: Run tests with leak sanitizer
         env:
           RUSTFLAGS: "-Z sanitizer=address"
         run:
-          ${{ matrix.features.env }} cargo test ${{ matrix.features.flags }}
+          cargo test
           --target x86_64-unknown-linux-gnu --tests
           -- --test-threads 1
 

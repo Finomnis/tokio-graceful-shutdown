@@ -12,13 +12,6 @@ jobs:
     name: Codecov.io
     continue-on-error: true
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        features:
-          - flags: "--all-features"
-            env: 'RUSTFLAGS="--cfg tokio_unstable"'
-          - flags: ""
-          - flags: "--no-default-features"
     env:
       RUST_TEST_THREADS: "1"
     steps:
@@ -32,7 +25,7 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
       - name: Compute Coverage
         run:
-          ${{ matrix.features.env }} cargo llvm-cov ${{ matrix.features.flags }} --workspace --ignore-filename-regex tests.rs --codecov --output-path codecov.json
+          cargo llvm-cov --workspace --ignore-filename-regex tests.rs --codecov --output-path codecov.json
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         env:
