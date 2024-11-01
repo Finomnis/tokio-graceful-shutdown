@@ -35,7 +35,23 @@ jobs:
         uses: taiki-e/install-action@cross
 
       - name: Build
-        run: ${{ matrix.features.env }} cross build ${{ matrix.features.flags }} --all-targets --release --target=${{ matrix.target }}
+        run: cross build --all-features --release --target=${{ matrix.target }}
+
+  build-examples:
+    name: Build Examples
+    runs-on: ubuntu-latest
+    needs: [lints, docs]
+    env:
+      RUSTFLAGS: "-D warnings"
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build
+        run: cargo build --examples --all-features --release
 
   test:
     name: Test Suite
@@ -218,7 +234,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     if: github.event_name == 'release'
-    needs: [build, test, msrv, lints, docs, leaks, semver, min-versions, min-versions-msrv]
+    needs: [build, build-examples, test, msrv, lints, docs, leaks, semver, min-versions, min-versions-msrv]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
