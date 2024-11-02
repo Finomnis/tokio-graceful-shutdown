@@ -15,7 +15,15 @@ use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{FutureExt, SubsystemBuilder, SubsystemHandle, Toplevel};
 use tracing_subscriber::prelude::*;
 
-async fn subsys(subsys: SubsystemHandle) -> Result<()> {
+async fn child(subsys: SubsystemHandle) -> Result<()> {
+    sleep(Duration::from_millis(3000))
+        .cancel_on_shutdown(&subsys)
+        .await
+        .ok();
+    Ok(())
+}
+
+async fn parent(subsys: SubsystemHandle) -> Result<()> {
     tracing::info!("Parent started.");
 
     let mut iteration = 0;
@@ -33,18 +41,10 @@ async fn subsys(subsys: SubsystemHandle) -> Result<()> {
     Ok(())
 }
 
-async fn child(subsys: SubsystemHandle) -> Result<()> {
-    sleep(Duration::from_millis(3000))
-        .cancel_on_shutdown(&subsys)
-        .await
-        .ok();
-    Ok(())
-}
-
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Init tokio-console server and tracing
     let console_layer = console_subscriber::spawn();
-    // Init logging
     tracing_subscriber::registry()
         .with(console_layer)
         .with(tracing_subscriber::fmt::layer().compact())
@@ -52,7 +52,7 @@ async fn main() -> Result<()> {
 
     // Setup and execute subsystem tree
     Toplevel::new(|s| async move {
-        s.start(SubsystemBuilder::new("parent", subsys));
+        s.start(SubsystemBuilder::new("parent", parent));
     })
     .catch_signals()
     .handle_shutdown_requests(Duration::from_millis(1000))
