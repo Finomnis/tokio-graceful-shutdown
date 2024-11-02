@@ -33,7 +33,7 @@ impl SubsystemRunner {
         Err: Into<ErrType>,
     {
         let future = async { run_subsystem(name, subsystem, subsystem_handle, guard).await };
-        let aborthandle = tokio::spawn(future).abort_handle();
+        let aborthandle = crate::spawn(future, "subsystem_runner").abort_handle();
         SubsystemRunner { aborthandle }
     }
 }
@@ -57,7 +57,7 @@ async fn run_subsystem<Fut, Subsys, ErrType: ErrTypeTraits, Err>(
     let mut redirected_subsystem_handle = subsystem_handle.delayed_clone();
 
     let future = async { subsystem(subsystem_handle).await.map_err(|e| e.into()) };
-    let join_handle = tokio::spawn(future);
+    let join_handle = crate::spawn(future, &name);
 
     // Abort on drop
     guard.on_cancel({
