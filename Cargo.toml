@@ -21,11 +21,11 @@ exclude = [
 ]
 
 [features]
-tokio-unstable = ["tokio/tracing"]
+tracing = ["tokio/tracing"]
 
 [[example]]
 name = "tokio_console"
-required-features = ["tokio-unstable"]
+required-features = ["tracing"]
 
 
 [dependencies]

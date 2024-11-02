@@ -4,7 +4,7 @@
 //! Run this example with:
 //!
 //! ```
-//! RUSTFLAGS="--cfg tokio_unstable" cargo run --features "tokio-unstable" --example tokio_console
+//! RUSTFLAGS="--cfg tokio_unstable" cargo run --features "tracing" --example tokio_console
 //! ```
 //!
 //! Then, open the `tokio-console` application (see https://crates.io/crates/tokio-console) to
