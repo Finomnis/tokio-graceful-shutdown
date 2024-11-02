@@ -72,6 +72,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     ///     Ok(())
     /// }
     /// ```
+    #[track_caller]
     pub fn start<Err, Fut, Subsys>(
         &self,
         builder: SubsystemBuilder<ErrType, Err, Fut, Subsys>,
@@ -96,6 +97,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
         )
     }
 
+    #[track_caller]
     pub(crate) fn start_with_abs_name<Err, Fut, Subsys>(
         &self,
         name: Arc<str>,

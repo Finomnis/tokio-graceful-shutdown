@@ -21,6 +21,7 @@ exclude = [
 ]
 
 [features]
+# Enable task naming and task caller location.
 tracing = ["tokio/tracing"]
 
 [[example]]

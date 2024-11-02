@@ -57,6 +57,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// * `subsystem` - The subsystem that should be spawned as the root node.
     ///                 Usually the job of this subsystem is to spawn further subsystems.
     #[allow(clippy::new_without_default)]
+    #[track_caller]
     pub fn new<Fut, Subsys>(subsystem: Subsys) -> Self
     where
         Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
@@ -118,6 +119,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     ///
     /// Especially the caveats from [tokio::signal::unix::Signal] are important for Unix targets.
     ///
+    #[track_caller]
     pub fn catch_signals(self) -> Self {
         let shutdown_token = self.root_handle.get_cancellation_token().clone();
 
