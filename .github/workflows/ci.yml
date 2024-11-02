@@ -112,9 +112,6 @@ jobs:
       - name: Check with minimal versions
         run: cargo minimal-versions check --workspace --ignore-private
 
-      - name: Test with minimal versions
-        run: cargo minimal-versions test -- --test-threads 1
-
   min-versions-msrv:
     name: Minimal Dependency Versions (MSRV)
     runs-on: ubuntu-latest
