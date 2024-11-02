@@ -13,7 +13,8 @@
 use miette::Result;
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{FutureExt, SubsystemBuilder, SubsystemHandle, Toplevel};
-use tracing_subscriber::prelude::*;
+use tracing::Level;
+use tracing_subscriber::{fmt::writer::MakeWriterExt, prelude::*};
 
 async fn child(subsys: SubsystemHandle) -> Result<()> {
     sleep(Duration::from_millis(3000))
@@ -47,7 +48,11 @@ async fn main() -> Result<()> {
     let console_layer = console_subscriber::spawn();
     tracing_subscriber::registry()
         .with(console_layer)
-        .with(tracing_subscriber::fmt::layer().compact())
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_writer(std::io::stdout.with_max_level(Level::DEBUG))
+                .compact(),
+        )
         .init();
 
     // Setup and execute subsystem tree

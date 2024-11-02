@@ -82,7 +82,11 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
         Err: Into<ErrType>,
     {
         self.start_with_abs_name(
-            Arc::from(format!("{}/{}", self.inner.name, builder.name)),
+            if self.inner.name.as_ref() == "/" {
+                Arc::from(format!("/{}", builder.name))
+            } else {
+                Arc::from(format!("{}/{}", self.inner.name, builder.name))
+            },
             builder.subsystem,
             ErrorActions {
                 on_failure: Atomic::new(builder.failure_action),

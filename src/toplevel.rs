@@ -78,7 +78,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         });
 
         let toplevel_subsys = root_handle.start_with_abs_name(
-            Arc::from(""),
+            Arc::from("/"),
             move |s| async move {
                 subsystem(s).await;
                 Result::<(), ErrType>::Ok(())
