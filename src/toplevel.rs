@@ -121,7 +121,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     pub fn catch_signals(self) -> Self {
         let shutdown_token = self.root_handle.get_cancellation_token().clone();
 
-        crate::spawn(
+        crate::tokio_task::spawn(
             async move {
                 wait_for_signal().await;
                 shutdown_token.cancel();

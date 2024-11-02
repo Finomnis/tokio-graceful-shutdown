@@ -113,6 +113,7 @@ mod into_subsystem;
 mod runner;
 mod signal_handling;
 mod subsystem;
+mod tokio_task;
 mod toplevel;
 mod utils;
 
@@ -124,6 +125,3 @@ pub use subsystem::SubsystemBuilder;
 pub use subsystem::SubsystemFinishedFuture;
 pub use subsystem::SubsystemHandle;
 pub use toplevel::Toplevel;
-
-mod tokio_unstable;
-use tokio_unstable::spawn;
