@@ -46,7 +46,7 @@ impl IntoSubsystem<miette::Report> for Subsystem2 {
 async fn main() -> Result<()> {
     // Init logging
     tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::TRACE)
+        .with_max_level(tracing::Level::DEBUG)
         .init();
 
     let subsys1 = Subsystem1 { arg: 42 };
