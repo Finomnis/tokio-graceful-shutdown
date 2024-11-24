@@ -21,6 +21,7 @@ pub(crate) struct SubsystemRunner {
 }
 
 impl SubsystemRunner {
+    #[track_caller]
     pub(crate) fn new<Fut, Subsys, ErrType: ErrTypeTraits, Err>(
         name: Arc<str>,
         subsystem: Subsys,
@@ -32,8 +33,8 @@ impl SubsystemRunner {
         Fut: 'static + Future<Output = Result<(), Err>> + Send,
         Err: Into<ErrType>,
     {
-        let future = async { run_subsystem(name, subsystem, subsystem_handle, guard).await };
-        let aborthandle = tokio::spawn(future).abort_handle();
+        let future = run_subsystem(name, subsystem, subsystem_handle, guard);
+        let aborthandle = crate::tokio_task::spawn(future, "subsystem_runner").abort_handle();
         SubsystemRunner { aborthandle }
     }
 }
@@ -44,12 +45,14 @@ impl Drop for SubsystemRunner {
     }
 }
 
-async fn run_subsystem<Fut, Subsys, ErrType: ErrTypeTraits, Err>(
+#[track_caller]
+fn run_subsystem<Fut, Subsys, ErrType: ErrTypeTraits, Err>(
     name: Arc<str>,
     subsystem: Subsys,
     mut subsystem_handle: SubsystemHandle<ErrType>,
     guard: AliveGuard,
-) where
+) -> impl Future<Output = ()> + 'static
+where
     Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
     Fut: 'static + Future<Output = Result<(), Err>> + Send,
     Err: Into<ErrType>,
@@ -57,54 +60,58 @@ async fn run_subsystem<Fut, Subsys, ErrType: ErrTypeTraits, Err>(
     let mut redirected_subsystem_handle = subsystem_handle.delayed_clone();
 
     let future = async { subsystem(subsystem_handle).await.map_err(|e| e.into()) };
-    let join_handle = tokio::spawn(future);
+    let join_handle = crate::tokio_task::spawn(future, &name);
 
-    // Abort on drop
-    guard.on_cancel({
-        let abort_handle = join_handle.abort_handle();
-        let name = Arc::clone(&name);
-        move || {
-            if !abort_handle.is_finished() {
-                tracing::warn!("Subsystem cancelled: '{}'", name);
+    async move {
+        // Abort on drop
+        guard.on_cancel({
+            let abort_handle = join_handle.abort_handle();
+            let name = Arc::clone(&name);
+            move || {
+                if !abort_handle.is_finished() {
+                    tracing::warn!("Subsystem cancelled: '{}'", name);
+                }
+                abort_handle.abort();
             }
-            abort_handle.abort();
-        }
-    });
+        });
 
-    let failure = match join_handle.await {
-        Ok(Ok(())) => None,
-        Ok(Err(e)) => Some(SubsystemError::Failed(name, SubsystemFailure(e))),
-        Err(e) => {
-            // We can assume that this is a panic, because a cancellation
-            // can never happen as long as we still hold `guard`.
-            assert!(e.is_panic());
-            Some(SubsystemError::Panicked(name))
-        }
-    };
+        let failure = match join_handle.await {
+            Ok(Ok(())) => None,
+            Ok(Err(e)) => Some(SubsystemError::Failed(name, SubsystemFailure(e))),
+            Err(e) => {
+                // We can assume that this is a panic, because a cancellation
+                // can never happen as long as we still hold `guard`.
+                assert!(e.is_panic());
+                Some(SubsystemError::Panicked(name))
+            }
+        };
 
-    // Retrieve the handle that was passed into the subsystem.
-    // Originally it was intended to pass the handle as reference, but due
-    // to complications (https://stackoverflow.com/questions/77172947/async-lifetime-issues-of-pass-by-reference-parameters)
-    // it was decided to pass ownership instead.
-    //
-    // It is still important that the handle does not leak out of the subsystem.
-    let subsystem_handle = match redirected_subsystem_handle.try_recv() {
-        Ok(s) => s,
-        Err(_) => {
-            tracing::error!("The SubsystemHandle object must not be leaked out of the subsystem!");
-            panic!("The SubsystemHandle object must not be leaked out of the subsystem!");
-        }
-    };
+        // Retrieve the handle that was passed into the subsystem.
+        // Originally it was intended to pass the handle as reference, but due
+        // to complications (https://stackoverflow.com/questions/77172947/async-lifetime-issues-of-pass-by-reference-parameters)
+        // it was decided to pass ownership instead.
+        //
+        // It is still important that the handle does not leak out of the subsystem.
+        let subsystem_handle = match redirected_subsystem_handle.try_recv() {
+            Ok(s) => s,
+            Err(_) => {
+                tracing::error!(
+                    "The SubsystemHandle object must not be leaked out of the subsystem!"
+                );
+                panic!("The SubsystemHandle object must not be leaked out of the subsystem!");
+            }
+        };
 
-    // Raise potential errors
-    let joiner_token = subsystem_handle.joiner_token;
-    if let Some(failure) = failure {
-        joiner_token.raise_failure(failure);
+        // Raise potential errors
+        let joiner_token = subsystem_handle.joiner_token;
+        if let Some(failure) = failure {
+            joiner_token.raise_failure(failure);
+        }
+
+        // Wait for children to finish before we destroy the `SubsystemHandle` object.
+        // Otherwise the children would be cancelled immediately.
+        //
+        // This is the main mechanism that forwards a cancellation to all the children.
+        joiner_token.downgrade().join().await;
     }
-
-    // Wait for children to finish before we destroy the `SubsystemHandle` object.
-    // Otherwise the children would be cancelled immediately.
-    //
-    // This is the main mechanism that forwards a cancellation to all the children.
-    joiner_token.downgrade().join().await;
 }

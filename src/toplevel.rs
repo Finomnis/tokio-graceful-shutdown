@@ -57,6 +57,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// * `subsystem` - The subsystem that should be spawned as the root node.
     ///                 Usually the job of this subsystem is to spawn further subsystems.
     #[allow(clippy::new_without_default)]
+    #[track_caller]
     pub fn new<Fut, Subsys>(subsystem: Subsys) -> Self
     where
         Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
@@ -78,7 +79,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         });
 
         let toplevel_subsys = root_handle.start_with_abs_name(
-            Arc::from(""),
+            Arc::from("/"),
             move |s| async move {
                 subsystem(s).await;
                 Result::<(), ErrType>::Ok(())
@@ -118,13 +119,17 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     ///
     /// Especially the caveats from [tokio::signal::unix::Signal] are important for Unix targets.
     ///
+    #[track_caller]
     pub fn catch_signals(self) -> Self {
         let shutdown_token = self.root_handle.get_cancellation_token().clone();
 
-        tokio::spawn(async move {
-            wait_for_signal().await;
-            shutdown_token.cancel();
-        });
+        crate::tokio_task::spawn(
+            async move {
+                wait_for_signal().await;
+                shutdown_token.cancel();
+            },
+            "catch_signals",
+        );
 
         self
     }

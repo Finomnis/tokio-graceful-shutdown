@@ -23,10 +23,9 @@ jobs:
         uses: actions/checkout@v4
       - name: Install llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
-      #- uses: Swatinem/rust-cache@v1
       - name: Compute Coverage
         run:
-          cargo llvm-cov --all-features --workspace --ignore-filename-regex tests.rs --codecov --output-path codecov.json
+          cargo llvm-cov --workspace --ignore-filename-regex tests.rs --codecov --output-path codecov.json
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         env:

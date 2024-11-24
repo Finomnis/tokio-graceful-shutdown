@@ -72,6 +72,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     ///     Ok(())
     /// }
     /// ```
+    #[track_caller]
     pub fn start<Err, Fut, Subsys>(
         &self,
         builder: SubsystemBuilder<ErrType, Err, Fut, Subsys>,
@@ -82,7 +83,11 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
         Err: Into<ErrType>,
     {
         self.start_with_abs_name(
-            Arc::from(format!("{}/{}", self.inner.name, builder.name)),
+            if self.inner.name.as_ref() == "/" {
+                Arc::from(format!("/{}", builder.name))
+            } else {
+                Arc::from(format!("{}/{}", self.inner.name, builder.name))
+            },
             builder.subsystem,
             ErrorActions {
                 on_failure: Atomic::new(builder.failure_action),
@@ -92,6 +97,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
         )
     }
 
+    #[track_caller]
     pub(crate) fn start_with_abs_name<Err, Fut, Subsys>(
         &self,
         name: Arc<str>,
