@@ -79,7 +79,7 @@ unicode-linebreak = ">= 0.1.5" # Required to fix minimal-versions
 gcc = ">= 0.3.4" # Required to fix minimal-versions
 
 # tokio-console
-console-subscriber = "0.2.0"
+console-subscriber = "0.4.1"
 
 # For testing unix signals
 [target.'cfg(unix)'.dev-dependencies]
