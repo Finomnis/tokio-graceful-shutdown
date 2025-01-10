@@ -328,6 +328,13 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     pub fn create_cancellation_token(&self) -> CancellationToken {
         self.inner.cancellation_token.child_token()
     }
+
+    /// Get the name associated with this subsystem.
+    ///
+    /// See [`SubsystemBuilder::new()`] how to set this name.
+    pub fn name(&self) -> Arc<str> {
+        self.inner.name.clone()
+    }
 }
 
 impl<ErrType: ErrTypeTraits> Drop for SubsystemHandle<ErrType> {
