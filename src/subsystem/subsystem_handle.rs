@@ -332,8 +332,8 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     /// Get the name associated with this subsystem.
     ///
     /// See [`SubsystemBuilder::new()`] how to set this name.
-    pub fn name(&self) -> Arc<str> {
-        self.inner.name.clone()
+    pub fn name(&self) -> &str {
+        &self.inner.name
     }
 }
 
