@@ -331,6 +331,9 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
 
     /// Get the name associated with this subsystem.
     ///
+    /// Note that the names of nested subsystems are built unix-path alike,
+    /// starting and delimited by slashes (e.g. `/a/b/c`).
+    /// 
     /// See [`SubsystemBuilder::new()`] how to set this name.
     pub fn name(&self) -> &str {
         &self.inner.name
