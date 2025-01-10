@@ -924,13 +924,19 @@ async fn shutdown_through_signal() {
 #[tokio::test]
 #[traced_test]
 async fn access_name_from_within_subsystem() {
-    let subsys1 = move |subsys: SubsystemHandle| async move {
-        assert_eq!("/subsys", subsys.name());
+    let subsys_nested = move |subsys: SubsystemHandle| async move {
+        assert_eq!("/subsys_top/subsys_nested", subsys.name());
+        BoxedResult::Ok(())
+    };
+
+    let subsys_top = move |subsys: SubsystemHandle| async move {
+        assert_eq!("/subsys_top", subsys.name());
+        subsys.start(SubsystemBuilder::new("subsys_nested", subsys_nested));
         BoxedResult::Ok(())
     };
 
     Toplevel::new(move |s| async move {
-        s.start(SubsystemBuilder::new("subsys", subsys1));
+        s.start(SubsystemBuilder::new("subsys_top", subsys_top));
     })
     .handle_shutdown_requests(Duration::from_millis(100))
     .await
