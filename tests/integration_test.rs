@@ -920,3 +920,19 @@ async fn shutdown_through_signal() {
         },
     );
 }
+
+#[tokio::test]
+#[traced_test]
+async fn access_name_from_within_subsystem() {
+    let subsys1 = move |subsys: SubsystemHandle| async move {
+        assert_eq!("/subsys", subsys.name());
+        BoxedResult::Ok(())
+    };
+
+    Toplevel::new(move |s| async move {
+        s.start(SubsystemBuilder::new("subsys", subsys1));
+    })
+    .handle_shutdown_requests(Duration::from_millis(100))
+    .await
+    .unwrap();
+}
