@@ -88,8 +88,9 @@ where
 
         // Retrieve the handle that was passed into the subsystem.
         // Originally it was intended to pass the handle as reference, but due
-        // to complications (https://stackoverflow.com/questions/77172947/async-lifetime-issues-of-pass-by-reference-parameters)
-        // it was decided to pass ownership instead.
+        // to complications (https://stackoverflow.com/a/70592053/2902833 and
+        // https://github.com/tokio-rs/tokio/issues/3162) it was decided to
+        // pass ownership instead.
         //
         // It is still important that the handle does not leak out of the subsystem.
         let subsystem_handle = match redirected_subsystem_handle.try_recv() {
