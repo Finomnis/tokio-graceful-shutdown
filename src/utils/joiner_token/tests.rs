@@ -45,70 +45,129 @@ fn counters_weak() {
     let (root, weak_root) = JoinerToken::<BoxedError>::new(|_| None);
     assert_eq!(0, weak_root.count());
     assert!(weak_root.alive());
+    assert!(weak_root.recursive_alive());
 
     let (child1, weak_child1) = root.child_token(|_| None);
+    // root
+    //   \
+    //   child1
     assert_eq!(1, weak_root.count());
     assert!(weak_root.alive());
+    assert!(weak_root.recursive_alive());
     assert_eq!(0, weak_child1.count());
     assert!(weak_child1.alive());
+    assert!(weak_child1.recursive_alive());
 
     let (child2, weak_child2) = child1.child_token(|_| None);
+    // root
+    //   \
+    //   child1
+    //     \
+    //     child2
     assert_eq!(2, weak_root.count());
     assert!(weak_root.alive());
+    assert!(weak_root.recursive_alive());
     assert_eq!(1, weak_child1.count());
     assert!(weak_child1.alive());
+    assert!(weak_child1.recursive_alive());
     assert_eq!(0, weak_child2.count());
     assert!(weak_child2.alive());
+    assert!(weak_child2.recursive_alive());
 
     let (child3, weak_child3) = child1.child_token(|_| None);
+    //    root
+    //      \
+    //      child1
+    //      /   \
+    // child2    child3
     assert_eq!(3, weak_root.count());
     assert!(weak_root.alive());
+    assert!(weak_root.recursive_alive());
     assert_eq!(2, weak_child1.count());
     assert!(weak_child1.alive());
+    assert!(weak_child1.recursive_alive());
     assert_eq!(0, weak_child2.count());
     assert!(weak_child2.alive());
+    assert!(weak_child2.recursive_alive());
     assert_eq!(0, weak_child3.count());
     assert!(weak_child3.alive());
+    assert!(weak_child3.recursive_alive());
 
     drop(child1);
+    //    root
+    //      \
+    //      child1 (X)
+    //      /   \
+    // child2    child3
     assert_eq!(2, weak_root.count());
     assert!(weak_root.alive());
+    assert!(weak_root.recursive_alive());
     assert_eq!(2, weak_child1.count());
     assert!(!weak_child1.alive());
+    assert!(weak_child1.recursive_alive());
     assert_eq!(0, weak_child2.count());
     assert!(weak_child2.alive());
+    assert!(weak_child2.recursive_alive());
     assert_eq!(0, weak_child3.count());
     assert!(weak_child3.alive());
+    assert!(weak_child3.recursive_alive());
 
     drop(child2);
+    //    root
+    //      \
+    //      child1 (X)
+    //      /       \
+    // child2 (X)    child3
     assert_eq!(1, weak_root.count());
     assert!(weak_root.alive());
+    assert!(weak_root.recursive_alive());
     assert_eq!(1, weak_child1.count());
     assert!(!weak_child1.alive());
+    assert!(weak_child1.recursive_alive());
     assert_eq!(0, weak_child2.count());
     assert!(!weak_child2.alive());
+    assert!(!weak_child2.recursive_alive());
     assert_eq!(0, weak_child3.count());
     assert!(weak_child3.alive());
+    assert!(weak_child3.recursive_alive());
 
     drop(child3);
+    //    root
+    //      \
+    //      child1 (X)
+    //      /       \
+    // child2 (X)    child3 (X)
     assert_eq!(0, weak_root.count());
     assert!(weak_root.alive());
+    assert!(weak_root.recursive_alive());
     assert_eq!(0, weak_child1.count());
     assert!(!weak_child1.alive());
+    assert!(!weak_child1.recursive_alive());
     assert_eq!(0, weak_child2.count());
     assert!(!weak_child2.alive());
+    assert!(!weak_child2.recursive_alive());
     assert_eq!(0, weak_child3.count());
     assert!(!weak_child3.alive());
+    assert!(!weak_child3.recursive_alive());
 
     drop(root);
+    //    root (X)
+    //      \
+    //      child1 (X)
+    //      /       \
+    // child2 (X)    child3 (X)
     assert_eq!(0, weak_root.count());
     assert!(!weak_root.alive());
+    assert!(!weak_root.recursive_alive());
     assert_eq!(0, weak_child1.count());
     assert!(!weak_child1.alive());
+    assert!(!weak_child1.recursive_alive());
     assert_eq!(0, weak_child2.count());
     assert!(!weak_child2.alive());
+    assert!(!weak_child2.recursive_alive());
     assert_eq!(0, weak_child3.count());
     assert!(!weak_child3.alive());
+    assert!(!weak_child3.recursive_alive());
 }
 
 #[tokio::test]
@@ -156,6 +215,44 @@ async fn join() {
 #[tokio::test]
 #[traced_test]
 async fn join_through_ref() {
+    let (root, joiner) = JoinerToken::<BoxedError>::new(|_| None);
+
+    let (child1, _) = root.child_token(|_| None);
+    let (child2, _) = child1.child_token(|_| None);
+
+    let (set_finished, mut finished) = tokio::sync::oneshot::channel();
+    tokio::join!(
+        async {
+            timeout(Duration::from_millis(500), joiner.join())
+                .await
+                .unwrap();
+            set_finished.send(()).unwrap();
+        },
+        async {
+            sleep(Duration::from_millis(50)).await;
+            assert!(finished.try_recv().is_err());
+
+            drop(child1);
+            sleep(Duration::from_millis(50)).await;
+            assert!(finished.try_recv().is_err());
+
+            drop(root);
+            sleep(Duration::from_millis(50)).await;
+            assert!(finished.try_recv().is_err());
+
+            drop(child2);
+            sleep(Duration::from_millis(50)).await;
+            timeout(Duration::from_millis(50), finished)
+                .await
+                .unwrap()
+                .unwrap();
+        }
+    );
+}
+
+#[tokio::test]
+#[traced_test]
+async fn recursive_finished() {
     let (root, joiner) = JoinerToken::<BoxedError>::new(|_| None);
 
     let (child1, _) = root.child_token(|_| None);

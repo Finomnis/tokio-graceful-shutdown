@@ -90,4 +90,17 @@ impl<ErrType: ErrTypeTraits> NestedSubsystem<ErrType> {
     pub fn finished(&self) -> SubsystemFinishedFuture {
         SubsystemFinishedFuture::new(self.joiner.clone())
     }
+
+    /// Returns whether the subsystem or any of its children are running.
+    pub fn is_finished(&self) -> bool {
+        !self.joiner.recursive_alive()
+    }
+
+    /// Returns whether the subsystem, and this subsystem only, is running.
+    ///
+    /// NOTE: This ignores whether children are alive or not. This can return `false`
+    /// while its children are still running!
+    pub fn is_root_subsystem_finished(&self) -> bool {
+        !self.joiner.alive()
+    }
 }
