@@ -15,7 +15,7 @@ pub use subsystem_handle::SubsystemHandle;
 
 pub(crate) use subsystem_handle::root_handle;
 
-use crate::{utils::JoinerTokenRef, ErrTypeTraits, ErrorAction};
+use crate::{utils::JoinerTokenRef, BoxedError, ErrTypeTraits, ErrorAction};
 
 use atomic::Atomic;
 use tokio_util::sync::CancellationToken;
@@ -29,7 +29,7 @@ use tokio_util::sync::CancellationToken;
 ///
 /// For more information, look through the examples directory in
 /// the source code.
-pub struct NestedSubsystem<ErrType: ErrTypeTraits> {
+pub struct NestedSubsystem<ErrType: ErrTypeTraits = BoxedError> {
     joiner: JoinerTokenRef,
     cancellation_token: CancellationToken,
     errors: Mutex<error_collector::ErrorCollector<ErrType>>,
