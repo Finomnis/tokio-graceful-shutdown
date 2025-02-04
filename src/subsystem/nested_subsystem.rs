@@ -5,7 +5,7 @@ use crate::{errors::SubsystemJoinError, ErrTypeTraits, ErrorAction};
 use super::{NestedSubsystem, SubsystemFinishedFuture};
 
 impl<ErrType: ErrTypeTraits> NestedSubsystem<ErrType> {
-    /// Wait for the subsystem to be finished.
+    /// Wait for the subsystem and all of its children to be finished.
     ///
     /// If its failure/panic action is set to [`ErrorAction::CatchAndLocalShutdown`],
     /// this function will return the list of errors caught by the subsystem.
@@ -83,7 +83,7 @@ impl<ErrType: ErrTypeTraits> NestedSubsystem<ErrType> {
         self.error_actions.on_panic.store(action, Ordering::Relaxed);
     }
 
-    /// Returns a future that resolves once the subsystem is finished.
+    /// Returns a future that resolves once the subsystem and its children are finished.
     ///
     /// Similar to [`join`](NestedSubsystem::join), but more light-weight
     /// as it does not return any information about subsystem errors.
