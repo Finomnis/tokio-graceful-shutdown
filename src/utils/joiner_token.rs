@@ -154,9 +154,15 @@ impl JoinerTokenRef {
         self.counter.borrow().1
     }
 
-    #[cfg(test)]
+    /// Returns true if this subsystem is alive, ignoring children.
     pub(crate) fn alive(&self) -> bool {
         self.counter.borrow().0
+    }
+
+    /// Returns true if this subsystem or any of its children are alive.
+    pub(crate) fn recursive_alive(&self) -> bool {
+        let (alive, children) = *self.counter.borrow();
+        alive || children > 0
     }
 }
 
