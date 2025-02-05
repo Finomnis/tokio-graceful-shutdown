@@ -58,7 +58,7 @@ tracing-subscriber = "0.3.17"
 tracing-test = { version = "0.2.4", features = ["no-env-filter"] }
 
 # Tokio
-tokio = { version = "1.32.0", features = ["full"] }
+tokio = { version = "1.32.0", features = ["full", "test-util"] }
 
 # Hyper example
 hyper = { version = "1.0.1", features = ["server", "http1"] }

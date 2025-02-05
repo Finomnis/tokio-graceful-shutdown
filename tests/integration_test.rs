@@ -942,3 +942,91 @@ async fn access_name_from_within_subsystem() {
     .await
     .unwrap();
 }
+
+#[tokio::test(start_paused = true)]
+#[traced_test]
+async fn query_subsystem_alive() {
+    // Diagram:
+    //
+    // top (2.5s lifetime)
+    //   \
+    //    nested (1s lifetime)
+
+    let subsys_nested = move |_: SubsystemHandle| async move {
+        tokio::time::sleep(Duration::from_millis(1000)).await;
+        BoxedResult::Ok(())
+    };
+
+    let subsys_top = move |subsys: SubsystemHandle| async move {
+        let nested = subsys.start(SubsystemBuilder::new("subsys_nested", subsys_nested));
+        assert!(!nested.is_finished_shallow());
+        assert!(!nested.is_finished());
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
+        assert!(!nested.is_finished_shallow());
+        assert!(!nested.is_finished());
+
+        tokio::time::sleep(Duration::from_millis(2000)).await;
+        assert!(nested.is_finished_shallow());
+        assert!(nested.is_finished());
+
+        BoxedResult::Ok(())
+    };
+
+    Toplevel::new(move |s| async move {
+        s.start(SubsystemBuilder::new("subsys_top", subsys_top));
+    })
+    .handle_shutdown_requests(Duration::from_millis(100))
+    .await
+    .unwrap();
+}
+
+#[tokio::test(start_paused = true)]
+#[traced_test]
+async fn query_multidepth_subsystem_alive() {
+    // Diagram:
+    //
+    // top (2.2s lifetime)
+    //   \
+    //    d1 (1s lifetime)
+    //     \
+    //      d2 (2s lifetime)
+    //
+    // We want to ensure that root_alive() only lasts for the duration of d1,
+    // but recursive_alive() lasts for the entire duration of d2.
+
+    let subsys_nested_d2 = move |_: SubsystemHandle| async move {
+        tokio::time::sleep(Duration::from_millis(2000)).await;
+        BoxedResult::Ok(())
+    };
+
+    let subsys_nested_d1 = move |subsys: SubsystemHandle| async move {
+        let _nested = subsys.start(SubsystemBuilder::new("d2", subsys_nested_d2));
+        tokio::time::sleep(Duration::from_millis(1000)).await;
+
+        BoxedResult::Ok(())
+    };
+
+    let subsys_top = move |subsys: SubsystemHandle| async move {
+        let nested = subsys.start(SubsystemBuilder::new("d1", subsys_nested_d1));
+        assert!(!nested.is_finished_shallow());
+        assert!(!nested.is_finished());
+
+        tokio::time::sleep(Duration::from_millis(1100)).await;
+        assert!(nested.is_finished_shallow());
+        assert!(!nested.is_finished());
+
+        tokio::time::sleep(Duration::from_millis(1100)).await;
+        assert!(nested.is_finished_shallow());
+        assert!(nested.is_finished());
+
+        BoxedResult::Ok(())
+    };
+
+    Toplevel::new(move |s| async move {
+        s.start(SubsystemBuilder::new("subsys_top", subsys_top));
+    })
+    .handle_shutdown_requests(Duration::from_millis(100))
+    .await
+    .unwrap();
+}
