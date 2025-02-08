@@ -34,6 +34,7 @@ pub struct NestedSubsystem<ErrType: ErrTypeTraits = BoxedError> {
     cancellation_token: CancellationToken,
     errors: Mutex<error_collector::ErrorCollector<ErrType>>,
     error_actions: Arc<ErrorActions>,
+    abort_handle: tokio::task::AbortHandle,
 }
 
 pub(crate) struct ErrorActions {

@@ -156,6 +156,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
         };
 
         let runner = SubsystemRunner::new(name, subsystem, child_handle, alive_guard.clone());
+        let abort_handle = runner.abort_handle();
 
         // Shenanigans to juggle child ownership
         //
@@ -173,6 +174,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
             cancellation_token,
             errors: Mutex::new(ErrorCollector::new(errors)),
             error_actions,
+            abort_handle,
         }
     }
 
