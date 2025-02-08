@@ -32,7 +32,7 @@ required-features = ["tracing"]
 [dependencies]
 tracing = { version = "0.1.37", default-features = false }
 
-tokio = { version = "1.32.0", default-features = false, features = [
+tokio = { version = "1.39.0", default-features = false, features = [
     "signal",
     "rt",
     "macros",
