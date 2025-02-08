@@ -15,10 +15,19 @@ async fn subsys1(subsys: SubsystemHandle) -> Result<()> {
     Ok(())
 }
 
-async fn subsys2(_subsys: SubsystemHandle) -> Result<()> {
+async fn subsys2(subsys: SubsystemHandle) -> Result<()> {
     tracing::info!("Subsystem2 started.");
+    subsys.start(SubsystemBuilder::new("Subsys3", subsys3));
     loop {
         tracing::info!("Subsystem2 stuck ...");
+        sleep(Duration::from_millis(100)).await;
+    }
+}
+
+async fn subsys3(_subsys: SubsystemHandle) -> Result<()> {
+    tracing::info!("Subsystem3 started.");
+    loop {
+        tracing::info!("Subsystem3 stuck ...");
         sleep(Duration::from_millis(100)).await;
     }
 }
