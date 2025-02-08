@@ -104,13 +104,13 @@ impl<ErrType: ErrTypeTraits> NestedSubsystem<ErrType> {
         !self.joiner.alive()
     }
 
-    /// Signals to the subsystem that it should cancel as soon as possible.
+    /// Signals to the subsystem and all of its children that they should abort.
     ///
     /// Important: This action is performed on a best-effort base. It is not guaranteed
     ///            that aborting a task is performed right away, or ever.
     ///
     /// This comes with the same restrictions as [`tokio::task::AbortHandle::abort`],
-    /// with the additional restriction that this action will get queued and not
+    /// with the additional restriction that this action will get queued and is not
     /// executed synchronously.
     pub fn abort(&self) {
         self.abort_handle.abort();
