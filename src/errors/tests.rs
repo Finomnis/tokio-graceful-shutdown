@@ -25,10 +25,10 @@ fn errors_can_be_converted_to_diagnostic() {
         Box::new([]),
     ));
     examine_report(GracefulShutdownError::SubsystemsFailed::<BoxedError>(
-        Box::new([]),
+        Box::new([SubsystemError::Panicked("".into())]),
     ));
     examine_report(SubsystemJoinError::SubsystemsFailed::<BoxedError>(
-        Arc::new([]),
+        Arc::new([SubsystemError::Panicked("".into())]),
     ));
     examine_report(SubsystemError::Panicked::<BoxedError>("".into()));
     examine_report(SubsystemError::Failed::<BoxedError>(
