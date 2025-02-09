@@ -7,7 +7,7 @@ use tracing_test::traced_test;
 
 use common::{BoxedError, BoxedResult};
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 #[traced_test]
 async fn cancel_on_shutdown_propagates_result() {
     let subsystem1 = |subsys: SubsystemHandle| async move {
@@ -46,7 +46,7 @@ async fn cancel_on_shutdown_propagates_result() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 #[traced_test]
 async fn cancel_on_shutdown_cancels_on_shutdown() {
     let subsystem = |subsys: SubsystemHandle| async move {

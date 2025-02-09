@@ -170,7 +170,7 @@ fn counters_weak() {
     assert!(!weak_child3.recursive_alive());
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 #[traced_test]
 async fn join() {
     let (superroot, _) = JoinerToken::<BoxedError>::new(|_| None);
@@ -212,7 +212,7 @@ async fn join() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 #[traced_test]
 async fn join_through_ref() {
     let (root, joiner) = JoinerToken::<BoxedError>::new(|_| None);
@@ -250,7 +250,7 @@ async fn join_through_ref() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 #[traced_test]
 async fn recursive_finished() {
     let (root, joiner) = JoinerToken::<BoxedError>::new(|_| None);

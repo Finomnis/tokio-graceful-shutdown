@@ -3,7 +3,7 @@ use tracing_test::traced_test;
 
 use super::*;
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 #[traced_test]
 async fn recursive_cancellation() {
     let root_handle = root_handle::<BoxedError>(|_| {});
@@ -30,7 +30,7 @@ async fn recursive_cancellation() {
     assert!(recv_result.is_none());
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 #[traced_test]
 async fn recursive_cancellation_2() {
     let root_handle = root_handle(|_| {});
