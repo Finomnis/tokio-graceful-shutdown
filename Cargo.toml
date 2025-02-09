@@ -1,7 +1,7 @@
 [package]
 name = "tokio-graceful-shutdown"
 authors = ["Finomnis <finomnis@gmail.com>"]
-version = "0.15.4"
+version = "0.16.0"
 edition = "2021"
 rust-version = "1.70"
 license = "MIT OR Apache-2.0"
@@ -32,7 +32,7 @@ required-features = ["tracing"]
 [dependencies]
 tracing = { version = "0.1.37", default-features = false }
 
-tokio = { version = "1.32.0", default-features = false, features = [
+tokio = { version = "1.39.0", default-features = false, features = [
     "signal",
     "rt",
     "macros",
@@ -67,6 +67,7 @@ tokio-util = { version = "0.7.10", default-features = false, features = ["rt"] }
 bytes = "1.5.0"
 http-body-util = "0.1.0"
 
+futures = "0.3.31"
 futures-util = ">= 0.3.16" # Required to fix minimal-versions
 tower = ">= 0.4.1"         # Required to fix minimal-versions
 

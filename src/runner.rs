@@ -37,6 +37,10 @@ impl SubsystemRunner {
         let aborthandle = crate::tokio_task::spawn(future, "subsystem_runner").abort_handle();
         SubsystemRunner { aborthandle }
     }
+
+    pub(crate) fn abort_handle(&self) -> tokio::task::AbortHandle {
+        self.aborthandle.clone()
+    }
 }
 
 impl Drop for SubsystemRunner {
@@ -62,18 +66,21 @@ where
     let future = async { subsystem(subsystem_handle).await.map_err(|e| e.into()) };
     let join_handle = crate::tokio_task::spawn(future, &name);
 
-    async move {
-        // Abort on drop
-        guard.on_cancel({
-            let abort_handle = join_handle.abort_handle();
-            let name = Arc::clone(&name);
-            move || {
-                if !abort_handle.is_finished() {
-                    tracing::warn!("Subsystem cancelled: '{}'", name);
-                }
-                abort_handle.abort();
+    // Abort on drop
+    guard.on_cancel({
+        let abort_handle = join_handle.abort_handle();
+        let name = Arc::clone(&name);
+        move || {
+            if !abort_handle.is_finished() {
+                tracing::warn!("Subsystem cancelled: '{}'", name);
             }
-        });
+            abort_handle.abort();
+        }
+    });
+
+    async move {
+        // Move guard into here, to tie it to the scope of the async
+        let _guard = guard;
 
         let failure = match join_handle.await {
             Ok(Ok(())) => None,

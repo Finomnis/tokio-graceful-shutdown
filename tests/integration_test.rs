@@ -9,11 +9,7 @@ use tracing_test::traced_test;
 pub mod common;
 use common::Event;
 
-use std::error::Error;
-
-/// Wrapper function to simplify lambdas
-type BoxedError = Box<dyn Error + Sync + Send>;
-type BoxedResult = Result<(), BoxedError>;
+use common::{BoxedError, BoxedResult};
 
 #[tokio::test]
 #[traced_test]
