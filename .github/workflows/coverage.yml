@@ -16,7 +16,7 @@ jobs:
       RUST_TEST_THREADS: "1"
     steps:
       - name: Install rust
-        uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@stable
         with:
           components: llvm-tools-preview
       - name: Checkout
