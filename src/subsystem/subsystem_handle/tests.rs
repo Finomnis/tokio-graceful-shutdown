@@ -1,8 +1,10 @@
 use tokio::time::{sleep, timeout, Duration};
+use tracing_test::traced_test;
 
 use super::*;
 
 #[tokio::test]
+#[traced_test]
 async fn recursive_cancellation() {
     let root_handle = root_handle::<BoxedError>(|_| {});
 
@@ -29,6 +31,7 @@ async fn recursive_cancellation() {
 }
 
 #[tokio::test]
+#[traced_test]
 async fn recursive_cancellation_2() {
     let root_handle = root_handle(|_| {});
 
