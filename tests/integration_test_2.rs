@@ -12,7 +12,7 @@ use std::sync::{
 use crate::common::Event;
 use common::BoxedResult;
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 #[traced_test]
 async fn leak_subsystem_handle() {
     let subsys_ext: Arc<Mutex<Option<SubsystemHandle>>> = Default::default();
@@ -42,7 +42,7 @@ async fn leak_subsystem_handle() {
     ));
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 #[traced_test]
 async fn wait_for_children() {
     let (nested1_started, set_nested1_started) = Event::create();
@@ -95,7 +95,7 @@ async fn wait_for_children() {
     .unwrap();
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 #[traced_test]
 async fn request_local_shutdown() {
     let (nested1_started, set_nested1_started) = Event::create();
@@ -197,7 +197,7 @@ async fn shutdown_through_signal_2() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 #[traced_test]
 async fn cancellation_token() {
     let subsystem = |subsys: SubsystemHandle| async move {
@@ -223,7 +223,7 @@ async fn cancellation_token() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 #[traced_test]
 async fn cancellation_token_does_not_propagate_up() {
     let subsystem = |subsys: SubsystemHandle| async move {
@@ -245,7 +245,7 @@ async fn cancellation_token_does_not_propagate_up() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 #[traced_test]
 async fn subsystem_finished_works_correctly() {
     let subsystem = |subsys: SubsystemHandle| async move {
@@ -279,7 +279,7 @@ async fn subsystem_finished_works_correctly() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 #[traced_test]
 async fn shutdown_does_not_propagate_to_detached_subsystem() {
     let (nested_started, set_nested_started) = Event::create();
