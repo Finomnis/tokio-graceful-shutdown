@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use tokio::sync::watch;
 
 pub struct Event {
