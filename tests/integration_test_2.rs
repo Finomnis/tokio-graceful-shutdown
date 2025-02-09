@@ -4,19 +4,13 @@ use tracing_test::traced_test;
 
 pub mod common;
 
-use std::{
-    error::Error,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
-    },
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
 };
 
 use crate::common::Event;
-
-/// Wrapper function to simplify lambdas
-type BoxedError = Box<dyn Error + Sync + Send>;
-type BoxedResult = Result<(), BoxedError>;
+use common::BoxedResult;
 
 #[tokio::test]
 #[traced_test]

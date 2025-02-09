@@ -1,14 +1,11 @@
+mod common;
 use tokio::time::{sleep, Duration};
 use tokio_graceful_shutdown::{
     errors::CancelledByShutdown, FutureExt, SubsystemBuilder, SubsystemHandle, Toplevel,
 };
 use tracing_test::traced_test;
 
-use std::error::Error;
-
-/// Wrapper function to simplify lambdas
-type BoxedError = Box<dyn Error + Sync + Send>;
-type BoxedResult = Result<(), BoxedError>;
+use common::{BoxedError, BoxedResult};
 
 #[tokio::test]
 #[traced_test]
