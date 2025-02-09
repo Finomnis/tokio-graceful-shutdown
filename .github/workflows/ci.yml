@@ -61,8 +61,21 @@ jobs:
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Run cargo test
-        run: cargo test -- --test-threads 1
+      - name: Install cargo nextest
+        uses: taiki-e/install-action@nextest
+
+      - name: Run nextest
+        run: cargo nextest run --test-threads 1 --profile ci
+
+      - name: Run doctests
+        run: cargo test --doc
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./target/nextest/ci/junit.xml
 
   msrv:
     name: Minimum Supported Rust Version
