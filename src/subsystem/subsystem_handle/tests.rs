@@ -1,4 +1,4 @@
-use tokio::time::{sleep, timeout, Duration};
+use tokio::time::{Duration, sleep, timeout};
 use tracing_test::traced_test;
 
 use super::*;

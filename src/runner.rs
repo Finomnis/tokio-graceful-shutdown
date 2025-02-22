@@ -9,8 +9,8 @@
 use std::{future::Future, sync::Arc};
 
 use crate::{
-    errors::{SubsystemError, SubsystemFailure},
     ErrTypeTraits, SubsystemHandle,
+    errors::{SubsystemError, SubsystemFailure},
 };
 
 mod alive_guard;

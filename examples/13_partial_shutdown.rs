@@ -4,7 +4,7 @@
 //! shut down Subsys2 and Subsys3, leaving Subsys1 running.
 
 use miette::Result;
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 use tokio_graceful_shutdown::{ErrorAction, SubsystemBuilder, SubsystemHandle, Toplevel};
 
 async fn subsys3(subsys: SubsystemHandle) -> Result<()> {

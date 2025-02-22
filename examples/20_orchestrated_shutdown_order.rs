@@ -6,7 +6,7 @@
 //! Then, the parent calls `initialize_shutdown` on each child manually.
 
 use miette::Result;
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 use tokio_graceful_shutdown::{FutureExt, SubsystemBuilder, SubsystemHandle, Toplevel};
 
 async fn counter(id: &str) {

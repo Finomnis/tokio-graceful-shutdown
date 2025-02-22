@@ -1,12 +1,12 @@
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 use tokio_graceful_shutdown::{SubsystemBuilder, SubsystemHandle, Toplevel};
 use tracing_test::traced_test;
 
 pub mod common;
 
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc, Mutex,
+    atomic::{AtomicBool, Ordering},
 };
 
 use crate::common::Event;
@@ -183,10 +183,12 @@ async fn shutdown_through_signal_2() {
         async {
             let result = Toplevel::new(move |s| async move {
                 s.start(SubsystemBuilder::new("subsys", subsystem));
-                assert!(sleep(Duration::from_millis(1000))
-                    .cancel_on_shutdown(&s)
-                    .await
-                    .is_err());
+                assert!(
+                    sleep(Duration::from_millis(1000))
+                        .cancel_on_shutdown(&s)
+                        .await
+                        .is_err()
+                );
                 assert!(s.is_shutdown_requested());
             })
             .catch_signals()

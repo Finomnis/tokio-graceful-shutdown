@@ -5,10 +5,10 @@ use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    errors::{handle_dropped_error, GracefulShutdownError, SubsystemError},
+    BoxedError, ErrTypeTraits, ErrorAction, NestedSubsystem, SubsystemHandle,
+    errors::{GracefulShutdownError, SubsystemError, handle_dropped_error},
     signal_handling::wait_for_signal,
     subsystem::{self, ErrorActions},
-    BoxedError, ErrTypeTraits, ErrorAction, NestedSubsystem, SubsystemHandle,
 };
 
 /// Acts as the root of the subsystem tree and forms the entry point for

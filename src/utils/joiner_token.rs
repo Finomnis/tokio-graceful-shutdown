@@ -3,8 +3,8 @@ use std::{fmt::Debug, sync::Arc};
 use tokio::sync::watch;
 
 use crate::{
-    errors::{handle_unhandled_stopreason, SubsystemError},
     ErrTypeTraits,
+    errors::{SubsystemError, handle_unhandled_stopreason},
 };
 
 struct Inner<ErrType: ErrTypeTraits> {
@@ -54,9 +54,9 @@ impl<ErrType: ErrTypeTraits> JoinerToken<ErrType> {
     /// If it returns `Some`, the error will get passed on to its parent.
     pub(crate) fn new(
         on_error: impl Fn(SubsystemError<ErrType>) -> Option<SubsystemError<ErrType>>
-            + Sync
-            + Send
-            + 'static,
+        + Sync
+        + Send
+        + 'static,
     ) -> (Self, JoinerTokenRef) {
         let inner = Arc::new(Inner {
             counter: watch::channel((true, 0)).0,
@@ -84,9 +84,9 @@ impl<ErrType: ErrTypeTraits> JoinerToken<ErrType> {
     pub(crate) fn child_token(
         &self,
         on_error: impl Fn(SubsystemError<ErrType>) -> Option<SubsystemError<ErrType>>
-            + Sync
-            + Send
-            + 'static,
+        + Sync
+        + Send
+        + 'static,
     ) -> (Self, JoinerTokenRef) {
         let mut maybe_parent = Some(&self.inner);
         while let Some(parent) = maybe_parent {

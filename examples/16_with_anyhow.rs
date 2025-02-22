@@ -1,7 +1,7 @@
 //! This example shows how to use this library with anyhow instead of miette
 
-use anyhow::{anyhow, Result};
-use tokio::time::{sleep, Duration};
+use anyhow::{Result, anyhow};
+use tokio::time::{Duration, sleep};
 use tokio_graceful_shutdown::{SubsystemBuilder, SubsystemHandle, Toplevel};
 
 async fn subsys1(_subsys: SubsystemHandle) -> Result<()> {

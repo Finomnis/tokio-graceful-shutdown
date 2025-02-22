@@ -1,8 +1,8 @@
 use anyhow::anyhow;
-use tokio::time::{sleep, timeout, Duration};
+use tokio::time::{Duration, sleep, timeout};
 use tokio_graceful_shutdown::{
-    errors::{GracefulShutdownError, SubsystemError, SubsystemJoinError},
     ErrorAction, IntoSubsystem, SubsystemBuilder, SubsystemHandle, Toplevel,
+    errors::{GracefulShutdownError, SubsystemError, SubsystemJoinError},
 };
 use tracing_test::traced_test;
 
@@ -903,10 +903,12 @@ async fn shutdown_through_signal() {
         async {
             let result = Toplevel::new(move |s| async move {
                 s.start(SubsystemBuilder::new("subsys", subsystem));
-                assert!(sleep(Duration::from_millis(1000))
-                    .cancel_on_shutdown(&s)
-                    .await
-                    .is_err());
+                assert!(
+                    sleep(Duration::from_millis(1000))
+                        .cancel_on_shutdown(&s)
+                        .await
+                        .is_err()
+                );
                 assert!(s.is_shutdown_requested());
             })
             .catch_signals()

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use tokio::sync::mpsc;
 
-use crate::{errors::SubsystemError, ErrTypeTraits};
+use crate::{ErrTypeTraits, errors::SubsystemError};
 
 pub(crate) enum ErrorCollector<ErrType: ErrTypeTraits> {
     Collecting(mpsc::UnboundedReceiver<SubsystemError<ErrType>>),

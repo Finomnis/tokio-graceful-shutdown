@@ -6,8 +6,8 @@
 //! As expected, this is a graceful shutdown, giving other subsystems
 //! the chance to also shut down gracefully.
 
-use miette::{miette, Result};
-use tokio::time::{sleep, Duration};
+use miette::{Result, miette};
+use tokio::time::{Duration, sleep};
 use tokio_graceful_shutdown::{SubsystemBuilder, SubsystemHandle, Toplevel};
 
 async fn subsys1(_subsys: SubsystemHandle) -> Result<()> {

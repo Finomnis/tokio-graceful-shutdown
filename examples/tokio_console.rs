@@ -11,7 +11,7 @@
 //! follow the subsystem tasks live.
 
 use miette::Result;
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 use tokio_graceful_shutdown::{FutureExt, SubsystemBuilder, SubsystemHandle, Toplevel};
 use tracing::Level;
 use tracing_subscriber::{fmt::writer::MakeWriterExt, prelude::*};

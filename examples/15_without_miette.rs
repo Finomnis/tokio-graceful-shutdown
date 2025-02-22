@@ -2,7 +2,7 @@
 
 use std::error::Error;
 use std::fmt;
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 use tokio_graceful_shutdown::{SubsystemBuilder, SubsystemHandle, Toplevel};
 
 #[derive(Debug, Clone)]

@@ -49,7 +49,9 @@ impl Drop for Inner {
         if let Some(finished_callback) = self.finished_callback.take() {
             finished_callback();
         } else {
-            tracing::error!("No `finished` callback was registered in AliveGuard! This should not happen, please report this at https://github.com/Finomnis/tokio-graceful-shutdown/issues.");
+            tracing::error!(
+                "No `finished` callback was registered in AliveGuard! This should not happen, please report this at https://github.com/Finomnis/tokio-graceful-shutdown/issues."
+            );
         }
 
         if let Some(cancelled_callback) = self.cancelled_callback.take() {

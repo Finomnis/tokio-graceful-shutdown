@@ -10,8 +10,8 @@ on:
 name: CI
 
 jobs:
-  build:
-    name: Build
+  test:
+    name: Build and Test
     runs-on: ubuntu-latest
     needs: [lints, docs]
     env:
@@ -22,15 +22,26 @@ jobs:
           - aarch64-unknown-linux-gnu
           - x86_64-pc-windows-gnu
           - x86_64-unknown-linux-gnu
+        rust:
+          - stable
+          - nightly
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Install cross
-        uses: taiki-e/install-action@cross
+      - name: Install Rust
+        run: rustup update ${{ matrix.rust }} && rustup default ${{ matrix.rust }}
+
+      - name: Install cross toolchain
+        uses: taiki-e/setup-cross-toolchain-action@v1
+        with:
+          target: ${{ matrix.target }}
 
       - name: Build
-        run: cross build --release --target=${{ matrix.target }}
+        run: cargo build --release
+
+      - name: Test
+        run: cargo test --release --verbose $DOCTEST_XCOMPILE -- --test-threads 1
 
   build-examples:
     name: Build Examples
@@ -48,8 +59,8 @@ jobs:
       - name: Build
         run: cargo build --examples --all-features --release
 
-  test:
-    name: Test Suite
+  test-codecov:
+    name: Report Test Results
     runs-on: ubuntu-latest
     needs: [lints, docs]
     env:
@@ -225,7 +236,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     if: github.event_name == 'release'
-    needs: [build, build-examples, test, msrv, lints, docs, leaks, semver, min-versions, min-versions-msrv]
+    needs: [test, build-examples, test-codecov, msrv, lints, docs, leaks, semver, min-versions, min-versions-msrv]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
