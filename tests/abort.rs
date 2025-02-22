@@ -28,7 +28,7 @@ async fn abort_subsystem_works() {
         .boxed()
     };
 
-    let subsys_top = move |subsys: SubsystemHandle| async move {
+    let subsys_top = async move |subsys: SubsystemHandle| {
         let nested = subsys.start(SubsystemBuilder::new("subsys_nested", subsys_nested));
 
         tokio::time::sleep(Duration::from_millis(500)).await;
@@ -41,7 +41,7 @@ async fn abort_subsystem_works() {
         Ok::<_, Infallible>(())
     };
 
-    Toplevel::new(move |s| async move {
+    Toplevel::new(async move |s| {
         s.start(SubsystemBuilder::new("subsys_top", subsys_top));
     })
     .handle_shutdown_requests(Duration::from_millis(100))
@@ -70,12 +70,12 @@ async fn nested_subsystem_is_aborted() {
         .boxed()
     };
 
-    let subsys_nested_d1 = move |subsys: SubsystemHandle| async move {
+    let subsys_nested_d1 = async move |subsys: SubsystemHandle| {
         let _nested = subsys.start(SubsystemBuilder::new("d2", subsys_nested_d2));
         BoxedResult::Ok(())
     };
 
-    let subsys_top = move |subsys: SubsystemHandle| async move {
+    let subsys_top = async move |subsys: SubsystemHandle| {
         let nested = subsys.start(SubsystemBuilder::new("d1", subsys_nested_d1));
 
         tokio::time::sleep(Duration::from_millis(500)).await;
@@ -88,7 +88,7 @@ async fn nested_subsystem_is_aborted() {
         BoxedResult::Ok(())
     };
 
-    Toplevel::new(move |s| async move {
+    Toplevel::new(async move |s| {
         s.start(SubsystemBuilder::new("subsys_top", subsys_top));
     })
     .handle_shutdown_requests(Duration::from_millis(100))
@@ -116,7 +116,7 @@ async fn multiple_abort_works() {
         .boxed()
     };
 
-    let subsys_top = move |subsys: SubsystemHandle| async move {
+    let subsys_top = async move |subsys: SubsystemHandle| {
         let nested = subsys.start(SubsystemBuilder::new("subsys_nested", subsys_nested));
 
         tokio::time::sleep(Duration::from_millis(500)).await;
@@ -130,7 +130,7 @@ async fn multiple_abort_works() {
         Ok::<_, Infallible>(())
     };
 
-    Toplevel::new(move |s| async move {
+    Toplevel::new(async move |s| {
         s.start(SubsystemBuilder::new("subsys_top", subsys_top));
     })
     .handle_shutdown_requests(Duration::from_millis(100))
@@ -158,7 +158,7 @@ async fn abort_overrides_shutdown() {
         .boxed()
     };
 
-    let subsys_top = move |subsys: SubsystemHandle| async move {
+    let subsys_top = async move |subsys: SubsystemHandle| {
         let nested = subsys.start(SubsystemBuilder::new("subsys_nested", subsys_nested));
 
         tokio::time::sleep(Duration::from_millis(500)).await;
@@ -172,7 +172,7 @@ async fn abort_overrides_shutdown() {
         Ok::<_, Infallible>(())
     };
 
-    Toplevel::new(move |s| async move {
+    Toplevel::new(async move |s| {
         s.start(SubsystemBuilder::new("subsys_top", subsys_top));
     })
     .handle_shutdown_requests(Duration::from_millis(100))
@@ -207,7 +207,7 @@ async fn abort_ensures_drop() {
         }
     }
 
-    let subsys_top = move |subsys: SubsystemHandle| async move {
+    let subsys_top = async move |subsys: SubsystemHandle| {
         let to_be_dropped = IHaveNoMouthYetIMustBeDropped::new();
         let flag = to_be_dropped.was_dropped.clone();
 
@@ -236,7 +236,7 @@ async fn abort_ensures_drop() {
         Ok::<_, Infallible>(())
     };
 
-    Toplevel::new(move |s| async move {
+    Toplevel::new(async move |s| {
         s.start(SubsystemBuilder::new("subsys_top", subsys_top));
     })
     .handle_shutdown_requests(Duration::from_millis(100))

@@ -53,7 +53,7 @@ async fn main() -> Result<()> {
     let subsys2 = Subsystem2 { arg: 69 };
 
     // Setup and execute subsystem tree
-    Toplevel::new(|s| async move {
+    Toplevel::new(async |s| {
         s.start(SubsystemBuilder::new("Subsys1", |a| subsys1.run(a)));
         s.start(SubsystemBuilder::new("Subsys2", subsys2.into_subsystem()));
     })

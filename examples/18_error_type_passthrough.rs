@@ -84,7 +84,7 @@ async fn main() -> Result<(), miette::Report> {
         .init();
 
     // Setup and execute subsystem tree
-    let errors = Toplevel::<MyError>::new(|s| async move {
+    let errors = Toplevel::<MyError>::new(async |s| {
         s.start(SubsystemBuilder::new("Subsys1", subsys1));
         s.start(SubsystemBuilder::new("Subsys2", subsys2));
         s.start(SubsystemBuilder::new("Subsys3", subsys3));

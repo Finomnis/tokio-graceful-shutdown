@@ -33,7 +33,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .init();
 
     // Setup and execute subsystem tree
-    Toplevel::new(|s| async move {
+    Toplevel::new(async |s| {
         s.start(SubsystemBuilder::new("Subsys1", subsys1));
     })
     .catch_signals()
