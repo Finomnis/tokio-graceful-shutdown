@@ -10,7 +10,7 @@ use common::{BoxedError, BoxedResult};
 #[tokio::test(start_paused = true)]
 #[traced_test]
 async fn cancel_on_shutdown_propagates_result() {
-    let subsystem1 = |subsys: SubsystemHandle| async move {
+    let subsystem1 = async |subsys: SubsystemHandle| {
         let compute_value = async {
             sleep(Duration::from_millis(10)).await;
             42
@@ -23,7 +23,7 @@ async fn cancel_on_shutdown_propagates_result() {
         BoxedResult::Ok(())
     };
 
-    let subsystem2 = |subsys: SubsystemHandle| async move {
+    let subsystem2 = async |subsys: SubsystemHandle| {
         async fn compute_value() -> i32 {
             sleep(Duration::from_millis(10)).await;
             42
@@ -36,7 +36,7 @@ async fn cancel_on_shutdown_propagates_result() {
         BoxedResult::Ok(())
     };
 
-    let result = Toplevel::<BoxedError>::new(move |s| async move {
+    let result = Toplevel::<BoxedError>::new(async move |s| {
         s.start(SubsystemBuilder::new("subsys1", subsystem1));
         s.start(SubsystemBuilder::new("subsys2", subsystem2));
     })
@@ -49,7 +49,7 @@ async fn cancel_on_shutdown_propagates_result() {
 #[tokio::test(start_paused = true)]
 #[traced_test]
 async fn cancel_on_shutdown_cancels_on_shutdown() {
-    let subsystem = |subsys: SubsystemHandle| async move {
+    let subsystem = async |subsys: SubsystemHandle| {
         async fn compute_value(subsys: &SubsystemHandle) -> i32 {
             sleep(Duration::from_millis(100)).await;
             subsys.request_shutdown();
@@ -64,7 +64,7 @@ async fn cancel_on_shutdown_cancels_on_shutdown() {
         BoxedResult::Ok(())
     };
 
-    let result = Toplevel::<BoxedError>::new(move |s| async move {
+    let result = Toplevel::<BoxedError>::new(async move |s| {
         s.start(SubsystemBuilder::new("subsys", subsystem));
     })
     .handle_shutdown_requests(Duration::from_millis(200))

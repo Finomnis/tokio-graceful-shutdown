@@ -41,7 +41,7 @@ type SubsystemFunction<Err, ErrWrapper> =
 /// #[tokio::main]
 /// async fn main() -> Result<()> {
 ///     // Create toplevel
-///     Toplevel::new(|s| async move {
+///     Toplevel::new(async |s| {
 ///         s.start(SubsystemBuilder::new(
 ///             "Subsys1", MySubsystem{}.into_subsystem()
 ///         ));

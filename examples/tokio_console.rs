@@ -56,7 +56,7 @@ async fn main() -> Result<()> {
         .init();
 
     // Setup and execute subsystem tree
-    Toplevel::new(|s| async move {
+    Toplevel::new(async |s| {
         s.start(SubsystemBuilder::new("parent", parent));
     })
     .catch_signals()

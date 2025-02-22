@@ -40,7 +40,7 @@ This subsystem can now be executed like this:
 ```rust
 #[tokio::main]
 async fn main() -> Result<()> {
-    Toplevel::new(|s| async move {
+    Toplevel::new(async |s| {
         s.start(SubsystemBuilder::new("Subsys1", subsys1))
     })
     .catch_signals()

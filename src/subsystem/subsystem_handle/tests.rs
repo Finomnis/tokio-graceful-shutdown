@@ -10,7 +10,7 @@ async fn recursive_cancellation() {
 
     let (drop_sender, mut drop_receiver) = tokio::sync::mpsc::channel::<()>(1);
 
-    root_handle.start(SubsystemBuilder::new("", |_| async move {
+    root_handle.start(SubsystemBuilder::new("", async move |_| {
         drop_sender.send(()).await.unwrap();
         std::future::pending::<Result<(), BoxedError>>().await
     }));
@@ -37,12 +37,12 @@ async fn recursive_cancellation_2() {
 
     let (drop_sender, mut drop_receiver) = tokio::sync::mpsc::channel::<()>(1);
 
-    let subsys2 = |_| async move {
+    let subsys2 = async move |_| {
         drop_sender.send(()).await.unwrap();
         std::future::pending::<Result<(), BoxedError>>().await
     };
 
-    let subsys = |x: SubsystemHandle| async move {
+    let subsys = async |x: SubsystemHandle| {
         x.start(SubsystemBuilder::new("", subsys2));
 
         Result::<(), BoxedError>::Ok(())

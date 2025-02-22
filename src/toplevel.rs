@@ -30,7 +30,7 @@ use crate::{
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<()> {
-///     Toplevel::new(|s| async move {
+///     Toplevel::new(async |s| {
 ///         s.start(SubsystemBuilder::new("MySubsystem", my_subsystem));
 ///     })
 ///     .catch_signals()
@@ -80,7 +80,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
 
         let toplevel_subsys = root_handle.start_with_abs_name(
             Arc::from("/"),
-            move |s| async move {
+            async |s| {
                 subsystem(s).await;
                 Result::<(), ErrType>::Ok(())
             },
