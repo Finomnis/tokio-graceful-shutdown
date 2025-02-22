@@ -1,7 +1,7 @@
 //! This example shows how to use this library with eyre instead of miette
 
-use eyre::{eyre, Result};
-use tokio::time::{sleep, Duration};
+use eyre::{Result, eyre};
+use tokio::time::{Duration, sleep};
 use tokio_graceful_shutdown::{SubsystemBuilder, SubsystemHandle, Toplevel};
 
 async fn subsys1(_subsys: SubsystemHandle) -> Result<()> {

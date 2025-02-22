@@ -65,5 +65,7 @@ fn no_callback() {
     let alive_guard = AliveGuard::new();
     drop(alive_guard);
 
-    assert!(logs_contain("No `finished` callback was registered in AliveGuard! This should not happen, please report this at https://github.com/Finomnis/tokio-graceful-shutdown/issues."));
+    assert!(logs_contain(
+        "No `finished` callback was registered in AliveGuard! This should not happen, please report this at https://github.com/Finomnis/tokio-graceful-shutdown/issues."
+    ));
 }

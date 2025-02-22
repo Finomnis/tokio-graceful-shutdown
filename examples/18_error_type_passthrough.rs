@@ -1,10 +1,10 @@
 //! This example shows to pass custom error types all the way through to the top,
 //! to recover them from the return value of `handle_shutdown_requests`.
 
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 use tokio_graceful_shutdown::{
-    errors::{GracefulShutdownError, SubsystemError},
     IntoSubsystem, SubsystemBuilder, SubsystemHandle, Toplevel,
+    errors::{GracefulShutdownError, SubsystemError},
 };
 
 #[derive(Debug, thiserror::Error)]

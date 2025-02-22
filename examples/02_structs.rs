@@ -8,7 +8,7 @@
 
 use async_trait::async_trait;
 use miette::Result;
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 use tokio_graceful_shutdown::{IntoSubsystem, SubsystemBuilder, SubsystemHandle, Toplevel};
 
 struct Subsystem1 {

@@ -1,5 +1,5 @@
 use super::*;
-use crate::{utils::JoinerToken, BoxedError};
+use crate::{BoxedError, utils::JoinerToken};
 
 #[test]
 fn single_item() {

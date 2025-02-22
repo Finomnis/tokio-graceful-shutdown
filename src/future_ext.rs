@@ -1,4 +1,4 @@
-use crate::{errors::CancelledByShutdown, SubsystemHandle};
+use crate::{SubsystemHandle, errors::CancelledByShutdown};
 
 use pin_project_lite::pin_project;
 

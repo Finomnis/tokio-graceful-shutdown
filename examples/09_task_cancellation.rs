@@ -9,9 +9,9 @@
 //! In this case we go with `cancel_on_shutdown()`, but `tokio::select` would be equally viable.
 
 use miette::Result;
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 use tokio_graceful_shutdown::{
-    errors::CancelledByShutdown, FutureExt, SubsystemBuilder, SubsystemHandle, Toplevel,
+    FutureExt, SubsystemBuilder, SubsystemHandle, Toplevel, errors::CancelledByShutdown,
 };
 
 struct CountdownSubsystem {}

@@ -15,7 +15,7 @@ pub use subsystem_handle::SubsystemHandle;
 
 pub(crate) use subsystem_handle::root_handle;
 
-use crate::{utils::JoinerTokenRef, BoxedError, ErrTypeTraits, ErrorAction};
+use crate::{BoxedError, ErrTypeTraits, ErrorAction, utils::JoinerTokenRef};
 
 use atomic::Atomic;
 use tokio_util::sync::CancellationToken;

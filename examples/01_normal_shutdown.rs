@@ -8,7 +8,7 @@
 //! a struct has to be used instead, as seen in other examples.
 
 use miette::Result;
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 use tokio_graceful_shutdown::{SubsystemBuilder, SubsystemHandle, Toplevel};
 
 async fn subsys1(subsys: SubsystemHandle) -> Result<()> {

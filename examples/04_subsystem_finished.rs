@@ -6,7 +6,7 @@
 //! (unless there are no more subsystems left, in that case TopLevel would shut down anyway)
 
 use miette::Result;
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 use tokio_graceful_shutdown::{SubsystemBuilder, SubsystemHandle, Toplevel};
 
 async fn subsys1(_subsys: SubsystemHandle) -> Result<()> {

@@ -1,6 +1,6 @@
 use std::sync::atomic::Ordering;
 
-use crate::{errors::SubsystemJoinError, ErrTypeTraits, ErrorAction};
+use crate::{ErrTypeTraits, ErrorAction, errors::SubsystemJoinError};
 
 use super::{NestedSubsystem, SubsystemFinishedFuture};
 

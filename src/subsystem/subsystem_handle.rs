@@ -1,7 +1,7 @@
 use std::{
     future::Future,
     mem::ManuallyDrop,
-    sync::{atomic::Ordering, Arc, Mutex},
+    sync::{Arc, Mutex, atomic::Ordering},
 };
 
 use atomic::Atomic;
@@ -9,13 +9,13 @@ use tokio::sync::{mpsc, oneshot};
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    errors::{handle_dropped_error, SubsystemError},
-    runner::{AliveGuard, SubsystemRunner},
-    utils::{remote_drop_collection::RemotelyDroppableItems, JoinerToken},
     BoxedError, ErrTypeTraits, ErrorAction, NestedSubsystem, SubsystemBuilder,
+    errors::{SubsystemError, handle_dropped_error},
+    runner::{AliveGuard, SubsystemRunner},
+    utils::{JoinerToken, remote_drop_collection::RemotelyDroppableItems},
 };
 
-use super::{error_collector::ErrorCollector, ErrorActions};
+use super::{ErrorActions, error_collector::ErrorCollector};
 
 struct Inner<ErrType: ErrTypeTraits> {
     name: Arc<str>,

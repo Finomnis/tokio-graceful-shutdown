@@ -1,6 +1,6 @@
 use std::sync::{
-    atomic::{AtomicUsize, Ordering},
     Arc, Mutex, Weak,
+    atomic::{AtomicUsize, Ordering},
 };
 
 struct RemotelyDroppableItem<T> {

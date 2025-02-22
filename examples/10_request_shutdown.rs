@@ -2,9 +2,9 @@
 //! a shutdown.
 
 use miette::Result;
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 use tokio_graceful_shutdown::{
-    errors::CancelledByShutdown, FutureExt, SubsystemBuilder, SubsystemHandle, Toplevel,
+    FutureExt, SubsystemBuilder, SubsystemHandle, Toplevel, errors::CancelledByShutdown,
 };
 
 struct CountdownSubsystem {}
