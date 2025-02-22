@@ -60,7 +60,7 @@ jobs:
         run: cargo build --examples --all-features --release
 
   test-codecov:
-    name: Test Suite
+    name: Report Test Results
     runs-on: ubuntu-latest
     needs: [lints, docs]
     env:
