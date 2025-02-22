@@ -25,7 +25,7 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
       - name: Compute Coverage
         run:
-          cargo llvm-cov --workspace --ignore-filename-regex tests.rs --codecov --output-path codecov.json
+          cargo llvm-cov --workspace --ignore-filename-regex tests.rs --codecov --output-path codecov.json -- --test-threads 1
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         env:
