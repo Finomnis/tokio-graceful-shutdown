@@ -1,15 +1,15 @@
-name: Coverage
+name: Coveralls
 on:
   pull_request:
     branches: [main]
   push:
     branches: [main]
 concurrency:
-  group: coverage-${{ github.ref }}
+  group: coverage-coveralls-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   coverage:
-    name: Codecov.io
+    name: Coveralls.io
     continue-on-error: true
     runs-on: ubuntu-latest
     env:
@@ -25,16 +25,14 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
       - name: Compute Coverage
         run:
-          cargo llvm-cov --workspace --ignore-filename-regex tests.rs --codecov --output-path codecov.json -- --test-threads 1
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          cargo llvm-cov --workspace --ignore-filename-regex tests.rs --lcov --output-path lcov.info -- --test-threads 1
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@master
         with:
-          files: codecov.json
-          fail_ci_if_error: true
+          path-to-lcov: lcov.info
+          github-token: ${{ secrets.github_token }}
       - name: Archive code coverage results
         uses: actions/upload-artifact@v4
         with:
-          name: code-coverage-report
-          path: codecov.json
+          name: code-coverage-report-lcov
+          path: lcov.info
