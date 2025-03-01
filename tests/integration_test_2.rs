@@ -175,7 +175,7 @@ async fn shutdown_through_signal_2() {
 
     tokio::join!(
         async {
-            sleep(Duration::from_millis(100)).await;
+            sleep(Duration::from_millis(200)).await;
 
             // Send SIGINT to ourselves.
             signal::kill(Pid::this(), Signal::SIGTERM).unwrap();
