@@ -1,4 +1,6 @@
 use anyhow::anyhow;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::time::{Duration, sleep, timeout};
 use tokio_graceful_shutdown::{
     ErrorAction, IntoSubsystem, SubsystemBuilder, SubsystemHandle, Toplevel,
@@ -1027,4 +1029,118 @@ async fn query_multidepth_subsystem_alive() {
     .handle_shutdown_requests(Duration::from_millis(100))
     .await
     .unwrap();
+}
+
+#[tokio::test(start_paused = true)]
+#[traced_test]
+async fn toplevel_error_hook_is_called_immediately_on_error() {
+    let hook_called = Arc::new(AtomicBool::new(false));
+    let hook_called_clone = hook_called.clone();
+
+    // This hook will be called as soon as the error bubbles up to Toplevel.
+    let on_error_hook = move |_err: &SubsystemError<BoxedError>| {
+        hook_called_clone.store(true, Ordering::SeqCst);
+    };
+
+    let failing_subsystem = async |_| {
+        sleep(Duration::from_millis(50)).await;
+        Err(anyhow!("I failed."))
+    };
+
+    let slow_shutdown_subsystem = async |subsys: SubsystemHandle| {
+        subsys.on_shutdown_requested().await;
+        sleep(Duration::from_millis(200)).await;
+        BoxedResult::Ok(())
+    };
+
+    let toplevel = Toplevel::new_with_hook(
+        async move |s| {
+            s.start(SubsystemBuilder::new("failing", failing_subsystem));
+            s.start(SubsystemBuilder::new("slow", slow_shutdown_subsystem));
+        },
+        on_error_hook,
+    );
+
+    let handle = toplevel.handle_shutdown_requests(Duration::from_millis(500));
+
+    sleep(Duration::from_millis(100)).await;
+
+    assert!(
+        hook_called.load(Ordering::SeqCst),
+        "Hook should have been called immediately after the error"
+    );
+
+    let result = handle.await;
+    assert!(
+        result.is_err(),
+        "Toplevel should return an error because a subsystem failed"
+    );
+}
+
+#[tokio::test(start_paused = true)]
+#[traced_test]
+async fn toplevel_error_hook_is_called_on_panic() {
+    let hook_called = Arc::new(AtomicBool::new(false));
+    let hook_called_clone = hook_called.clone();
+
+    let on_error_hook = move |err: &SubsystemError<BoxedError>| {
+        assert!(matches!(err, SubsystemError::Panicked(_)));
+        hook_called_clone.store(true, Ordering::SeqCst);
+    };
+
+    let panicking_subsystem = async |_| {
+        sleep(Duration::from_millis(50)).await;
+        panic!("I panicked!");
+    };
+
+    let toplevel = Toplevel::new_with_hook(
+        async move |s| {
+            s.start::<anyhow::Error, _, _>(SubsystemBuilder::new("panicking", panicking_subsystem));
+        },
+        on_error_hook,
+    );
+
+    let result = toplevel
+        .handle_shutdown_requests(Duration::from_millis(500))
+        .await;
+    assert!(result.is_err());
+    assert!(
+        hook_called.load(Ordering::SeqCst),
+        "Hook was not called on panic"
+    );
+}
+
+#[tokio::test(start_paused = true)]
+#[traced_test]
+async fn toplevel_error_hook_not_called_on_graceful_shutdown() {
+    let hook_called = Arc::new(AtomicBool::new(false));
+    let hook_called_clone = hook_called.clone();
+
+    // This hook should NOT be called.
+    let on_error_hook = move |_err: &SubsystemError<BoxedError>| {
+        hook_called_clone.store(true, Ordering::SeqCst);
+    };
+
+    let normal_subsystem = async |subsys: SubsystemHandle| {
+        subsys.on_shutdown_requested().await;
+        BoxedResult::Ok(())
+    };
+
+    let toplevel = Toplevel::new_with_hook(
+        async move |s| {
+            s.start(SubsystemBuilder::new("normal", normal_subsystem));
+            sleep(Duration::from_millis(50)).await;
+            s.request_shutdown();
+        },
+        on_error_hook,
+    );
+
+    let result = toplevel
+        .handle_shutdown_requests(Duration::from_millis(500))
+        .await;
+    assert!(result.is_ok(), "Shutdown should have been successful");
+    assert!(
+        !hook_called.load(Ordering::SeqCst),
+        "Hook should not be called on a graceful shutdown"
+    );
 }

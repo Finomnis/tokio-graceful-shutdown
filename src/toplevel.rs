@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use atomic::Atomic;
 use std::{future::Future, sync::Arc, time::Duration};
 use tokio::sync::mpsc;
@@ -53,6 +52,12 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     ///
     /// The Toplevel object is the base for everything else in this crate.
     ///
+    /// When an uncaught error or panic reaches the top level, this constructor will
+    /// log the event using `tracing::error!`.
+    ///
+    /// For more advanced error handling, like sending alerts to a monitoring service, see
+    /// [`Self::new_with_hook`].
+    ///
     /// # Arguments
     ///
     /// * `subsystem` - The subsystem that should be spawned as the root node.
@@ -64,18 +69,48 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
         Fut: 'static + Future<Output = ()> + Send,
     {
+        Self::new_with_hook(subsystem, |e| match &e {
+            SubsystemError::Panicked(name) => {
+                tracing::error!("Uncaught panic from subsystem '{name}'.")
+            }
+            SubsystemError::Failed(name, e) => {
+                tracing::error!("Uncaught error from subsystem '{name}': {e}")
+            }
+        })
+    }
+
+    /// Creates a new Toplevel object with a custom error handling hook.
+    ///
+    /// This is an advanced version of [`Self::new`]. It allows providing a custom callback that is
+    /// executed immediately when an uncaught error or panic bubbles up to the top level of the
+    /// subsystem tree. This is useful for tasks like sending an alert to a monitoring service
+    /// without waiting for the full shutdown procedure to complete.
+    ///
+    /// After the hook is executed, a global shutdown is initiated. The error is then collected
+    /// and will be part of the final `Result` returned by [`Self::handle_shutdown_requests`].
+    ///
+    /// # Arguments
+    ///
+    /// * `subsystem` - The subsystem that should be spawned as the root node.
+    ///                 Usually the job of this subsystem is to spawn further subsystems.
+    /// * `on_subsystem_error` - A closure or function that will be called with a reference
+    ///                          to the [`SubsystemError`] that caused the shutdown.
+    ///                          This hook is executed immediately when an uncaught error
+    ///                          reaches the top level.
+    #[track_caller]
+    pub fn new_with_hook<Fut, Subsys, OnSubsysErr>(
+        subsystem: Subsys,
+        on_subsystem_error: OnSubsysErr,
+    ) -> Self
+    where
+        Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
+        Fut: 'static + Future<Output = ()> + Send,
+        OnSubsysErr: Fn(&SubsystemError<ErrType>) + Send + Sync + 'static,
+    {
         let (error_sender, errors) = mpsc::unbounded_channel();
 
         let root_handle = subsystem::root_handle(move |e| {
-            match &e {
-                SubsystemError::Panicked(name) => {
-                    tracing::error!("Uncaught panic from subsystem '{name}'.")
-                }
-                SubsystemError::Failed(name, e) => {
-                    tracing::error!("Uncaught error from subsystem '{name}': {e}",)
-                }
-            };
-
+            on_subsystem_error(&e);
             handle_dropped_error(error_sender.send(e));
         });
 
