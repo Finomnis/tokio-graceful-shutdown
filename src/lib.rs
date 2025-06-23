@@ -11,6 +11,7 @@
 //! - Clean shutdown procedure with timeout and error propagation
 //! - Subsystem nesting
 //! - Partial shutdown of a selected subsystem tree
+//! - Customizable hooks for shutdown lifecycle events
 //!
 //! # Example
 //!

@@ -4,7 +4,13 @@ use std::{future::Future, sync::Arc, time::Duration};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
-use crate::{BoxedError, ErrTypeTraits, ErrorAction, NestedSubsystem, SubsystemHandle, errors::{GracefulShutdownError, SubsystemError, handle_dropped_error}, signal_handling::wait_for_signal, subsystem::{self, ErrorActions}, DefaultShutdownHooks, ShutdownHooks};
+use crate::{
+    BoxedError, DefaultShutdownHooks, ErrTypeTraits, ErrorAction, NestedSubsystem, ShutdownHooks,
+    SubsystemHandle,
+    errors::{GracefulShutdownError, SubsystemError, handle_dropped_error},
+    signal_handling::wait_for_signal,
+    subsystem::{self, ErrorActions},
+};
 
 /// Acts as the root of the subsystem tree and forms the entry point for
 /// any interaction with this crate.
@@ -129,6 +135,23 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         self
     }
 
+    /// Performs a clean program shutdown with custom hooks.
+    ///
+    /// This is an advanced version of [`Self::handle_shutdown_requests`]. It allows you to provide
+    /// a custom implementation of the [`ShutdownHooks`] trait to execute code at different stages
+    /// of the shutdown process.
+    ///
+    /// In most cases, this will be the final method of `main()`, as it blocks until program
+    /// shutdown and returns an appropriate `Result` that can be directly returned by `main()`.
+    ///
+    /// # Arguments
+    ///
+    /// * `shutdown_timeout` - The maximum time that is allowed to pass after a shutdown was initiated.
+    /// * `hooks` - An object that implements the [`ShutdownHooks`] trait.
+    ///
+    /// # Returns
+    ///
+    /// An error of type [`GracefulShutdownError`] if an error occurred.
     pub async fn handle_shutdown_requests_with_hooks(
         mut self,
         shutdown_timeout: Duration,
@@ -188,6 +211,9 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
 
     /// Performs a clean program shutdown, once a shutdown is requested or all subsystems have
     /// finished.
+    ///
+    /// This function uses the default shutdown hooks which log shutdown-related events. For more
+    /// control, see [`Self::handle_shutdown_requests_with_hooks`].
     ///
     /// In most cases, this will be the final method of `main()`, as it blocks until program
     /// shutdown and returns an appropriate `Result` that can be directly returned by `main()`.
