@@ -123,6 +123,7 @@ pub use error_action::ErrorAction;
 pub use future_ext::FutureExt;
 pub use into_subsystem::IntoSubsystem;
 pub use shutdown_hooks::{ShutdownHooks, DefaultShutdownHooks};
+pub use signal_handling::{SignalHooks, DefaultSignalHooks};
 pub use subsystem::NestedSubsystem;
 pub use subsystem::SubsystemBuilder;
 pub use subsystem::SubsystemFinishedFuture;

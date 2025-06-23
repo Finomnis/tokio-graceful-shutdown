@@ -4,8 +4,8 @@ use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    BoxedError, DefaultShutdownHooks, ErrTypeTraits, ErrorAction, NestedSubsystem, ShutdownHooks,
-    SubsystemHandle,
+    BoxedError, DefaultShutdownHooks, DefaultSignalHooks, ErrTypeTraits, ErrorAction,
+    NestedSubsystem, ShutdownHooks, SignalHooks, SubsystemHandle,
     errors::{GracefulShutdownError, SubsystemError, handle_dropped_error},
     signal_handling::wait_for_signal,
     subsystem::{self, ErrorActions},
@@ -148,20 +148,39 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// - On Unix:
     ///     - `SIGINT`
     ///     - `SIGTERM`
+    /// 
+    /// This method uses default hooks that log the received signal. For more control, see 
+    /// [`Self::catch_signals_with_hooks`].
     ///
     /// # Caveats
     ///
-    /// This function internally uses [tokio::signal] with all of its caveats.
+    /// This function internally uses [`tokio::signal`] with all of its caveats.
     ///
-    /// Especially the caveats from [tokio::signal::unix::Signal] are important for Unix targets.
-    ///
+    /// Especially the caveats from [`tokio::signal::unix::Signal`] are important for Unix targets.
     #[track_caller]
     pub fn catch_signals(self) -> Self {
+        self.catch_signals_with_hooks(DefaultSignalHooks)
+    }
+
+    /// Registers signal handlers with custom hooks to initiate a program shutdown.
+    ///
+    /// This is an advanced version of [`Self::catch_signals`]. It allows you to provide a custom
+    /// implementation of the [`SignalHooks`] trait to execute code when a specific OS signal is
+    /// received. This is useful for applications that need to react differently to `SIGINT` 
+    /// (Ctrl+C) versus `SIGTERM`.
+    ///
+    /// See [`Self::catch_signals`] for a list of handled signals and other caveats.
+    ///
+    /// # Arguments
+    ///
+    /// * `hooks` - An object that implements the [`SignalHooks`] trait.    
+    #[track_caller]
+    pub fn catch_signals_with_hooks(self, hooks: impl SignalHooks) -> Self {
         let shutdown_token = self.root_handle.get_cancellation_token().clone();
 
         crate::tokio_task::spawn(
             async move {
-                wait_for_signal().await;
+                wait_for_signal(hooks).await;
                 shutdown_token.cancel();
             },
             "catch_signals",
