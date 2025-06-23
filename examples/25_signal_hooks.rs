@@ -10,7 +10,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 use tokio_graceful_shutdown::{SignalHooks, SubsystemBuilder, SubsystemHandle, Toplevel};
 
 struct MySignalHooks;
@@ -56,9 +56,9 @@ async fn main() -> Result<()> {
     let result = Toplevel::new(async |s| {
         s.start(SubsystemBuilder::new("MySubsystem", my_subsystem));
     })
-        .catch_signals_with_hooks(MySignalHooks)
-        .handle_shutdown_requests(Duration::from_secs(1))
-        .await;
+    .catch_signals_with_hooks(MySignalHooks)
+    .handle_shutdown_requests(Duration::from_secs(1))
+    .await;
 
     if let Err(e) = &result {
         tracing::error!("Application finished with an error: {}", e);

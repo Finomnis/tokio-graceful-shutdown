@@ -83,7 +83,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     ///
     /// This is an advanced version of [`Self::new`]. It allows providing custom callbacks for two
     /// key events:
-    /// 
+    ///
     /// 1.  An uncaught error/panic bubbling up to the top level. This is useful for immediate alerting.
     /// 2.  The cancellation of the root subsystem itself.
     ///

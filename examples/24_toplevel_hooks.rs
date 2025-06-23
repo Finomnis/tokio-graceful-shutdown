@@ -13,11 +13,11 @@
 
 use std::sync::{Arc, Mutex};
 
-use anyhow::{anyhow, Result};
-use tokio::time::{sleep, Duration};
+use anyhow::{Result, anyhow};
+use tokio::time::{Duration, sleep};
 use tokio_graceful_shutdown::{
-    default_on_subsystem_cancelled, default_on_subsystem_error, errors::SubsystemError,
-    SubsystemBuilder, SubsystemHandle, Toplevel,
+    SubsystemBuilder, SubsystemHandle, Toplevel, default_on_subsystem_cancelled,
+    default_on_subsystem_error, errors::SubsystemError,
 };
 
 async fn failing_subsystem(_subsys: SubsystemHandle) -> Result<()> {
@@ -90,7 +90,9 @@ async fn main() -> Result<()> {
             let on_subsystem_cancelled = {
                 let hook_events = hook_events.clone();
                 move |name: Arc<str>| {
-                    let msg = format!("ROOT CANCEL HOOK: Root subsystem '{name}' was cancelled because Toplevel was dropped.");
+                    let msg = format!(
+                        "ROOT CANCEL HOOK: Root subsystem '{name}' was cancelled because Toplevel was dropped."
+                    );
                     eprintln!("{}", msg);
                     hook_events.lock().unwrap().push(msg);
                 }
@@ -105,10 +107,10 @@ async fn main() -> Result<()> {
                 default_on_subsystem_error,
                 on_subsystem_cancelled,
             );
-            
+
             tracing::info!("Toplevel will be dropped now...");
             drop(toplevel);
-            
+
             sleep(Duration::from_millis(100)).await;
             tracing::info!("Application finished.");
         }

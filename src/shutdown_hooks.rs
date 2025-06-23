@@ -1,10 +1,10 @@
-use async_trait::async_trait;
-use crate::errors::SubsystemError;
 use crate::ErrTypeTraits;
+use crate::errors::SubsystemError;
+use async_trait::async_trait;
 
 #[async_trait]
 /// A trait that allows executing custom logic at various points of the shutdown lifecycle.
-/// 
+///
 /// Implementing this trait requires the `async_trait` dependency.
 ///
 /// It can be passed to [`Toplevel::handle_shutdown_requests_with_hooks`](crate::Toplevel::handle_shutdown_requests_with_hooks).
@@ -12,7 +12,7 @@ use crate::ErrTypeTraits;
 /// All methods have a default implementation that logs the event, so you only need to
 /// implement the ones you are interested in.
 pub trait ShutdownHooks: Send {
-    /// Called when all subsystems have finished execution without any particular shutdown being 
+    /// Called when all subsystems have finished execution without any particular shutdown being
     /// requested.
     async fn on_subsystems_finished(&mut self) {
         tracing::info!("All subsystems finished.");

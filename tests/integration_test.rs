@@ -2,7 +2,11 @@ use anyhow::anyhow;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::time::{Duration, sleep, timeout};
-use tokio_graceful_shutdown::{ErrorAction, IntoSubsystem, SubsystemBuilder, SubsystemHandle, Toplevel, errors::{GracefulShutdownError, SubsystemError, SubsystemJoinError}, default_on_subsystem_cancelled, default_on_subsystem_error};
+use tokio_graceful_shutdown::{
+    ErrorAction, IntoSubsystem, SubsystemBuilder, SubsystemHandle, Toplevel,
+    default_on_subsystem_cancelled, default_on_subsystem_error,
+    errors::{GracefulShutdownError, SubsystemError, SubsystemJoinError},
+};
 use tracing_test::traced_test;
 
 pub mod common;

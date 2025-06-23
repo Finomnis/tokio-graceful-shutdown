@@ -122,8 +122,8 @@ mod utils;
 pub use error_action::ErrorAction;
 pub use future_ext::FutureExt;
 pub use into_subsystem::IntoSubsystem;
-pub use shutdown_hooks::{ShutdownHooks, DefaultShutdownHooks};
-pub use signal_handling::{SignalHooks, DefaultSignalHooks};
+pub use shutdown_hooks::{DefaultShutdownHooks, ShutdownHooks};
+pub use signal_handling::{DefaultSignalHooks, SignalHooks};
 pub use subsystem::NestedSubsystem;
 pub use subsystem::SubsystemBuilder;
 pub use subsystem::SubsystemFinishedFuture;
@@ -136,9 +136,7 @@ use std::sync::Arc;
 /// The default error hook used by [`Toplevel::new`].
 ///
 /// Logs uncaught subsystem errors and panics to `tracing::error!`.
-pub fn default_on_subsystem_error<ErrType: ErrTypeTraits>(
-    e: &SubsystemError<ErrType>,
-) {
+pub fn default_on_subsystem_error<ErrType: ErrTypeTraits>(e: &SubsystemError<ErrType>) {
     match e {
         SubsystemError::Panicked(name) => {
             tracing::error!("Uncaught panic from subsystem '{name}'.")

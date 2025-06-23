@@ -1,4 +1,4 @@
-use crate::{default_on_subsystem_cancelled, ErrTypeTraits, ErrorAction, SubsystemHandle};
+use crate::{ErrTypeTraits, ErrorAction, SubsystemHandle, default_on_subsystem_cancelled};
 use std::sync::Arc;
 use std::{borrow::Cow, future::Future, marker::PhantomData};
 
@@ -83,8 +83,8 @@ where
 
     /// Sets a custom hook to be called when the subsystem is cancelled.
     ///
-    /// The default behavior is to log a `WARN` message. 
-    /// 
+    /// The default behavior is to log a `WARN` message.
+    ///
     /// This hook allows you to customize this, for example to suppress the warning for subsystems
     /// that are expected to be cancelled, or to perform a different action.
     pub fn on_subsystem_cancelled<F>(mut self, hook: F) -> Self

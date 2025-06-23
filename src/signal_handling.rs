@@ -46,7 +46,7 @@ pub(crate) async fn wait_for_signal(hooks: impl SignalHooks) {
 /// A trait that allows executing custom logic when specific OS signals are received.
 ///
 /// Implementing this trait requires the `async_trait` dependency.
-/// 
+///
 /// It can be passed to [`Toplevel::catch_signals_with_hooks`](crate::Toplevel::catch_signals_with_hooks).
 /// All methods have a default implementation that logs the received signal at the `DEBUG` level,
 /// so you only need to implement the ones you are interested in.
@@ -82,7 +82,7 @@ pub trait SignalHooks: Send + 'static {
         tracing::debug!("Received CTRL_CLOSE.")
     }
 
-    /// Called when a `CTRL_SHUTDOWN` signal is received (on Windows), e.g., when the system is 
+    /// Called when a `CTRL_SHUTDOWN` signal is received (on Windows), e.g., when the system is
     /// shutting down.
     #[cfg(windows)]
     async fn on_ctrl_shutdown(&mut self) {

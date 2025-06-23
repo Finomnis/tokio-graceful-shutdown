@@ -15,12 +15,12 @@
 
 use std::sync::{Arc, Mutex};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 use tokio_graceful_shutdown::{
-    errors::SubsystemError, ErrTypeTraits, ShutdownHooks, SubsystemBuilder, SubsystemHandle,
-    Toplevel,
+    ErrTypeTraits, ShutdownHooks, SubsystemBuilder, SubsystemHandle, Toplevel,
+    errors::SubsystemError,
 };
 
 #[derive(Clone)]
