@@ -1,6 +1,6 @@
+use crate::{default_on_subsystem_cancelled, ErrTypeTraits, ErrorAction, SubsystemHandle};
+use std::sync::Arc;
 use std::{borrow::Cow, future::Future, marker::PhantomData};
-
-use crate::{ErrTypeTraits, ErrorAction, SubsystemHandle};
 
 /// Configures a subsystem before it gets spawned through
 /// [`SubsystemHandle::start`].
@@ -16,6 +16,7 @@ where
     pub(crate) failure_action: ErrorAction,
     pub(crate) panic_action: ErrorAction,
     pub(crate) detached: bool,
+    pub(crate) on_subsystem_cancelled: Box<dyn FnOnce(Arc<str>) + Send>,
     #[allow(clippy::type_complexity)]
     _phantom: PhantomData<fn() -> (Fut, ErrType, Err)>,
 }
@@ -42,6 +43,7 @@ where
             failure_action: ErrorAction::Forward,
             panic_action: ErrorAction::Forward,
             detached: false,
+            on_subsystem_cancelled: Box::new(default_on_subsystem_cancelled),
             _phantom: Default::default(),
         }
     }
@@ -76,6 +78,20 @@ where
     /// react to the shutdown request. So use this option with care.
     pub fn detached(mut self) -> Self {
         self.detached = true;
+        self
+    }
+
+    /// Sets a custom hook to be called when the subsystem is cancelled.
+    ///
+    /// The default behavior is to log a `WARN` message. 
+    /// 
+    /// This hook allows you to customize this, for example to suppress the warning for subsystems
+    /// that are expected to be cancelled, or to perform a different action.
+    pub fn on_subsystem_cancelled<F>(mut self, hook: F) -> Self
+    where
+        F: FnOnce(Arc<str>) + Send + 'static,
+    {
+        self.on_subsystem_cancelled = Box::new(hook);
         self
     }
 }

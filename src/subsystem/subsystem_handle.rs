@@ -94,19 +94,22 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
                 on_panic: Atomic::new(builder.panic_action),
             },
             builder.detached,
+            builder.on_subsystem_cancelled,
         )
     }
 
     #[track_caller]
-    pub(crate) fn start_with_abs_name<Err, Fut, Subsys>(
+    pub(crate) fn start_with_abs_name<Err, Fut, Subsys, OnSubsysCancelled>(
         &self,
         name: Arc<str>,
         subsystem: Subsys,
         error_actions: ErrorActions,
         detached: bool,
+        on_subsystem_cancelled: OnSubsysCancelled,
     ) -> NestedSubsystem<ErrType>
     where
         Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
+        OnSubsysCancelled: FnOnce(Arc<str>) + Send + 'static,
         Fut: 'static + Future<Output = Result<(), Err>> + Send,
         Err: Into<ErrType>,
     {
@@ -155,7 +158,13 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
             drop_redirect: None,
         };
 
-        let runner = SubsystemRunner::new(name, subsystem, child_handle, alive_guard.clone());
+        let runner = SubsystemRunner::new(
+            name,
+            subsystem,
+            child_handle,
+            alive_guard.clone(),
+            on_subsystem_cancelled,
+        );
         let abort_handle = runner.abort_handle();
 
         // Shenanigans to juggle child ownership

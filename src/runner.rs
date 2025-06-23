@@ -22,18 +22,26 @@ pub(crate) struct SubsystemRunner {
 
 impl SubsystemRunner {
     #[track_caller]
-    pub(crate) fn new<Fut, Subsys, ErrType: ErrTypeTraits, Err>(
+    pub(crate) fn new<Fut, Subsys, OnSubsysCancelled, ErrType: ErrTypeTraits, Err>(
         name: Arc<str>,
         subsystem: Subsys,
         subsystem_handle: SubsystemHandle<ErrType>,
         guard: AliveGuard,
+        on_subsystem_cancelled: OnSubsysCancelled,
     ) -> Self
     where
         Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
+        OnSubsysCancelled: FnOnce(Arc<str>) + Send + 'static,
         Fut: 'static + Future<Output = Result<(), Err>> + Send,
         Err: Into<ErrType>,
     {
-        let future = run_subsystem(name, subsystem, subsystem_handle, guard);
+        let future = run_subsystem(
+            name,
+            subsystem,
+            subsystem_handle,
+            guard,
+            on_subsystem_cancelled,
+        );
         let aborthandle = crate::tokio_task::spawn(future, "subsystem_runner").abort_handle();
         SubsystemRunner { aborthandle }
     }
@@ -50,14 +58,16 @@ impl Drop for SubsystemRunner {
 }
 
 #[track_caller]
-fn run_subsystem<Fut, Subsys, ErrType: ErrTypeTraits, Err>(
+fn run_subsystem<Fut, Subsys, OnSubsysCancelled, ErrType: ErrTypeTraits, Err>(
     name: Arc<str>,
     subsystem: Subsys,
     mut subsystem_handle: SubsystemHandle<ErrType>,
     guard: AliveGuard,
+    on_subsystem_cancelled: OnSubsysCancelled,
 ) -> impl Future<Output = ()> + 'static
 where
     Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
+    OnSubsysCancelled: FnOnce(Arc<str>) + Send + 'static,
     Fut: 'static + Future<Output = Result<(), Err>> + Send,
     Err: Into<ErrType>,
 {
@@ -72,7 +82,7 @@ where
         let name = Arc::clone(&name);
         move || {
             if !abort_handle.is_finished() {
-                tracing::warn!("Subsystem cancelled: '{}'", name);
+                on_subsystem_cancelled(name)
             }
             abort_handle.abort();
         }

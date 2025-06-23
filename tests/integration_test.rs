@@ -2,10 +2,7 @@ use anyhow::anyhow;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::time::{Duration, sleep, timeout};
-use tokio_graceful_shutdown::{
-    ErrorAction, IntoSubsystem, SubsystemBuilder, SubsystemHandle, Toplevel,
-    errors::{GracefulShutdownError, SubsystemError, SubsystemJoinError},
-};
+use tokio_graceful_shutdown::{ErrorAction, IntoSubsystem, SubsystemBuilder, SubsystemHandle, Toplevel, errors::{GracefulShutdownError, SubsystemError, SubsystemJoinError}, default_on_subsystem_cancelled, default_on_subsystem_error};
 use tracing_test::traced_test;
 
 pub mod common;
@@ -1053,12 +1050,13 @@ async fn toplevel_error_hook_is_called_immediately_on_error() {
         BoxedResult::Ok(())
     };
 
-    let toplevel = Toplevel::new_with_hook(
+    let toplevel = Toplevel::new_with_hooks(
         async move |s| {
             s.start(SubsystemBuilder::new("failing", failing_subsystem));
             s.start(SubsystemBuilder::new("slow", slow_shutdown_subsystem));
         },
         on_error_hook,
+        default_on_subsystem_cancelled,
     );
 
     let handle = toplevel.handle_shutdown_requests(Duration::from_millis(500));
@@ -1093,11 +1091,12 @@ async fn toplevel_error_hook_is_called_on_panic() {
         panic!("I panicked!");
     };
 
-    let toplevel = Toplevel::new_with_hook(
+    let toplevel = Toplevel::new_with_hooks(
         async move |s| {
             s.start::<anyhow::Error, _, _>(SubsystemBuilder::new("panicking", panicking_subsystem));
         },
         on_error_hook,
+        default_on_subsystem_cancelled,
     );
 
     let result = toplevel
@@ -1126,13 +1125,14 @@ async fn toplevel_error_hook_not_called_on_graceful_shutdown() {
         BoxedResult::Ok(())
     };
 
-    let toplevel = Toplevel::new_with_hook(
+    let toplevel = Toplevel::new_with_hooks(
         async move |s| {
             s.start(SubsystemBuilder::new("normal", normal_subsystem));
             sleep(Duration::from_millis(50)).await;
             s.request_shutdown();
         },
         on_error_hook,
+        default_on_subsystem_cancelled,
     );
 
     let result = toplevel
@@ -1142,5 +1142,44 @@ async fn toplevel_error_hook_not_called_on_graceful_shutdown() {
     assert!(
         !hook_called.load(Ordering::SeqCst),
         "Hook should not be called on a graceful shutdown"
+    );
+}
+
+#[tokio::test(start_paused = true)]
+#[traced_test]
+async fn toplevel_root_cancellation_hook_is_called_on_drop() {
+    let hook_called = Arc::new(AtomicBool::new(false));
+
+    let hook_called_clone = hook_called.clone();
+    let on_subsystem_cancelled = move |_name: Arc<str>| {
+        tracing::info!("on_subsystem_cancelled called for {}", _name);
+        hook_called_clone.store(true, Ordering::SeqCst);
+    };
+    let endless_subsystem = async |_subsys: SubsystemHandle| {
+        sleep(Duration::from_secs(10)).await;
+        BoxedResult::Ok(())
+    };
+
+    let toplevel = Toplevel::new_with_hooks(
+        async move |s| {
+            s.start(SubsystemBuilder::new("Endless", endless_subsystem));
+            s.on_shutdown_requested().await
+        },
+        default_on_subsystem_error,
+        on_subsystem_cancelled,
+    );
+
+    assert!(
+        !hook_called.load(Ordering::SeqCst),
+        "Hook should not be called yet"
+    );
+
+    tracing::info!("Toplevel will be dropped now...");
+    drop(toplevel);
+
+    sleep(Duration::from_millis(100)).await;
+    assert!(
+        hook_called.load(Ordering::SeqCst),
+        "Custom root cancellation hook should have been called"
     );
 }

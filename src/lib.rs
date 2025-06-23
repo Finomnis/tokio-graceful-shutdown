@@ -129,3 +129,29 @@ pub use subsystem::SubsystemBuilder;
 pub use subsystem::SubsystemFinishedFuture;
 pub use subsystem::SubsystemHandle;
 pub use toplevel::Toplevel;
+
+use crate::errors::SubsystemError;
+use std::sync::Arc;
+
+/// The default error hook used by [`Toplevel::new`].
+///
+/// Logs uncaught subsystem errors and panics to `tracing::error!`.
+pub fn default_on_subsystem_error<ErrType: ErrTypeTraits>(
+    e: &SubsystemError<ErrType>,
+) {
+    match e {
+        SubsystemError::Panicked(name) => {
+            tracing::error!("Uncaught panic from subsystem '{name}'.")
+        }
+        SubsystemError::Failed(name, e) => {
+            tracing::error!("Uncaught error from subsystem '{name}': {e}")
+        }
+    }
+}
+
+/// The default cancellation hook used by [`Toplevel::new`].
+///
+/// Logs a warning with `tracing::warn!` when a subsystem is cancelled.
+pub fn default_on_subsystem_cancelled(name: Arc<str>) {
+    tracing::warn!("Subsystem cancelled: '{name}'");
+}

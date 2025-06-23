@@ -5,7 +5,8 @@ use tokio_util::sync::CancellationToken;
 
 use crate::{
     BoxedError, DefaultShutdownHooks, DefaultSignalHooks, ErrTypeTraits, ErrorAction,
-    NestedSubsystem, ShutdownHooks, SignalHooks, SubsystemHandle,
+    NestedSubsystem, ShutdownHooks, SignalHooks, SubsystemHandle, default_on_subsystem_cancelled,
+    default_on_subsystem_error,
     errors::{GracefulShutdownError, SubsystemError, handle_dropped_error},
     signal_handling::wait_for_signal,
     subsystem::{self, ErrorActions},
@@ -52,11 +53,12 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     ///
     /// The Toplevel object is the base for everything else in this crate.
     ///
-    /// When an uncaught error or panic reaches the top level, this constructor will
-    /// log the event using `tracing::error!`.
+    /// This constructor uses the default hooks for error logging and cancellation warnings. It
+    /// logs uncaught errors using `tracing::error!` and root subsystem cancellations using
+    /// `tracing::warn!`.
     ///
     /// For more advanced error handling, like sending alerts to a monitoring service, see
-    /// [`Self::new_with_hook`].
+    /// [`Self::new_with_hooks`].
     ///
     /// # Arguments
     ///
@@ -69,25 +71,24 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
         Fut: 'static + Future<Output = ()> + Send,
     {
-        Self::new_with_hook(subsystem, |e| match &e {
-            SubsystemError::Panicked(name) => {
-                tracing::error!("Uncaught panic from subsystem '{name}'.")
-            }
-            SubsystemError::Failed(name, e) => {
-                tracing::error!("Uncaught error from subsystem '{name}': {e}")
-            }
-        })
+        Self::new_with_hooks(
+            subsystem,
+            default_on_subsystem_error,
+            default_on_subsystem_cancelled,
+        )
     }
 
-    /// Creates a new Toplevel object with a custom error handling hook.
+    /// Creates a new Toplevel object with custom hooks for handling fatal errors and root
+    /// cancellation.
     ///
-    /// This is an advanced version of [`Self::new`]. It allows providing a custom callback that is
-    /// executed immediately when an uncaught error or panic bubbles up to the top level of the
-    /// subsystem tree. This is useful for tasks like sending an alert to a monitoring service
-    /// without waiting for the full shutdown procedure to complete.
+    /// This is an advanced version of [`Self::new`]. It allows providing custom callbacks for two
+    /// key events:
+    /// 
+    /// 1.  An uncaught error/panic bubbling up to the top level. This is useful for immediate alerting.
+    /// 2.  The cancellation of the root subsystem itself.
     ///
-    /// After the hook is executed, a global shutdown is initiated. The error is then collected
-    /// and will be part of the final `Result` returned by [`Self::handle_shutdown_requests`].
+    /// After the error handling hook is executed, a global shutdown is initiated. The error is then
+    /// collected and will be part of the final `Result` returned by [`Self::handle_shutdown_requests`].
     ///
     /// # Arguments
     ///
@@ -97,15 +98,19 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     ///                          to the [`SubsystemError`] that caused the shutdown.
     ///                          This hook is executed immediately when an uncaught error
     ///                          reaches the top level.
+    /// * `on_subsystem_cancelled` - A closure or function that will be called if the root subsystem
+    ///                              itself is cancelled.
     #[track_caller]
-    pub fn new_with_hook<Fut, Subsys, OnSubsysErr>(
+    pub fn new_with_hooks<Fut, Subsys, OnSubsysErr, OnSubsysCancelled>(
         subsystem: Subsys,
         on_subsystem_error: OnSubsysErr,
+        on_subsystem_cancelled: OnSubsysCancelled,
     ) -> Self
     where
         Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
         Fut: 'static + Future<Output = ()> + Send,
         OnSubsysErr: Fn(&SubsystemError<ErrType>) + Send + Sync + 'static,
+        OnSubsysCancelled: FnOnce(Arc<str>) + Send + 'static,
     {
         let (error_sender, errors) = mpsc::unbounded_channel();
 
@@ -125,6 +130,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
                 on_panic: Atomic::new(ErrorAction::Forward),
             },
             false,
+            on_subsystem_cancelled,
         );
 
         Self {
@@ -148,8 +154,8 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// - On Unix:
     ///     - `SIGINT`
     ///     - `SIGTERM`
-    /// 
-    /// This method uses default hooks that log the received signal. For more control, see 
+    ///
+    /// This method uses default hooks that log the received signal. For more control, see
     /// [`Self::catch_signals_with_hooks`].
     ///
     /// # Caveats
@@ -166,14 +172,14 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     ///
     /// This is an advanced version of [`Self::catch_signals`]. It allows you to provide a custom
     /// implementation of the [`SignalHooks`] trait to execute code when a specific OS signal is
-    /// received. This is useful for applications that need to react differently to `SIGINT` 
+    /// received. This is useful for applications that need to react differently to `SIGINT`
     /// (Ctrl+C) versus `SIGTERM`.
     ///
     /// See [`Self::catch_signals`] for a list of handled signals and other caveats.
     ///
     /// # Arguments
     ///
-    /// * `hooks` - An object that implements the [`SignalHooks`] trait.    
+    /// * `hooks` - An object that implements the [`SignalHooks`] trait.
     #[track_caller]
     pub fn catch_signals_with_hooks(self, hooks: impl SignalHooks) -> Self {
         let shutdown_token = self.root_handle.get_cancellation_token().clone();
