@@ -1,15 +1,10 @@
-use std::{future::Future, sync::Arc, time::Duration};
-
+use async_trait::async_trait;
 use atomic::Atomic;
+use std::{future::Future, sync::Arc, time::Duration};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
-use crate::{
-    BoxedError, ErrTypeTraits, ErrorAction, NestedSubsystem, SubsystemHandle,
-    errors::{GracefulShutdownError, SubsystemError, handle_dropped_error},
-    signal_handling::wait_for_signal,
-    subsystem::{self, ErrorActions},
-};
+use crate::{BoxedError, ErrTypeTraits, ErrorAction, NestedSubsystem, SubsystemHandle, errors::{GracefulShutdownError, SubsystemError, handle_dropped_error}, signal_handling::wait_for_signal, subsystem::{self, ErrorActions}, DefaultShutdownHooks, ShutdownHooks};
 
 /// Acts as the root of the subsystem tree and forms the entry point for
 /// any interaction with this crate.
@@ -134,6 +129,63 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         self
     }
 
+    pub async fn handle_shutdown_requests_with_hooks(
+        mut self,
+        shutdown_timeout: Duration,
+        mut hooks: impl ShutdownHooks,
+    ) -> Result<(), GracefulShutdownError<ErrType>> {
+        let collect_errors = move || {
+            let mut errors = vec![];
+            self.errors.close();
+            while let Ok(e) = self.errors.try_recv() {
+                errors.push(e);
+            }
+            drop(self.errors);
+            errors.into_boxed_slice()
+        };
+
+        tokio::select!(
+            _ = self.toplevel_subsys.join() => {
+                hooks.on_subsystems_finished().await;
+
+                // Not really necessary, but for good measure.
+                self.root_handle.request_shutdown();
+
+                let errors = collect_errors();
+                let result = if errors.is_empty() {
+                    Ok(())
+                } else {
+                    Err(GracefulShutdownError::SubsystemsFailed(errors))
+                };
+                return result;
+            },
+            _ = self.root_handle.on_shutdown_requested() => {
+                hooks.on_shutdown_requested().await;
+            }
+        );
+
+        match tokio::time::timeout(shutdown_timeout, self.toplevel_subsys.join()).await {
+            Ok(result) => {
+                // An `Err` here would indicate a programming error,
+                // because the toplevel subsys doesn't catch any errors;
+                // it only forwards them.
+                assert!(result.is_ok());
+
+                let errors = collect_errors();
+                hooks.on_shutdown_finished(&errors).await;
+                if errors.is_empty() {
+                    Ok(())
+                } else {
+                    Err(GracefulShutdownError::SubsystemsFailed(errors))
+                }
+            }
+            Err(_) => {
+                hooks.on_shutdown_timeout().await;
+                Err(GracefulShutdownError::ShutdownTimeout(collect_errors()))
+            }
+        }
+    }
+
     /// Performs a clean program shutdown, once a shutdown is requested or all subsystems have
     /// finished.
     ///
@@ -155,60 +207,11 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// An error of type [`GracefulShutdownError`] if an error occurred.
     ///
     pub async fn handle_shutdown_requests(
-        mut self,
+        self,
         shutdown_timeout: Duration,
     ) -> Result<(), GracefulShutdownError<ErrType>> {
-        let collect_errors = move || {
-            let mut errors = vec![];
-            self.errors.close();
-            while let Ok(e) = self.errors.try_recv() {
-                errors.push(e);
-            }
-            drop(self.errors);
-            errors.into_boxed_slice()
-        };
-
-        tokio::select!(
-            _ = self.toplevel_subsys.join() => {
-                tracing::info!("All subsystems finished.");
-
-                // Not really necessary, but for good measure.
-                self.root_handle.request_shutdown();
-
-                let errors = collect_errors();
-                let result = if errors.is_empty() {
-                    Ok(())
-                } else {
-                    Err(GracefulShutdownError::SubsystemsFailed(errors))
-                };
-                return result;
-            },
-            _ = self.root_handle.on_shutdown_requested() => {
-                tracing::info!("Shutting down ...");
-            }
-        );
-
-        match tokio::time::timeout(shutdown_timeout, self.toplevel_subsys.join()).await {
-            Ok(result) => {
-                // An `Err` here would indicate a programming error,
-                // because the toplevel subsys doesn't catch any errors;
-                // it only forwards them.
-                assert!(result.is_ok());
-
-                let errors = collect_errors();
-                if errors.is_empty() {
-                    tracing::info!("Shutdown finished.");
-                    Ok(())
-                } else {
-                    tracing::warn!("Shutdown finished with errors.");
-                    Err(GracefulShutdownError::SubsystemsFailed(errors))
-                }
-            }
-            Err(_) => {
-                tracing::error!("Shutdown timed out!");
-                Err(GracefulShutdownError::ShutdownTimeout(collect_errors()))
-            }
-        }
+        self.handle_shutdown_requests_with_hooks(shutdown_timeout, DefaultShutdownHooks)
+            .await
     }
 
     #[doc(hidden)]
