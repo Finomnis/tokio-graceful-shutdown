@@ -125,3 +125,22 @@ pub use subsystem::SubsystemBuilder;
 pub use subsystem::SubsystemFinishedFuture;
 pub use subsystem::SubsystemHandle;
 pub use toplevel::Toplevel;
+
+/// A set of log events that could happen in this crate.
+pub trait LogHandler<ErrType: ErrTypeTraits>: Send + Sync + 'static {
+    /// A subsystem threw an error that was not caught by any of its parents, causing a system shutdown.
+    fn uncaught_panic(&self, subsys_name: &str);
+    /// A subsystem returned an error that was not caught by any of its parents, causing a system shutdown.
+    fn uncaught_error(&self, subsys_name: &str, err: &crate::errors::SubsystemFailure<ErrType>);
+}
+
+struct DefaultLogger;
+impl<ErrType: ErrTypeTraits> LogHandler<ErrType> for DefaultLogger {
+    fn uncaught_panic(&self, subsys_name: &str) {
+        tracing::error!("Uncaught panic from subsystem '{subsys_name}'.");
+    }
+
+    fn uncaught_error(&self, subsys_name: &str, err: &crate::errors::SubsystemFailure<ErrType>) {
+        tracing::error!("Uncaught error from subsystem '{subsys_name}': {err}",)
+    }
+}

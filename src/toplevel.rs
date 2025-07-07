@@ -5,7 +5,7 @@ use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    BoxedError, ErrTypeTraits, ErrorAction, NestedSubsystem, SubsystemHandle,
+    BoxedError, ErrTypeTraits, ErrorAction, LogHandler, NestedSubsystem, SubsystemHandle,
     errors::{GracefulShutdownError, SubsystemError, handle_dropped_error},
     signal_handling::wait_for_signal,
     subsystem::{self, ErrorActions},
@@ -63,15 +63,35 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
         Fut: 'static + Future<Output = ()> + Send,
     {
+        Self::with_custom_log_handler(crate::DefaultLogger, subsystem)
+    }
+
+    /// Creates a new Toplevel object with a custom logger.
+    ///
+    /// See [`Toplevel::new`] for more details.
+    ///
+    /// # Arguments
+    ///
+    /// * `log_handler` - A custon logging object that replaces the default logging behavior of this crate.
+    #[track_caller]
+    pub fn with_custom_log_handler<Fut, Subsys>(
+        log_handler: impl LogHandler<ErrType>,
+        subsystem: Subsys,
+    ) -> Self
+    where
+        Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
+        Fut: 'static + Future<Output = ()> + Send,
+    {
+        let log_handler = Arc::new(log_handler) as Arc<dyn LogHandler<ErrType>>;
         let (error_sender, errors) = mpsc::unbounded_channel();
 
         let root_handle = subsystem::root_handle(move |e| {
             match &e {
                 SubsystemError::Panicked(name) => {
-                    tracing::error!("Uncaught panic from subsystem '{name}'.")
+                    log_handler.uncaught_panic(name);
                 }
                 SubsystemError::Failed(name, e) => {
-                    tracing::error!("Uncaught error from subsystem '{name}': {e}",)
+                    log_handler.uncaught_error(name, e);
                 }
             };
 
