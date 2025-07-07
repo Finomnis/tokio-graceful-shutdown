@@ -33,7 +33,7 @@ where
     /// # Arguments
     ///
     /// * `name` - The name of the subsystem. Primarily to identify the
-    ///            subsystem in error messages.
+    ///   subsystem in error messages.
     /// * `subsystem` - The subsystem function that the subsystem will execute.
     pub fn new(name: impl Into<Cow<'a, str>>, subsystem: Subsys) -> Self {
         Self {

@@ -55,7 +55,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// # Arguments
     ///
     /// * `subsystem` - The subsystem that should be spawned as the root node.
-    ///                 Usually the job of this subsystem is to spawn further subsystems.
+    ///   Usually the job of this subsystem is to spawn further subsystems.
     #[allow(clippy::new_without_default)]
     #[track_caller]
     pub fn new<Fut, Subsys>(subsystem: Subsys) -> Self
