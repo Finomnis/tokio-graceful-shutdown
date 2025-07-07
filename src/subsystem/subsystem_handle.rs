@@ -47,7 +47,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     /// # Arguments
     ///
     /// * `builder` - The [`SubsystemBuilder`] that contains all the information
-    ///               about the subsystem that should be spawned.
+    ///   about the subsystem that should be spawned.
     ///
     /// # Returns
     ///
