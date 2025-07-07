@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-#[cfg(windows)]
 use crate::ErrTypeTraits;
 use crate::LogHandler;
 
