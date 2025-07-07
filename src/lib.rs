@@ -132,8 +132,19 @@ pub trait LogHandler<ErrType: ErrTypeTraits>: Send + Sync + 'static {
     fn uncaught_panic(&self, subsys_name: &str);
     /// A subsystem returned an error that was not caught by any of its parents, causing a system shutdown.
     fn uncaught_error(&self, subsys_name: &str, err: &crate::errors::SubsystemFailure<ErrType>);
+    /// All user running code managed by this crate has ended.
+    fn all_subsystems_finished(&self);
+    /// The entire subsystem tree has begun shutting down.
+    fn shutting_down(&self);
+    /// The shutdown finished.
+    fn shutdown_finished(&self, errors: &[crate::errors::SubsystemError<ErrType>]);
+    /// The shutdown timed out.
+    fn shutdown_timed_out(&self, errors: &[crate::errors::SubsystemError<ErrType>]);
+    /// We received a relevant OS signal.
+    fn signal_received(&self, signal: &str);
 }
 
+// Implemented in this file to have tracing show the source of the logs as the toplevel of this crate.
 struct DefaultLogger;
 impl<ErrType: ErrTypeTraits> LogHandler<ErrType> for DefaultLogger {
     fn uncaught_panic(&self, subsys_name: &str) {
@@ -142,5 +153,29 @@ impl<ErrType: ErrTypeTraits> LogHandler<ErrType> for DefaultLogger {
 
     fn uncaught_error(&self, subsys_name: &str, err: &crate::errors::SubsystemFailure<ErrType>) {
         tracing::error!("Uncaught error from subsystem '{subsys_name}': {err}",)
+    }
+
+    fn all_subsystems_finished(&self) {
+        tracing::info!("All subsystems finished.");
+    }
+
+    fn shutting_down(&self) {
+        tracing::info!("Shutting down ...");
+    }
+
+    fn shutdown_finished(&self, errors: &[crate::errors::SubsystemError<ErrType>]) {
+        if errors.is_empty() {
+            tracing::info!("Shutdown finished.");
+        } else {
+            tracing::warn!("Shutdown finished with errors.");
+        }
+    }
+
+    fn shutdown_timed_out(&self, _errors: &[crate::errors::SubsystemError<ErrType>]) {
+        tracing::error!("Shutdown timed out!");
+    }
+
+    fn signal_received(&self, signal: &str) {
+        tracing::debug!("Received {signal}.")
     }
 }

@@ -1,6 +1,12 @@
+use std::sync::Arc;
+
+#[cfg(windows)]
+use crate::ErrTypeTraits;
+use crate::LogHandler;
+
 /// Waits for a signal that requests a graceful shutdown, like SIGTERM or SIGINT.
 #[cfg(unix)]
-async fn wait_for_signal_impl() {
+async fn wait_for_signal_impl<E: ErrTypeTraits>(log: Arc<dyn LogHandler<E>>) {
     use tokio::signal::unix::{SignalKind, signal};
 
     // Infos here:
@@ -9,14 +15,14 @@ async fn wait_for_signal_impl() {
     let mut signal_interrupt = signal(SignalKind::interrupt()).unwrap();
 
     tokio::select! {
-        _ = signal_terminate.recv() => tracing::debug!("Received SIGTERM."),
-        _ = signal_interrupt.recv() => tracing::debug!("Received SIGINT."),
+        _ = signal_terminate.recv() => log.signal_received("SIGTERM"),
+        _ = signal_interrupt.recv() => log.signal_received("SIGINT"),
     };
 }
 
 /// Waits for a signal that requests a graceful shutdown, Ctrl-C (SIGINT).
 #[cfg(windows)]
-async fn wait_for_signal_impl() {
+async fn wait_for_signal_impl<E: ErrTypeTraits>(log: Arc<dyn LogHandler<E>>) {
     use tokio::signal::windows;
 
     // Infos here:
@@ -27,15 +33,15 @@ async fn wait_for_signal_impl() {
     let mut signal_shutdown = windows::ctrl_shutdown().unwrap();
 
     tokio::select! {
-        _ = signal_c.recv() => tracing::debug!("Received CTRL_C."),
-        _ = signal_break.recv() => tracing::debug!("Received CTRL_BREAK."),
-        _ = signal_close.recv() => tracing::debug!("Received CTRL_CLOSE."),
-        _ = signal_shutdown.recv() => tracing::debug!("Received CTRL_SHUTDOWN."),
+        _ = signal_c.recv() => log.signal_received("CTRL_C"),
+        _ = signal_break.recv() => log.signal_received("CTRL_BREAK"),
+        _ = signal_close.recv() => log.signal_received("CTRL_CLOSE"),
+        _ = signal_shutdown.recv() => log.signal_received("CTRL_SHUTDOWN"),
     };
 }
 
 /// Registers signal handlers and waits for a signal that
 /// indicates a shutdown request.
-pub(crate) async fn wait_for_signal() {
-    wait_for_signal_impl().await
+pub(crate) async fn wait_for_signal<E: ErrTypeTraits>(log: Arc<dyn LogHandler<E>>) {
+    wait_for_signal_impl(log).await
 }
