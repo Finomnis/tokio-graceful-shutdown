@@ -5,7 +5,7 @@ use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    BoxedError, ErrTypeTraits, ErrorAction, NestedSubsystem, SubsystemHandle,
+    BoxedError, ErrTypeTraits, ErrorAction, LogHandler, NestedSubsystem, SubsystemHandle,
     errors::{GracefulShutdownError, SubsystemError, handle_dropped_error},
     signal_handling::wait_for_signal,
     subsystem::{self, ErrorActions},
@@ -45,6 +45,7 @@ pub struct Toplevel<ErrType: ErrTypeTraits = BoxedError> {
     root_handle: SubsystemHandle<ErrType>,
     toplevel_subsys: NestedSubsystem<ErrType>,
     errors: mpsc::UnboundedReceiver<SubsystemError<ErrType>>,
+    log_handler: Arc<dyn LogHandler<ErrType>>,
 }
 
 impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
@@ -63,19 +64,42 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
         Fut: 'static + Future<Output = ()> + Send,
     {
+        Self::with_custom_log_handler(crate::DefaultLogger, subsystem)
+    }
+
+    /// Creates a new Toplevel object with a custom logger.
+    ///
+    /// See [`Toplevel::new`] for more details.
+    ///
+    /// # Arguments
+    ///
+    /// * `log_handler` - A custon logging object that replaces the default logging behavior of this crate.
+    #[track_caller]
+    pub fn with_custom_log_handler<Fut, Subsys>(
+        log_handler: impl LogHandler<ErrType>,
+        subsystem: Subsys,
+    ) -> Self
+    where
+        Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
+        Fut: 'static + Future<Output = ()> + Send,
+    {
+        let log_handler = Arc::new(log_handler) as Arc<dyn LogHandler<ErrType>>;
         let (error_sender, errors) = mpsc::unbounded_channel();
 
-        let root_handle = subsystem::root_handle(move |e| {
-            match &e {
-                SubsystemError::Panicked(name) => {
-                    tracing::error!("Uncaught panic from subsystem '{name}'.")
-                }
-                SubsystemError::Failed(name, e) => {
-                    tracing::error!("Uncaught error from subsystem '{name}': {e}",)
-                }
-            };
+        let root_handle = subsystem::root_handle({
+            let log_handler = Arc::clone(&log_handler);
+            move |e| {
+                match &e {
+                    SubsystemError::Panicked(name) => {
+                        log_handler.uncaught_panic(name);
+                    }
+                    SubsystemError::Failed(name, e) => {
+                        log_handler.uncaught_error(name, e);
+                    }
+                };
 
-            handle_dropped_error(error_sender.send(e));
+                handle_dropped_error(error_sender.send(e));
+            }
         });
 
         let toplevel_subsys = root_handle.start_with_abs_name(
@@ -95,6 +119,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
             root_handle,
             toplevel_subsys,
             errors,
+            log_handler,
         }
     }
 
@@ -122,10 +147,11 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     #[track_caller]
     pub fn catch_signals(self) -> Self {
         let shutdown_token = self.root_handle.get_cancellation_token().clone();
+        let log_handler = Arc::clone(&self.log_handler);
 
         crate::tokio_task::spawn(
             async move {
-                wait_for_signal().await;
+                wait_for_signal(log_handler).await;
                 shutdown_token.cancel();
             },
             "catch_signals",
@@ -170,7 +196,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
 
         tokio::select!(
             _ = self.toplevel_subsys.join() => {
-                tracing::info!("All subsystems finished.");
+                self.log_handler.all_subsystems_finished();
 
                 // Not really necessary, but for good measure.
                 self.root_handle.request_shutdown();
@@ -184,7 +210,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
                 return result;
             },
             _ = self.root_handle.on_shutdown_requested() => {
-                tracing::info!("Shutting down ...");
+                self.log_handler.shutting_down();
             }
         );
 
@@ -197,16 +223,17 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
 
                 let errors = collect_errors();
                 if errors.is_empty() {
-                    tracing::info!("Shutdown finished.");
+                    self.log_handler.shutdown_finished(&[]);
                     Ok(())
                 } else {
-                    tracing::warn!("Shutdown finished with errors.");
+                    self.log_handler.shutdown_finished(&errors);
                     Err(GracefulShutdownError::SubsystemsFailed(errors))
                 }
             }
             Err(_) => {
-                tracing::error!("Shutdown timed out!");
-                Err(GracefulShutdownError::ShutdownTimeout(collect_errors()))
+                let errors = collect_errors();
+                self.log_handler.shutdown_timed_out(&errors);
+                Err(GracefulShutdownError::ShutdownTimeout(errors))
             }
         }
     }
