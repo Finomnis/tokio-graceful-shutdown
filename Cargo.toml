@@ -87,6 +87,3 @@ opt-level = 1
 # Define `tokio_unstable` config for linter
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tokio_unstable)'] }
-
-[lints.clippy]
-uninlined_format_args = "allow"
