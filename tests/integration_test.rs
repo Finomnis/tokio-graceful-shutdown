@@ -788,7 +788,7 @@ async fn subsystem_errors_get_propagated_to_user() {
         let el = iter.next().unwrap();
         if let SubsystemError::Failed(name, e) = &el {
             assert_eq!("/subsys/nested2", name.as_ref());
-            assert_eq!("MyGreatError", format!("{}", e));
+            assert_eq!("MyGreatError", format!("{e}"));
         } else {
             panic!("Incorrect error type!");
         }
@@ -848,7 +848,7 @@ async fn subsystem_errors_get_propagated_to_user_when_timeout() {
         let el = iter.next().unwrap();
         if let SubsystemError::Failed(name, e) = &el {
             assert_eq!("/subsys/nested2", name.as_ref());
-            assert_eq!("MyGreatError", format!("{}", e));
+            assert_eq!("MyGreatError", format!("{e}"));
         } else {
             panic!("Incorrect error type!");
         }

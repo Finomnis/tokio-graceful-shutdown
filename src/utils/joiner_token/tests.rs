@@ -291,38 +291,38 @@ async fn recursive_finished() {
 #[test]
 fn debug_print() {
     let (root, _) = JoinerToken::<BoxedError>::new(|_| None);
-    assert_eq!(format!("{:?}", root), "JoinerToken(children = 0)");
+    assert_eq!(format!("{root:?}"), "JoinerToken(children = 0)");
 
     let (child1, _) = root.child_token(|_| None);
-    assert_eq!(format!("{:?}", root), "JoinerToken(children = 1)");
+    assert_eq!(format!("{root:?}"), "JoinerToken(children = 1)");
 
     let (_child2, _) = child1.child_token(|_| None);
-    assert_eq!(format!("{:?}", root), "JoinerToken(children = 2)");
+    assert_eq!(format!("{root:?}"), "JoinerToken(children = 2)");
 }
 
 #[test]
 fn debug_print_ref() {
     let (root, root_ref) = JoinerToken::<BoxedError>::new(|_| None);
     assert_eq!(
-        format!("{:?}", root_ref),
+        format!("{root_ref:?}"),
         "JoinerTokenRef(alive = true, children = 0)"
     );
 
     let (child1, _) = root.child_token(|_| None);
     assert_eq!(
-        format!("{:?}", root_ref),
+        format!("{root_ref:?}"),
         "JoinerTokenRef(alive = true, children = 1)"
     );
 
     drop(root);
     assert_eq!(
-        format!("{:?}", root_ref),
+        format!("{root_ref:?}"),
         "JoinerTokenRef(alive = false, children = 1)"
     );
 
     drop(child1);
     assert_eq!(
-        format!("{:?}", root_ref),
+        format!("{root_ref:?}"),
         "JoinerTokenRef(alive = false, children = 0)"
     );
 }

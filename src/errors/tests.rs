@@ -4,6 +4,7 @@ use crate::BoxedError;
 
 use super::*;
 
+#[allow(clippy::uninlined_format_args)]
 fn examine_report(error: impl miette::Diagnostic + Sync + Send + 'static) {
     println!("{}", error);
     println!("{:?}", error);
