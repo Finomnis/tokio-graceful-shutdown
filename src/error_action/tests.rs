@@ -8,5 +8,5 @@ fn derives() {
     let b = ErrorAction::CatchAndLocalShutdown;
 
     assert_ne!(a, b.clone());
-    assert_ne!(format!("{:?}", a), format!("{:?}", b));
+    assert_ne!(format!("{a:?}"), format!("{b:?}"));
 }
