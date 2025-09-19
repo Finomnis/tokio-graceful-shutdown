@@ -6,7 +6,7 @@ use super::*;
 #[tokio::test(start_paused = true)]
 #[traced_test]
 async fn recursive_cancellation() {
-    let root_handle = root_handle::<BoxedError>(|_| {});
+    let root_handle = root_handle::<BoxedError>(CancellationToken::new(), |_| {});
 
     let (drop_sender, mut drop_receiver) = tokio::sync::mpsc::channel::<()>(1);
 
@@ -33,7 +33,7 @@ async fn recursive_cancellation() {
 #[tokio::test(start_paused = true)]
 #[traced_test]
 async fn recursive_cancellation_2() {
-    let root_handle = root_handle(|_| {});
+    let root_handle = root_handle(CancellationToken::new(), |_| {});
 
     let (drop_sender, mut drop_receiver) = tokio::sync::mpsc::channel::<()>(1);
 

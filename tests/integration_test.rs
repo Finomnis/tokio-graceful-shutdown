@@ -4,6 +4,7 @@ use tokio_graceful_shutdown::{
     ErrorAction, IntoSubsystem, SubsystemBuilder, SubsystemHandle, Toplevel,
     errors::{GracefulShutdownError, SubsystemError, SubsystemJoinError},
 };
+use tokio_util::sync::CancellationToken;
 use tracing_test::traced_test;
 
 pub mod common;
@@ -100,11 +101,14 @@ async fn subsystem_finishes_with_success() {
 
     let (toplevel_finished, set_toplevel_finished) = Event::create();
 
-    let toplevel = Toplevel::<BoxedError>::new(async move |s| {
-        s.start(SubsystemBuilder::new("subsys", subsystem));
-        s.start(SubsystemBuilder::new("subsys2", subsystem2));
-    });
-    let shutdown_token = toplevel._get_shutdown_token().clone();
+    let shutdown_token = CancellationToken::new();
+    let toplevel = Toplevel::<BoxedError>::new_with_shutdown_token(
+        async move |s| {
+            s.start(SubsystemBuilder::new("subsys", subsystem));
+            s.start(SubsystemBuilder::new("subsys2", subsystem2));
+        },
+        shutdown_token.clone(),
+    );
 
     tokio::join!(
         async {
@@ -138,11 +142,14 @@ async fn subsystem_finishes_with_error() {
 
     let (toplevel_finished, set_toplevel_finished) = Event::create();
 
-    let toplevel = Toplevel::<BoxedError>::new(async move |s| {
-        s.start(SubsystemBuilder::new("subsys", subsystem));
-        s.start(SubsystemBuilder::new("subsys2", subsystem2));
-    });
-    let shutdown_token = toplevel._get_shutdown_token().clone();
+    let shutdown_token = CancellationToken::new();
+    let toplevel = Toplevel::<BoxedError>::new_with_shutdown_token(
+        async move |s| {
+            s.start(SubsystemBuilder::new("subsys", subsystem));
+            s.start(SubsystemBuilder::new("subsys2", subsystem2));
+        },
+        shutdown_token.clone(),
+    );
 
     tokio::join!(
         async {
@@ -173,10 +180,13 @@ async fn subsystem_receives_shutdown() {
         BoxedResult::Ok(())
     };
 
-    let toplevel = Toplevel::<BoxedError>::new(async |s| {
-        s.start(SubsystemBuilder::new("subsys", subsys));
-    });
-    let shutdown_token = toplevel._get_shutdown_token().clone();
+    let shutdown_token = CancellationToken::new();
+    let toplevel = Toplevel::<BoxedError>::new_with_shutdown_token(
+        async |s| {
+            s.start(SubsystemBuilder::new("subsys", subsys));
+        },
+        shutdown_token.clone(),
+    );
     let result = tokio::spawn(toplevel.handle_shutdown_requests(Duration::from_millis(100)));
 
     sleep(Duration::from_millis(100)).await;
@@ -212,10 +222,13 @@ async fn nested_subsystem_receives_shutdown() {
         BoxedResult::Ok(())
     };
 
-    let toplevel = Toplevel::new(async |s| {
-        s.start(SubsystemBuilder::new("subsys", subsystem));
-    });
-    let shutdown_token = toplevel._get_shutdown_token().clone();
+    let shutdown_token = CancellationToken::new();
+    let toplevel = Toplevel::new_with_shutdown_token(
+        async |s| {
+            s.start(SubsystemBuilder::new("subsys", subsystem));
+        },
+        shutdown_token.clone(),
+    );
     let result = tokio::spawn(toplevel.handle_shutdown_requests(Duration::from_millis(100)));
 
     sleep(Duration::from_millis(100)).await;
@@ -247,10 +260,13 @@ async fn nested_subsystem_error_propagates() {
 
     let (toplevel_finished, set_toplevel_finished) = Event::create();
 
-    let toplevel = Toplevel::new(async move |s| {
-        s.start(SubsystemBuilder::new("subsys", subsystem));
-    });
-    let shutdown_token = toplevel._get_shutdown_token().clone();
+    let shutdown_token = CancellationToken::new();
+    let toplevel = Toplevel::new_with_shutdown_token(
+        async move |s| {
+            s.start(SubsystemBuilder::new("subsys", subsystem));
+        },
+        shutdown_token.clone(),
+    );
 
     tokio::join!(
         async {
@@ -285,10 +301,13 @@ async fn panic_gets_handled_correctly() {
 
     let (toplevel_finished, set_toplevel_finished) = Event::create();
 
-    let toplevel = Toplevel::new(async move |s| {
-        s.start(SubsystemBuilder::new("subsys", subsystem));
-    });
-    let shutdown_token = toplevel._get_shutdown_token().clone();
+    let shutdown_token = CancellationToken::new();
+    let toplevel = Toplevel::new_with_shutdown_token(
+        async move |s| {
+            s.start(SubsystemBuilder::new("subsys", subsystem));
+        },
+        shutdown_token.clone(),
+    );
 
     tokio::join!(
         async {
@@ -325,10 +344,13 @@ async fn subsystem_can_request_shutdown() {
 
     let (toplevel_finished, set_toplevel_finished) = Event::create();
 
-    let toplevel = Toplevel::new(async |s| {
-        s.start(SubsystemBuilder::new("subsys", subsystem));
-    });
-    let shutdown_token = toplevel._get_shutdown_token().clone();
+    let shutdown_token = CancellationToken::new();
+    let toplevel = Toplevel::new_with_shutdown_token(
+        async |s| {
+            s.start(SubsystemBuilder::new("subsys", subsystem));
+        },
+        shutdown_token.clone(),
+    );
 
     tokio::join!(
         async {
@@ -371,10 +393,13 @@ async fn shutdown_timeout_causes_cancellation() {
 
     let (toplevel_finished, set_toplevel_finished) = Event::create();
 
-    let toplevel = Toplevel::new(async |s| {
-        s.start(SubsystemBuilder::new("subsys", subsystem));
-    });
-    let shutdown_token = toplevel._get_shutdown_token().clone();
+    let shutdown_token = CancellationToken::new();
+    let toplevel = Toplevel::new_with_shutdown_token(
+        async |s| {
+            s.start(SubsystemBuilder::new("subsys", subsystem));
+        },
+        shutdown_token.clone(),
+    );
 
     tokio::join!(
         async {
@@ -431,10 +456,13 @@ async fn spawning_task_during_shutdown_causes_task_to_be_cancelled() {
 
     let (toplevel_finished, set_toplevel_finished) = Event::create();
 
-    let toplevel = Toplevel::new(async |s| {
-        s.start(SubsystemBuilder::new("subsys", subsystem));
-    });
-    let shutdown_token = toplevel._get_shutdown_token().clone();
+    let shutdown_token = CancellationToken::new();
+    let toplevel = Toplevel::new_with_shutdown_token(
+        async |s| {
+            s.start(SubsystemBuilder::new("subsys", subsystem));
+        },
+        shutdown_token.clone(),
+    );
 
     tokio::join!(
         async {
@@ -631,10 +659,13 @@ async fn partial_shutdown_request_stops_nested_subsystems() {
         BoxedResult::Ok(())
     };
 
-    let toplevel = Toplevel::new(async move |s| {
-        s.start(SubsystemBuilder::new("subsys", subsys1));
-    });
-    let shutdown_token = toplevel._get_shutdown_token().clone();
+    let shutdown_token = CancellationToken::new();
+    let toplevel = Toplevel::new_with_shutdown_token(
+        async move |s| {
+            s.start(SubsystemBuilder::new("subsys", subsys1));
+        },
+        shutdown_token.clone(),
+    );
 
     tokio::join!(
         async {

@@ -56,16 +56,39 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     ///
     /// * `subsystem` - The subsystem that should be spawned as the root node.
     ///   Usually the job of this subsystem is to spawn further subsystems.
-    #[allow(clippy::new_without_default)]
     #[track_caller]
     pub fn new<Fut, Subsys>(subsystem: Subsys) -> Self
     where
         Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
         Fut: 'static + Future<Output = ()> + Send,
     {
+        Self::new_with_shutdown_token(subsystem, CancellationToken::new())
+    }
+
+    /// Creates a new Toplevel object.
+    ///
+    /// Takes an existing [`CancellationToken`]` that can be used to trigger
+    /// a shutdown from an external thread.
+    ///
+    /// The Toplevel object is the base for everything else in this crate.
+    ///
+    /// # Arguments
+    ///
+    /// * `subsystem` - The subsystem that should be spawned as the root node.
+    ///   Usually the job of this subsystem is to spawn further subsystems.
+    /// * `shutdown_token` - A token that can be used to trigger a shutdown.
+    #[track_caller]
+    pub fn new_with_shutdown_token<Fut, Subsys>(
+        subsystem: Subsys,
+        shutdown_token: CancellationToken,
+    ) -> Self
+    where
+        Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
+        Fut: 'static + Future<Output = ()> + Send,
+    {
         let (error_sender, errors) = mpsc::unbounded_channel();
 
-        let root_handle = subsystem::root_handle(move |e| {
+        let root_handle = subsystem::root_handle(shutdown_token, move |e| {
             match &e {
                 SubsystemError::Panicked(name) => {
                     tracing::error!("Uncaught panic from subsystem '{name}'.")
@@ -209,11 +232,5 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
                 Err(GracefulShutdownError::ShutdownTimeout(collect_errors()))
             }
         }
-    }
-
-    #[doc(hidden)]
-    // Only for unit tests; not intended for public use
-    pub fn _get_shutdown_token(&self) -> &CancellationToken {
-        self.root_handle.get_cancellation_token()
     }
 }
