@@ -1,5 +1,5 @@
 //! This example demonstrates how the entire tokio runtime can be run
-//! in its own thread and how the subsystem tree can be then shut down
+//! in its own thread and how the subsystem tree can then be shut down
 //! from another thread thread.
 
 use miette::{Result, miette};
