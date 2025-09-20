@@ -366,10 +366,9 @@ impl<ErrType: ErrTypeTraits> Drop for SubsystemHandle<ErrType> {
 }
 
 pub(crate) fn root_handle<ErrType: ErrTypeTraits>(
+    cancellation_token: CancellationToken,
     on_error: impl Fn(SubsystemError<ErrType>) + Sync + Send + 'static,
 ) -> SubsystemHandle<ErrType> {
-    let cancellation_token = CancellationToken::new();
-
     SubsystemHandle {
         inner: ManuallyDrop::new(Inner {
             name: Arc::from(""),
