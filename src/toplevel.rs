@@ -67,7 +67,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
 
     /// Creates a new Toplevel object.
     ///
-    /// Takes an existing [`CancellationToken`]` that can be used to trigger
+    /// Takes an existing [`CancellationToken`] that can be used to trigger
     /// a shutdown from an external thread.
     ///
     /// The Toplevel object is the base for everything else in this crate.
