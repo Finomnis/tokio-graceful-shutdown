@@ -6,7 +6,6 @@
 //! IntoSubsystem trait. Note, though, that the IntoSubsystem
 //! trait requires an additional dependency, `async-trait`.
 
-use async_trait::async_trait;
 use miette::Result;
 use tokio::time::{Duration, sleep};
 use tokio_graceful_shutdown::{IntoSubsystem, SubsystemBuilder, SubsystemHandle, Toplevel};
@@ -30,7 +29,6 @@ struct Subsystem2 {
     arg: u32,
 }
 
-#[async_trait]
 impl IntoSubsystem<miette::Report> for Subsystem2 {
     async fn run(self, subsys: SubsystemHandle) -> Result<()> {
         tracing::info!("Subsystem2 started. Extra argument: {}", self.arg);
