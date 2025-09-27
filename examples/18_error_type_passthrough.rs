@@ -65,7 +65,6 @@ async fn subsys5(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
 // both are identical.
 struct Subsys6;
 
-#[async_trait::async_trait]
 impl IntoSubsystem<MyError, MyError> for Subsys6 {
     async fn run(self, _subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
         tracing::info!("Subsystem6 started.");
