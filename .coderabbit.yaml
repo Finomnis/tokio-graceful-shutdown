@@ -11,6 +11,5 @@ reviews:
   path_filters:
     - "!target/**"
     - "!Cargo.lock"
-    - "!Cargo.toml"
 chat:
   auto_reply: true
