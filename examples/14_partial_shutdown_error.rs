@@ -23,7 +23,7 @@ async fn subsys2(subsys: &mut SubsystemHandle) -> Result<()> {
 }
 
 async fn subsys1(subsys: &mut SubsystemHandle) -> Result<()> {
-    // This subsystem shuts down the nested subsystem after 5 seconds.
+    // This subsystem shuts down the nested subsystem after a seconds.
     tracing::info!("Subsys1 started.");
 
     tracing::info!("Starting nested subsystem ...");
