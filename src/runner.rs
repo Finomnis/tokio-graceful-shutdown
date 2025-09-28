@@ -9,7 +9,7 @@
 use std::{future::Future, sync::Arc};
 
 use crate::{
-    ErrTypeTraits, SubsystemHandle,
+    AsyncSubsysFn, ErrTypeTraits, SubsystemHandle,
     errors::{SubsystemError, SubsystemFailure},
 };
 
@@ -22,15 +22,14 @@ pub(crate) struct SubsystemRunner {
 
 impl SubsystemRunner {
     #[track_caller]
-    pub(crate) fn new<Fut, Subsys, ErrType: ErrTypeTraits, Err>(
+    pub(crate) fn new<Subsys, ErrType: ErrTypeTraits, Err>(
         name: Arc<str>,
         subsystem: Subsys,
         subsystem_handle: SubsystemHandle<ErrType>,
         guard: AliveGuard,
     ) -> Self
     where
-        Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
-        Fut: 'static + Future<Output = Result<(), Err>> + Send,
+        Subsys: 'static + for<'a> AsyncSubsysFn<&'a mut SubsystemHandle<ErrType>, Result<(), Err>>,
         Err: Into<ErrType>,
     {
         let future = run_subsystem(name, subsystem, subsystem_handle, guard);
@@ -50,20 +49,19 @@ impl Drop for SubsystemRunner {
 }
 
 #[track_caller]
-fn run_subsystem<Fut, Subsys, ErrType: ErrTypeTraits, Err>(
+fn run_subsystem<Subsys, ErrType: ErrTypeTraits, Err>(
     name: Arc<str>,
     subsystem: Subsys,
     mut subsystem_handle: SubsystemHandle<ErrType>,
     guard: AliveGuard,
 ) -> impl Future<Output = ()> + 'static
 where
-    Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
-    Fut: 'static + Future<Output = Result<(), Err>> + Send,
+    Subsys: 'static + for<'a> AsyncSubsysFn<&'a mut SubsystemHandle<ErrType>, Result<(), Err>>,
     Err: Into<ErrType>,
 {
     let mut redirected_subsystem_handle = subsystem_handle.delayed_clone();
 
-    let future = async { subsystem(subsystem_handle).await.map_err(|e| e.into()) };
+    let future = async move { subsystem(&mut subsystem_handle).await.map_err(|e| e.into()) };
     let join_handle = crate::tokio_task::spawn(future, &name);
 
     // Abort on drop

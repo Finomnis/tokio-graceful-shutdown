@@ -59,7 +59,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     #[track_caller]
     pub fn new<Subsys>(subsystem: Subsys) -> Self
     where
-        Subsys: 'static + Send + for<'a> AsyncSubsysFn<&'a mut SubsystemHandle<ErrType>, ()>,
+        Subsys: 'static + for<'a> AsyncSubsysFn<&'a mut SubsystemHandle<ErrType>, ()>,
     {
         Self::new_with_shutdown_token(subsystem, CancellationToken::new())
     }
@@ -82,7 +82,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
         shutdown_token: CancellationToken,
     ) -> Self
     where
-        Subsys: 'static + for<'a> AsyncSubsysFn<&'a mut SubsystemHandle<ErrType>, ()> + Send,
+        Subsys: 'static + for<'a> AsyncSubsysFn<&'a mut SubsystemHandle<ErrType>, ()>,
     {
         let (error_sender, errors) = mpsc::unbounded_channel();
 
@@ -101,8 +101,8 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
 
         let toplevel_subsys = root_handle.start_with_abs_name(
             Arc::from("/"),
-            async |mut s| {
-                subsystem(&mut s).await;
+            async move |s: &mut SubsystemHandle<ErrType>| {
+                subsystem(s).await;
                 Result::<(), ErrType>::Ok(())
             },
             ErrorActions {

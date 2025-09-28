@@ -1,5 +1,4 @@
 use std::{
-    future::Future,
     mem::ManuallyDrop,
     sync::{Arc, Mutex, atomic::Ordering},
 };
@@ -9,7 +8,7 @@ use tokio::sync::{mpsc, oneshot};
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    BoxedError, ErrTypeTraits, ErrorAction, NestedSubsystem, SubsystemBuilder,
+    AsyncSubsysFn, BoxedError, ErrTypeTraits, ErrorAction, NestedSubsystem, SubsystemBuilder,
     errors::{SubsystemError, handle_dropped_error},
     runner::{AliveGuard, SubsystemRunner},
     utils::{JoinerToken, remote_drop_collection::RemotelyDroppableItems},
@@ -29,7 +28,7 @@ struct Inner<ErrType: ErrTypeTraits> {
 pub struct SubsystemHandle<ErrType: ErrTypeTraits = BoxedError> {
     inner: ManuallyDrop<Inner<ErrType>>,
     // When dropped, redirect Self into this channel.
-    // Required as a workaround for https://stackoverflow.com/questions/77172947/async-lifetime-issues-of-pass-by-reference-parameters.
+    // Required to pass the handle back out of `tokio::spawn`.
     drop_redirect: Option<oneshot::Sender<WeakSubsystemHandle<ErrType>>>,
 }
 
@@ -73,13 +72,12 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     /// }
     /// ```
     #[track_caller]
-    pub fn start<Err, Fut, Subsys>(
+    pub fn start<Err, Subsys>(
         &self,
-        builder: SubsystemBuilder<ErrType, Err, Fut, Subsys>,
+        builder: SubsystemBuilder<ErrType, Err, Subsys>,
     ) -> NestedSubsystem<ErrType>
     where
-        Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
-        Fut: 'static + Future<Output = Result<(), Err>> + Send,
+        Subsys: 'static + for<'a> AsyncSubsysFn<&'a mut SubsystemHandle<ErrType>, Result<(), Err>>,
         Err: Into<ErrType>,
     {
         self.start_with_abs_name(
@@ -98,7 +96,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     }
 
     #[track_caller]
-    pub(crate) fn start_with_abs_name<Err, Fut, Subsys>(
+    pub(crate) fn start_with_abs_name<Err, Subsys>(
         &self,
         name: Arc<str>,
         subsystem: Subsys,
@@ -106,8 +104,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
         detached: bool,
     ) -> NestedSubsystem<ErrType>
     where
-        Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
-        Fut: 'static + Future<Output = Result<(), Err>> + Send,
+        Subsys: 'static + for<'a> AsyncSubsysFn<&'a mut SubsystemHandle<ErrType>, Result<(), Err>>,
         Err: Into<ErrType>,
     {
         let alive_guard = AliveGuard::new();

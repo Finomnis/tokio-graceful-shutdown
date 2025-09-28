@@ -106,7 +106,7 @@ impl<T> ErrTypeTraits for T where
 }
 
 /// An async function that can be used as a subsystem.
-pub trait AsyncSubsysFn<A, O>: FnOnce(A) -> Self::Fut {
+pub trait AsyncSubsysFn<A, O>: Send + FnOnce(A) -> Self::Fut {
     /// The produced subsystem future
     type Fut: Future<Output = O> + Send;
 }
@@ -117,7 +117,7 @@ pub trait AsyncSubsysFn<A, O>: FnOnce(A) -> Self::Fut {
 impl<A, O, Out, F> AsyncSubsysFn<A, O> for F
 where
     Out: Future<Output = O> + Send,
-    F: FnOnce(A) -> Out,
+    F: Send + FnOnce(A) -> Out,
 {
     type Fut = Out;
 }

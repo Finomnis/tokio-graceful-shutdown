@@ -10,10 +10,13 @@ async fn recursive_cancellation() {
 
     let (drop_sender, mut drop_receiver) = tokio::sync::mpsc::channel::<()>(1);
 
-    root_handle.start(SubsystemBuilder::new("", async move |_| {
-        drop_sender.send(()).await.unwrap();
-        std::future::pending::<Result<(), BoxedError>>().await
-    }));
+    root_handle.start(SubsystemBuilder::new(
+        "",
+        async move |_: &mut SubsystemHandle<BoxedError>| {
+            drop_sender.send(()).await.unwrap();
+            std::future::pending::<Result<(), BoxedError>>().await
+        },
+    ));
 
     // Make sure we are executing the subsystem
     let recv_result = timeout(Duration::from_millis(100), drop_receiver.recv())
