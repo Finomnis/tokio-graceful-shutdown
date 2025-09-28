@@ -18,9 +18,9 @@ async fn counter(id: &str) {
     }
 }
 
-async fn child(name: &str, subsys: SubsystemHandle) -> Result<()> {
+async fn child(name: &str, subsys: &mut SubsystemHandle) -> Result<()> {
     tracing::info!("{name} started.");
-    if counter(name).cancel_on_shutdown(&subsys).await.is_ok() {
+    if counter(name).cancel_on_shutdown(subsys).await.is_ok() {
         tracing::info!("{name} counter finished.");
     } else {
         tracing::info!("{name} shutting down ...");
@@ -31,16 +31,28 @@ async fn child(name: &str, subsys: SubsystemHandle) -> Result<()> {
     Ok(())
 }
 
-async fn parent(subsys: SubsystemHandle) -> Result<()> {
+async fn parent(subsys: &mut SubsystemHandle) -> Result<()> {
     tracing::info!("Parent started.");
 
     tracing::info!("Starting detached nested subsystems ...");
-    let nested1 =
-        subsys.start(SubsystemBuilder::new("Nested1", |s| child("Nested1", s)).detached());
-    let nested2 =
-        subsys.start(SubsystemBuilder::new("Nested2", |s| child("Nested2", s)).detached());
-    let nested3 =
-        subsys.start(SubsystemBuilder::new("Nested3", |s| child("Nested3", s)).detached());
+    let nested1 = subsys.start(
+        SubsystemBuilder::new("Nested1", async |s: &mut SubsystemHandle| {
+            child("Nested1", s).await
+        })
+        .detached(),
+    );
+    let nested2 = subsys.start(
+        SubsystemBuilder::new("Nested2", async |s: &mut SubsystemHandle| {
+            child("Nested2", s).await
+        })
+        .detached(),
+    );
+    let nested3 = subsys.start(
+        SubsystemBuilder::new("Nested3", async |s: &mut SubsystemHandle| {
+            child("Nested3", s).await
+        })
+        .detached(),
+    );
     tracing::info!("Nested subsystems started.");
 
     // Wait for the shutdown to happen
@@ -73,7 +85,7 @@ async fn main() -> Result<()> {
         .init();
 
     // Setup and execute subsystem tree
-    Toplevel::new(async |s| {
+    Toplevel::new(async |s: &mut SubsystemHandle| {
         s.start(SubsystemBuilder::new("parent", parent));
     })
     .catch_signals()

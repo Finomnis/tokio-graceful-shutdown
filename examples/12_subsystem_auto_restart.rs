@@ -8,7 +8,7 @@ use miette::Result;
 use tokio::time::{Duration, sleep};
 use tokio_graceful_shutdown::{ErrorAction, SubsystemBuilder, SubsystemHandle, Toplevel};
 
-async fn subsys1(subsys: SubsystemHandle) -> Result<()> {
+async fn subsys1(subsys: &mut SubsystemHandle) -> Result<()> {
     // This subsystem panics every two seconds.
     // It should get restarted constantly.
 
@@ -24,7 +24,7 @@ async fn subsys1(subsys: SubsystemHandle) -> Result<()> {
     Ok(())
 }
 
-async fn subsys1_keepalive(subsys: SubsystemHandle) -> Result<()> {
+async fn subsys1_keepalive(subsys: &mut SubsystemHandle) -> Result<()> {
     loop {
         let nested_subsys = subsys.start(
             SubsystemBuilder::new("Subsys1", subsys1)
@@ -35,6 +35,10 @@ async fn subsys1_keepalive(subsys: SubsystemHandle) -> Result<()> {
         if let Err(err) = nested_subsys.join().await {
             tracing::error!("Subsystem1 failed: {:?}", miette::Report::from(err));
         } else {
+            break;
+        }
+
+        if subsys.is_shutdown_requested() {
             break;
         }
 
@@ -52,7 +56,7 @@ async fn main() -> Result<()> {
         .init();
 
     // Setup and execute subsystem tree
-    Toplevel::new(async |s| {
+    Toplevel::new(async |s: &mut SubsystemHandle| {
         s.start(SubsystemBuilder::new("Subsys1Keepalive", subsys1_keepalive));
     })
     .catch_signals()

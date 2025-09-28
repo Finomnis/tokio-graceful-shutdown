@@ -24,7 +24,7 @@ Specifically, it provides:
 ## Usage Example
 
 ```rust
-async fn subsys1(subsys: SubsystemHandle) -> Result<()>
+async fn subsys1(subsys: &mut SubsystemHandle) -> Result<()>
 {
     log::info!("Subsystem1 started.");
     subsys.on_shutdown_requested().await;
@@ -40,7 +40,7 @@ This subsystem can now be executed like this:
 ```rust
 #[tokio::main]
 async fn main() -> Result<()> {
-    Toplevel::new(async |s| {
+    Toplevel::new(async |s: &mut SubsystemHandle| {
         s.start(SubsystemBuilder::new("Subsys1", subsys1))
     })
     .catch_signals()

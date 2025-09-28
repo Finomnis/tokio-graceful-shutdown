@@ -3,7 +3,7 @@ use std::pin::Pin;
 
 use crate::{BoxedError, ErrTypeTraits, SubsystemHandle};
 
-type IntoSubsystemFuture<Err> = Pin<Box<dyn Future<Output = Result<(), Err>> + Send>>;
+type IntoSubsystemFuture<'a, Err> = Pin<Box<dyn Future<Output = Result<(), Err>> + 'a + Send>>;
 
 /// Allows a struct to be used as a subsystem.
 ///
@@ -24,7 +24,7 @@ type IntoSubsystemFuture<Err> = Pin<Box<dyn Future<Output = Result<(), Err>> + S
 /// struct MySubsystem;
 ///
 /// impl IntoSubsystem<miette::Report> for MySubsystem {
-///     async fn run(self, subsys: SubsystemHandle) -> Result<()> {
+///     async fn run(self, subsys: &mut SubsystemHandle) -> Result<()> {
 ///         subsys.request_shutdown();
 ///         Ok(())
 ///     }
@@ -33,7 +33,7 @@ type IntoSubsystemFuture<Err> = Pin<Box<dyn Future<Output = Result<(), Err>> + S
 /// #[tokio::main]
 /// async fn main() -> Result<()> {
 ///     // Create toplevel
-///     Toplevel::new(async |s| {
+///     Toplevel::new(async |s: &mut SubsystemHandle| {
 ///         s.start(SubsystemBuilder::new(
 ///             "Subsys1", MySubsystem{}.into_subsystem()
 ///         ));
@@ -61,14 +61,14 @@ where
     /// [`SubsystemHandle::start()`](crate::SubsystemHandle::start).
     fn run(
         self,
-        subsys: SubsystemHandle<ErrWrapper>,
+        subsys: &mut SubsystemHandle<ErrWrapper>,
     ) -> impl Future<Output = Result<(), Err>> + Send;
 
     /// Converts the object into a type that can be passed into
     /// [`SubsystemHandle::start()`](crate::SubsystemHandle::start).
     fn into_subsystem(
         self,
-    ) -> impl FnOnce(SubsystemHandle<ErrWrapper>) -> IntoSubsystemFuture<Err> {
-        |handle: SubsystemHandle<ErrWrapper>| Box::pin(async move { self.run(handle).await })
+    ) -> impl FnOnce(&mut SubsystemHandle<ErrWrapper>) -> IntoSubsystemFuture<'_, Err> {
+        |handle: &mut SubsystemHandle<ErrWrapper>| Box::pin(async move { self.run(handle).await })
     }
 }

@@ -15,7 +15,7 @@ enum MyError {
     WithoutData,
 }
 
-async fn subsys1(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
+async fn subsys1(_subsys: &mut SubsystemHandle<MyError>) -> Result<(), MyError> {
     tracing::info!("Subsystem1 started.");
     sleep(Duration::from_millis(200)).await;
     tracing::info!("Subsystem1 stopped.");
@@ -23,7 +23,7 @@ async fn subsys1(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
     Err(MyError::WithData(42))
 }
 
-async fn subsys2(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
+async fn subsys2(_subsys: &mut SubsystemHandle<MyError>) -> Result<(), MyError> {
     tracing::info!("Subsystem2 started.");
     sleep(Duration::from_millis(200)).await;
     tracing::info!("Subsystem2 stopped.");
@@ -31,7 +31,7 @@ async fn subsys2(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
     Err(MyError::WithoutData)
 }
 
-async fn subsys3(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
+async fn subsys3(_subsys: &mut SubsystemHandle<MyError>) -> Result<(), MyError> {
     tracing::info!("Subsystem3 started.");
     sleep(Duration::from_millis(200)).await;
     tracing::info!("Subsystem3 stopped.");
@@ -39,7 +39,7 @@ async fn subsys3(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
     panic!("This subsystem panicked.");
 }
 
-async fn subsys4(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
+async fn subsys4(_subsys: &mut SubsystemHandle<MyError>) -> Result<(), MyError> {
     tracing::info!("Subsystem4 started.");
     sleep(Duration::from_millis(1000)).await;
     tracing::info!("Subsystem4 stopped.");
@@ -49,7 +49,7 @@ async fn subsys4(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
     Ok(())
 }
 
-async fn subsys5(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
+async fn subsys5(_subsys: &mut SubsystemHandle<MyError>) -> Result<(), MyError> {
     tracing::info!("Subsystem5 started.");
     sleep(Duration::from_millis(200)).await;
     tracing::info!("Subsystem5 stopped.");
@@ -66,7 +66,7 @@ async fn subsys5(_subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
 struct Subsys6;
 
 impl IntoSubsystem<MyError, MyError> for Subsys6 {
-    async fn run(self, _subsys: SubsystemHandle<MyError>) -> Result<(), MyError> {
+    async fn run(self, _subsys: &mut SubsystemHandle<MyError>) -> Result<(), MyError> {
         tracing::info!("Subsystem6 started.");
         sleep(Duration::from_millis(200)).await;
         tracing::info!("Subsystem6 stopped.");
@@ -83,7 +83,7 @@ async fn main() -> Result<(), miette::Report> {
         .init();
 
     // Setup and execute subsystem tree
-    let errors = Toplevel::<MyError>::new(async |s| {
+    let errors = Toplevel::<MyError>::new(async |s: &mut SubsystemHandle<MyError>| {
         s.start(SubsystemBuilder::new("Subsys1", subsys1));
         s.start(SubsystemBuilder::new("Subsys2", subsys2));
         s.start(SubsystemBuilder::new("Subsys3", subsys3));

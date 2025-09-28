@@ -1,32 +1,19 @@
-use std::{borrow::Cow, future::Future, marker::PhantomData};
+use std::borrow::Cow;
 
-use crate::{ErrTypeTraits, ErrorAction, SubsystemHandle};
+use crate::ErrorAction;
 
 /// Configures a subsystem before it gets spawned through
-/// [`SubsystemHandle::start`].
-pub struct SubsystemBuilder<'a, ErrType, Err, Fut, Subsys>
-where
-    ErrType: ErrTypeTraits,
-    Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
-    Fut: 'static + Future<Output = Result<(), Err>> + Send,
-    Err: Into<ErrType>,
-{
+/// [`SubsystemHandle::start`](crate::SubsystemHandle::start).
+#[must_use]
+pub struct SubsystemBuilder<'a, Subsys> {
     pub(crate) name: Cow<'a, str>,
     pub(crate) subsystem: Subsys,
     pub(crate) failure_action: ErrorAction,
     pub(crate) panic_action: ErrorAction,
     pub(crate) detached: bool,
-    #[allow(clippy::type_complexity)]
-    _phantom: PhantomData<fn() -> (Fut, ErrType, Err)>,
 }
 
-impl<'a, ErrType, Err, Fut, Subsys> SubsystemBuilder<'a, ErrType, Err, Fut, Subsys>
-where
-    ErrType: ErrTypeTraits,
-    Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
-    Fut: 'static + Future<Output = Result<(), Err>> + Send,
-    Err: Into<ErrType>,
-{
+impl<'a, Subsys> SubsystemBuilder<'a, Subsys> {
     /// Creates a new SubsystemBuilder from a given subsystem
     /// function.
     ///
@@ -42,7 +29,6 @@ where
             failure_action: ErrorAction::Forward,
             panic_action: ErrorAction::Forward,
             detached: false,
-            _phantom: Default::default(),
         }
     }
 

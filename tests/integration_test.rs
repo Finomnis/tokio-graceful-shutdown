@@ -15,13 +15,13 @@ use common::{BoxedError, BoxedResult};
 #[tokio::test(start_paused = true)]
 #[traced_test]
 async fn normal_shutdown() {
-    let subsystem = async |subsys: SubsystemHandle| {
+    let subsystem = async |subsys: &mut SubsystemHandle| {
         subsys.on_shutdown_requested().await;
         sleep(Duration::from_millis(200)).await;
         BoxedResult::Ok(())
     };
 
-    let toplevel = Toplevel::new(async move |s| {
+    let toplevel = Toplevel::new(async move |s: &mut SubsystemHandle| {
         s.start(SubsystemBuilder::new("subsys", subsystem));
 
         sleep(Duration::from_millis(100)).await;
@@ -40,14 +40,14 @@ async fn use_subsystem_struct() {
     struct MySubsystem;
 
     impl IntoSubsystem<BoxedError> for MySubsystem {
-        async fn run(self, subsys: SubsystemHandle) -> BoxedResult {
+        async fn run(self, subsys: &mut SubsystemHandle) -> BoxedResult {
             subsys.on_shutdown_requested().await;
             sleep(Duration::from_millis(200)).await;
             BoxedResult::Ok(())
         }
     }
 
-    let toplevel = Toplevel::new(async |s| {
+    let toplevel = Toplevel::new(async |s: &mut SubsystemHandle| {
         s.start(SubsystemBuilder::new(
             "subsys",
             MySubsystem {}.into_subsystem(),
@@ -66,13 +66,13 @@ async fn use_subsystem_struct() {
 #[tokio::test(start_paused = true)]
 #[traced_test]
 async fn shutdown_timeout_causes_error() {
-    let subsystem = async |subsys: SubsystemHandle| {
+    let subsystem = async |subsys: &mut SubsystemHandle| {
         subsys.on_shutdown_requested().await;
         sleep(Duration::from_millis(400)).await;
         BoxedResult::Ok(())
     };
 
-    let toplevel = Toplevel::new(async move |s| {
+    let toplevel = Toplevel::new(async move |s: &mut SubsystemHandle| {
         s.start(SubsystemBuilder::new("subsys", subsystem));
 
         sleep(Duration::from_millis(100)).await;
@@ -92,8 +92,8 @@ async fn shutdown_timeout_causes_error() {
 #[tokio::test(start_paused = true)]
 #[traced_test]
 async fn subsystem_finishes_with_success() {
-    let subsystem = async |_| BoxedResult::Ok(());
-    let subsystem2 = async |subsys: SubsystemHandle| {
+    let subsystem = async |_: &mut SubsystemHandle| BoxedResult::Ok(());
+    let subsystem2 = async |subsys: &mut SubsystemHandle| {
         subsys.on_shutdown_requested().await;
         BoxedResult::Ok(())
     };
@@ -102,7 +102,7 @@ async fn subsystem_finishes_with_success() {
 
     let shutdown_token = CancellationToken::new();
     let toplevel = Toplevel::<BoxedError>::new_with_shutdown_token(
-        async move |s| {
+        async move |s: &mut SubsystemHandle| {
             s.start(SubsystemBuilder::new("subsys", subsystem));
             s.start(SubsystemBuilder::new("subsys2", subsystem2));
         },
@@ -133,8 +133,8 @@ async fn subsystem_finishes_with_success() {
 #[tokio::test(start_paused = true)]
 #[traced_test]
 async fn subsystem_finishes_with_error() {
-    let subsystem = async |_| Err(anyhow!("Error!"));
-    let subsystem2 = async |subsys: SubsystemHandle| {
+    let subsystem = async |_: &mut SubsystemHandle| Err(anyhow!("Error!"));
+    let subsystem2 = async |subsys: &mut SubsystemHandle| {
         subsys.on_shutdown_requested().await;
         BoxedResult::Ok(())
     };
@@ -143,7 +143,7 @@ async fn subsystem_finishes_with_error() {
 
     let shutdown_token = CancellationToken::new();
     let toplevel = Toplevel::<BoxedError>::new_with_shutdown_token(
-        async move |s| {
+        async move |s: &mut SubsystemHandle| {
             s.start(SubsystemBuilder::new("subsys", subsystem));
             s.start(SubsystemBuilder::new("subsys2", subsystem2));
         },
@@ -173,7 +173,7 @@ async fn subsystem_finishes_with_error() {
 async fn subsystem_receives_shutdown() {
     let (subsys_finished, set_subsys_finished) = Event::create();
 
-    let subsys = async |subsys: SubsystemHandle| {
+    let subsys = async |subsys: &mut SubsystemHandle| {
         subsys.on_shutdown_requested().await;
         set_subsys_finished();
         BoxedResult::Ok(())
@@ -181,7 +181,7 @@ async fn subsystem_receives_shutdown() {
 
     let shutdown_token = CancellationToken::new();
     let toplevel = Toplevel::<BoxedError>::new_with_shutdown_token(
-        async |s| {
+        async |s: &mut SubsystemHandle| {
             s.start(SubsystemBuilder::new("subsys", subsys));
         },
         shutdown_token.clone(),
@@ -209,13 +209,13 @@ async fn subsystem_receives_shutdown() {
 async fn nested_subsystem_receives_shutdown() {
     let (subsys_finished, set_subsys_finished) = Event::create();
 
-    let nested_subsystem = async |subsys: SubsystemHandle| {
+    let nested_subsystem = async |subsys: &mut SubsystemHandle| {
         subsys.on_shutdown_requested().await;
         set_subsys_finished();
         BoxedResult::Ok(())
     };
 
-    let subsystem = async |subsys: SubsystemHandle| {
+    let subsystem = async |subsys: &mut SubsystemHandle| {
         subsys.start(SubsystemBuilder::new("nested", nested_subsystem));
         subsys.on_shutdown_requested().await;
         BoxedResult::Ok(())
@@ -223,7 +223,7 @@ async fn nested_subsystem_receives_shutdown() {
 
     let shutdown_token = CancellationToken::new();
     let toplevel = Toplevel::new_with_shutdown_token(
-        async |s| {
+        async |s: &mut SubsystemHandle| {
             s.start(SubsystemBuilder::new("subsys", subsystem));
         },
         shutdown_token.clone(),
@@ -249,9 +249,9 @@ async fn nested_subsystem_receives_shutdown() {
 #[tokio::test(start_paused = true)]
 #[traced_test]
 async fn nested_subsystem_error_propagates() {
-    let nested_subsystem = async |_subsys: SubsystemHandle| Err(anyhow!("Error!"));
+    let nested_subsystem = async |_subsys: &mut SubsystemHandle| Err(anyhow!("Error!"));
 
-    let subsystem = async move |subsys: SubsystemHandle| {
+    let subsystem = async move |subsys: &mut SubsystemHandle| {
         subsys.start(SubsystemBuilder::new("nested", nested_subsystem));
         subsys.on_shutdown_requested().await;
         BoxedResult::Ok(())
@@ -261,7 +261,7 @@ async fn nested_subsystem_error_propagates() {
 
     let shutdown_token = CancellationToken::new();
     let toplevel = Toplevel::new_with_shutdown_token(
-        async move |s| {
+        async move |s: &mut SubsystemHandle| {
             s.start(SubsystemBuilder::new("subsys", subsystem));
         },
         shutdown_token.clone(),
@@ -288,12 +288,12 @@ async fn nested_subsystem_error_propagates() {
 #[tokio::test(start_paused = true)]
 #[traced_test]
 async fn panic_gets_handled_correctly() {
-    let nested_subsystem = async |_subsys: SubsystemHandle| {
+    let nested_subsystem = async |_subsys: &mut SubsystemHandle| {
         panic!("Error!");
     };
 
-    let subsystem = async move |subsys: SubsystemHandle| {
-        subsys.start::<anyhow::Error, _, _>(SubsystemBuilder::new("nested", nested_subsystem));
+    let subsystem = async move |subsys: &mut SubsystemHandle| {
+        subsys.start::<anyhow::Error, _>(SubsystemBuilder::new("nested", nested_subsystem));
         subsys.on_shutdown_requested().await;
         BoxedResult::Ok(())
     };
@@ -302,7 +302,7 @@ async fn panic_gets_handled_correctly() {
 
     let shutdown_token = CancellationToken::new();
     let toplevel = Toplevel::new_with_shutdown_token(
-        async move |s| {
+        async move |s: &mut SubsystemHandle| {
             s.start(SubsystemBuilder::new("subsys", subsystem));
         },
         shutdown_token.clone(),
@@ -333,7 +333,7 @@ async fn subsystem_can_request_shutdown() {
 
     let (subsys_finished, set_subsys_finished) = Event::create();
 
-    let subsystem = async move |subsys: SubsystemHandle| {
+    let subsystem = async move |subsys: &mut SubsystemHandle| {
         subsystem_should_stop.wait().await;
         subsys.request_shutdown();
         subsys.on_shutdown_requested().await;
@@ -345,7 +345,7 @@ async fn subsystem_can_request_shutdown() {
 
     let shutdown_token = CancellationToken::new();
     let toplevel = Toplevel::new_with_shutdown_token(
-        async |s| {
+        async |s: &mut SubsystemHandle| {
             s.start(SubsystemBuilder::new("subsys", subsystem));
         },
         shutdown_token.clone(),
@@ -383,7 +383,7 @@ async fn subsystem_can_request_shutdown() {
 async fn shutdown_timeout_causes_cancellation() {
     let (subsys_finished, set_subsys_finished) = Event::create();
 
-    let subsystem = async |subsys: SubsystemHandle| {
+    let subsystem = async |subsys: &mut SubsystemHandle| {
         subsys.on_shutdown_requested().await;
         sleep(Duration::from_millis(300)).await;
         set_subsys_finished();
@@ -394,7 +394,7 @@ async fn shutdown_timeout_causes_cancellation() {
 
     let shutdown_token = CancellationToken::new();
     let toplevel = Toplevel::new_with_shutdown_token(
-        async |s| {
+        async |s: &mut SubsystemHandle| {
             s.start(SubsystemBuilder::new("subsys", subsystem));
         },
         shutdown_token.clone(),
@@ -438,14 +438,14 @@ async fn spawning_task_during_shutdown_causes_task_to_be_cancelled() {
     let (subsys_finished, set_subsys_finished) = Event::create();
     let (nested_finished, set_nested_finished) = Event::create();
 
-    let nested = async |subsys: SubsystemHandle| {
+    let nested = async |subsys: &mut SubsystemHandle| {
         sleep(Duration::from_millis(100)).await;
         subsys.on_shutdown_requested().await;
         set_nested_finished();
         BoxedResult::Ok(())
     };
 
-    let subsystem = async move |subsys: SubsystemHandle| {
+    let subsystem = async move |subsys: &mut SubsystemHandle| {
         subsys.on_shutdown_requested().await;
         sleep(Duration::from_millis(100)).await;
         subsys.start(SubsystemBuilder::new("Nested", nested));
@@ -457,7 +457,7 @@ async fn spawning_task_during_shutdown_causes_task_to_be_cancelled() {
 
     let shutdown_token = CancellationToken::new();
     let toplevel = Toplevel::new_with_shutdown_token(
-        async |s| {
+        async |s: &mut SubsystemHandle| {
             s.start(SubsystemBuilder::new("subsys", subsystem));
         },
         shutdown_token.clone(),
@@ -495,28 +495,28 @@ async fn spawning_task_during_shutdown_causes_task_to_be_cancelled() {
 async fn double_panic_does_not_stop_graceful_shutdown() {
     let (subsys_finished, set_subsys_finished) = Event::create();
 
-    let subsys3 = async |subsys: SubsystemHandle| {
+    let subsys3 = async |subsys: &mut SubsystemHandle| {
         subsys.on_shutdown_requested().await;
         sleep(Duration::from_millis(40)).await;
         set_subsys_finished();
         BoxedResult::Ok(())
     };
 
-    let subsys2 = async |_subsys: SubsystemHandle| {
+    let subsys2 = async |_subsys: &mut SubsystemHandle| {
         sleep(Duration::from_millis(10)).await;
         panic!("Subsystem2 panicked!")
     };
 
-    let subsys1 = async move |subsys: SubsystemHandle| {
-        subsys.start::<BoxedError, _, _>(SubsystemBuilder::new("Subsys2", subsys2));
-        subsys.start::<BoxedError, _, _>(SubsystemBuilder::new("Subsys3", subsys3));
+    let subsys1 = async move |subsys: &mut SubsystemHandle| {
+        subsys.start::<BoxedError, _>(SubsystemBuilder::new("Subsys2", subsys2));
+        subsys.start::<BoxedError, _>(SubsystemBuilder::new("Subsys3", subsys3));
         subsys.on_shutdown_requested().await;
         sleep(Duration::from_millis(10)).await;
         panic!("Subsystem1 panicked!")
     };
 
-    let result = Toplevel::new(async |s| {
-        s.start::<BoxedError, _, _>(SubsystemBuilder::new("subsys", subsys1));
+    let result = Toplevel::new(async |s: &mut SubsystemHandle| {
+        s.start::<BoxedError, _>(SubsystemBuilder::new("subsys", subsys1));
     })
     .handle_shutdown_requests(Duration::from_millis(50))
     .await;
@@ -531,7 +531,7 @@ async fn destroying_toplevel_cancels_subsystems() {
     let (subsys_started, set_subsys_started) = Event::create();
     let (subsys_finished, set_subsys_finished) = Event::create();
 
-    let subsys1 = async move |_subsys: SubsystemHandle| {
+    let subsys1 = async move |_subsys: &mut SubsystemHandle| {
         set_subsys_started();
         sleep(Duration::from_millis(200)).await;
         set_subsys_finished();
@@ -539,7 +539,7 @@ async fn destroying_toplevel_cancels_subsystems() {
     };
 
     {
-        let _result = Toplevel::new(async |s| {
+        let _result = Toplevel::new(async |s: &mut SubsystemHandle| {
             s.start(SubsystemBuilder::new("subsys", subsys1));
         });
         sleep(Duration::from_millis(100)).await;
@@ -553,16 +553,16 @@ async fn destroying_toplevel_cancels_subsystems() {
 #[tokio::test(start_paused = true)]
 #[traced_test]
 async fn shutdown_triggers_if_all_tasks_ended() {
-    let nested_subsys = async move |_subsys: SubsystemHandle| BoxedResult::Ok(());
+    let nested_subsys = async move |_subsys: &mut SubsystemHandle| BoxedResult::Ok(());
 
-    let subsys = async move |subsys: SubsystemHandle| {
+    let subsys = async move |subsys: &mut SubsystemHandle| {
         subsys.start(SubsystemBuilder::new("nested", nested_subsys));
         BoxedResult::Ok(())
     };
 
     tokio::time::timeout(
         Duration::from_millis(100),
-        Toplevel::new(async move |s| {
+        Toplevel::new(async move |s: &mut SubsystemHandle| {
             s.start(SubsystemBuilder::new("subsys1", subsys));
             s.start(SubsystemBuilder::new("subsys2", subsys));
         })
@@ -578,7 +578,7 @@ async fn shutdown_triggers_if_all_tasks_ended() {
 async fn shutdown_triggers_if_no_task_exists() {
     tokio::time::timeout(
         Duration::from_millis(100),
-        Toplevel::<BoxedError>::new(async |_| {})
+        Toplevel::<BoxedError>::new(async |_: &mut SubsystemHandle| {})
             .handle_shutdown_requests(Duration::from_millis(100)),
     )
     .await
@@ -592,15 +592,15 @@ async fn destroying_toplevel_cancels_nested_toplevel_subsystems() {
     let (subsys_started, set_subsys_started) = Event::create();
     let (subsys_finished, set_subsys_finished) = Event::create();
 
-    let subsys2 = async move |_subsys: SubsystemHandle| {
+    let subsys2 = async move |_subsys: &mut SubsystemHandle| {
         set_subsys_started();
         sleep(Duration::from_millis(100)).await;
         set_subsys_finished();
         BoxedResult::Ok(())
     };
 
-    let subsys1 = async move |_subsys: SubsystemHandle| {
-        Toplevel::new(async |s| {
+    let subsys1 = async move |_subsys: &mut SubsystemHandle| {
+        Toplevel::new(async |s: &mut SubsystemHandle| {
             s.start(SubsystemBuilder::new("subsys2", subsys2));
         })
         .handle_shutdown_requests(Duration::from_millis(100))
@@ -608,7 +608,7 @@ async fn destroying_toplevel_cancels_nested_toplevel_subsystems() {
     };
 
     {
-        let _result = Toplevel::new(async |s| {
+        let _result = Toplevel::new(async |s: &mut SubsystemHandle| {
             s.start(SubsystemBuilder::new("subsys", subsys1));
         });
         sleep(Duration::from_millis(50)).await;
@@ -630,13 +630,13 @@ async fn partial_shutdown_request_stops_nested_subsystems() {
     let (subsys3_finished, set_subsys3_finished) = Event::create();
     let (subsys1_shutdown_performed, set_subsys1_shutdown_performed) = Event::create();
 
-    let subsys3 = async move |subsys: SubsystemHandle| {
+    let subsys3 = async move |subsys: &mut SubsystemHandle| {
         set_subsys3_started();
         subsys.on_shutdown_requested().await;
         set_subsys3_finished();
         BoxedResult::Ok(())
     };
-    let subsys2 = async move |subsys: SubsystemHandle| {
+    let subsys2 = async move |subsys: &mut SubsystemHandle| {
         set_subsys2_started();
         subsys.start(SubsystemBuilder::new("subsys3", subsys3));
         subsys.on_shutdown_requested().await;
@@ -644,7 +644,7 @@ async fn partial_shutdown_request_stops_nested_subsystems() {
         BoxedResult::Ok(())
     };
 
-    let subsys1 = async move |subsys: SubsystemHandle| {
+    let subsys1 = async move |subsys: &mut SubsystemHandle| {
         set_subsys1_started();
         let nested_subsys = subsys.start(SubsystemBuilder::new("subsys2", subsys2));
         sleep(Duration::from_millis(200)).await;
@@ -660,7 +660,7 @@ async fn partial_shutdown_request_stops_nested_subsystems() {
 
     let shutdown_token = CancellationToken::new();
     let toplevel = Toplevel::new_with_shutdown_token(
-        async move |s| {
+        async move |s: &mut SubsystemHandle| {
             s.start(SubsystemBuilder::new("subsys", subsys1));
         },
         shutdown_token.clone(),
@@ -693,15 +693,15 @@ async fn partial_shutdown_panic_gets_propagated_correctly() {
     let (nested_started, set_nested_started) = Event::create();
     let (nested_finished, set_nested_finished) = Event::create();
 
-    let nested_subsys = async move |subsys: SubsystemHandle| {
+    let nested_subsys = async move |subsys: &mut SubsystemHandle| {
         set_nested_started();
         subsys.on_shutdown_requested().await;
         set_nested_finished();
         panic!("Nested panicked.");
     };
 
-    let subsys1 = async move |subsys: SubsystemHandle| {
-        let handle = subsys.start::<anyhow::Error, _, _>(
+    let subsys1 = async move |subsys: &mut SubsystemHandle| {
+        let handle = subsys.start::<anyhow::Error, _>(
             SubsystemBuilder::new("nested", nested_subsys)
                 .on_failure(ErrorAction::CatchAndLocalShutdown)
                 .on_panic(ErrorAction::CatchAndLocalShutdown),
@@ -722,7 +722,7 @@ async fn partial_shutdown_panic_gets_propagated_correctly() {
         BoxedResult::Ok(())
     };
 
-    let result = Toplevel::new(async |s| {
+    let result = Toplevel::new(async |s: &mut SubsystemHandle| {
         s.start(SubsystemBuilder::new("subsys", subsys1));
     })
     .handle_shutdown_requests(Duration::from_millis(500))
@@ -737,14 +737,14 @@ async fn partial_shutdown_error_gets_propagated_correctly() {
     let (nested_started, set_nested_started) = Event::create();
     let (nested_finished, set_nested_finished) = Event::create();
 
-    let nested_subsys = async move |subsys: SubsystemHandle| {
+    let nested_subsys = async move |subsys: &mut SubsystemHandle| {
         set_nested_started();
         subsys.on_shutdown_requested().await;
         set_nested_finished();
         Err(anyhow!("nested failed."))
     };
 
-    let subsys1 = async move |subsys: SubsystemHandle| {
+    let subsys1 = async move |subsys: &mut SubsystemHandle| {
         let handle = subsys.start(
             SubsystemBuilder::new("nested", nested_subsys)
                 .on_failure(ErrorAction::CatchAndLocalShutdown)
@@ -766,7 +766,7 @@ async fn partial_shutdown_error_gets_propagated_correctly() {
         BoxedResult::Ok(())
     };
 
-    let result = Toplevel::new(async |s| {
+    let result = Toplevel::new(async |s: &mut SubsystemHandle| {
         s.start(SubsystemBuilder::new("subsys", subsys1));
     })
     .handle_shutdown_requests(Duration::from_millis(500))
@@ -778,18 +778,18 @@ async fn partial_shutdown_error_gets_propagated_correctly() {
 #[tokio::test(start_paused = true)]
 #[traced_test]
 async fn subsystem_errors_get_propagated_to_user() {
-    let nested_subsystem1 = async |_: SubsystemHandle| {
+    let nested_subsystem1 = async |_: &mut SubsystemHandle| {
         sleep(Duration::from_millis(100)).await;
         panic!("Subsystem panicked!");
     };
 
-    let nested_subsystem2 = async |_: SubsystemHandle| {
+    let nested_subsystem2 = async |_: &mut SubsystemHandle| {
         sleep(Duration::from_millis(100)).await;
         BoxedResult::Err("MyGreatError".into())
     };
 
-    let subsystem = async move |subsys: SubsystemHandle| {
-        subsys.start::<anyhow::Error, _, _>(SubsystemBuilder::new("nested1", nested_subsystem1));
+    let subsystem = async move |subsys: &mut SubsystemHandle| {
+        subsys.start::<anyhow::Error, _>(SubsystemBuilder::new("nested1", nested_subsystem1));
         subsys.start(SubsystemBuilder::new("nested2", nested_subsystem2));
 
         sleep(Duration::from_millis(100)).await;
@@ -797,7 +797,7 @@ async fn subsystem_errors_get_propagated_to_user() {
         BoxedResult::Ok(())
     };
 
-    let toplevel = Toplevel::new(async move |s| {
+    let toplevel = Toplevel::new(async move |s: &mut SubsystemHandle| {
         s.start(SubsystemBuilder::new("subsys", subsystem));
     });
     let result = toplevel
@@ -832,32 +832,32 @@ async fn subsystem_errors_get_propagated_to_user() {
 #[tokio::test(start_paused = true)]
 #[traced_test]
 async fn subsystem_errors_get_propagated_to_user_when_timeout() {
-    let nested_subsystem1 = async |_: SubsystemHandle| {
+    let nested_subsystem1 = async |_: &mut SubsystemHandle| {
         sleep(Duration::from_millis(100)).await;
         panic!("Subsystem panicked!");
     };
 
-    let nested_subsystem2 = async |_: SubsystemHandle| {
+    let nested_subsystem2 = async |_: &mut SubsystemHandle| {
         sleep(Duration::from_millis(100)).await;
         BoxedResult::Err("MyGreatError".into())
     };
 
-    let nested_subsystem3 = async |_: SubsystemHandle| {
+    let nested_subsystem3 = async |_: &mut SubsystemHandle| {
         sleep(Duration::from_millis(10000)).await;
         Ok(())
     };
 
-    let subsystem = async move |subsys: SubsystemHandle| {
-        subsys.start::<anyhow::Error, _, _>(SubsystemBuilder::new("nested1", nested_subsystem1));
+    let subsystem = async move |subsys: &mut SubsystemHandle| {
+        subsys.start::<anyhow::Error, _>(SubsystemBuilder::new("nested1", nested_subsystem1));
         subsys.start(SubsystemBuilder::new("nested2", nested_subsystem2));
-        subsys.start::<anyhow::Error, _, _>(SubsystemBuilder::new("nested3", nested_subsystem3));
+        subsys.start::<anyhow::Error, _>(SubsystemBuilder::new("nested3", nested_subsystem3));
 
         sleep(Duration::from_millis(100)).await;
         subsys.request_shutdown();
         BoxedResult::Ok(())
     };
 
-    let toplevel = Toplevel::new(async move |s| {
+    let toplevel = Toplevel::new(async move |s: &mut SubsystemHandle| {
         s.start(SubsystemBuilder::new("subsys", subsystem));
     });
     let result = toplevel
@@ -894,14 +894,14 @@ async fn subsystem_errors_get_propagated_to_user_when_timeout() {
 #[tokio::test(start_paused = true)]
 #[traced_test]
 async fn is_shutdown_requested_works_as_intended() {
-    let subsys1 = async move |subsys: SubsystemHandle| {
+    let subsys1 = async move |subsys: &mut SubsystemHandle| {
         assert!(!subsys.is_shutdown_requested());
         subsys.request_shutdown();
         assert!(subsys.is_shutdown_requested());
         BoxedResult::Ok(())
     };
 
-    Toplevel::new(async move |s| {
+    Toplevel::new(async move |s: &mut SubsystemHandle| {
         s.start(SubsystemBuilder::new("subsys", subsys1));
     })
     .handle_shutdown_requests(Duration::from_millis(100))
@@ -917,7 +917,7 @@ async fn shutdown_through_signal() {
     use nix::unistd::Pid;
     use tokio_graceful_shutdown::FutureExt;
 
-    let subsystem = async |subsys: SubsystemHandle| {
+    let subsystem = async |subsys: &mut SubsystemHandle| {
         subsys.on_shutdown_requested().await;
         sleep(Duration::from_millis(200)).await;
         BoxedResult::Ok(())
@@ -931,11 +931,11 @@ async fn shutdown_through_signal() {
             signal::kill(Pid::this(), Signal::SIGINT).unwrap();
         },
         async {
-            let result = Toplevel::new(async move |s| {
+            let result = Toplevel::new(async move |s: &mut SubsystemHandle| {
                 s.start(SubsystemBuilder::new("subsys", subsystem));
                 assert!(
                     sleep(Duration::from_millis(1000))
-                        .cancel_on_shutdown(&s)
+                        .cancel_on_shutdown(s)
                         .await
                         .is_err()
                 );
@@ -952,18 +952,18 @@ async fn shutdown_through_signal() {
 #[tokio::test(start_paused = true)]
 #[traced_test]
 async fn access_name_from_within_subsystem() {
-    let subsys_nested = async move |subsys: SubsystemHandle| {
+    let subsys_nested = async move |subsys: &mut SubsystemHandle| {
         assert_eq!("/subsys_top/subsys_nested", subsys.name());
         BoxedResult::Ok(())
     };
 
-    let subsys_top = async move |subsys: SubsystemHandle| {
+    let subsys_top = async move |subsys: &mut SubsystemHandle| {
         assert_eq!("/subsys_top", subsys.name());
         subsys.start(SubsystemBuilder::new("subsys_nested", subsys_nested));
         BoxedResult::Ok(())
     };
 
-    Toplevel::new(async move |s| {
+    Toplevel::new(async move |s: &mut SubsystemHandle| {
         s.start(SubsystemBuilder::new("subsys_top", subsys_top));
     })
     .handle_shutdown_requests(Duration::from_millis(100))
@@ -980,12 +980,12 @@ async fn query_subsystem_alive() {
     //   \
     //    nested (1s lifetime)
 
-    let subsys_nested = async move |_: SubsystemHandle| {
+    let subsys_nested = async move |_: &mut SubsystemHandle| {
         tokio::time::sleep(Duration::from_millis(1000)).await;
         BoxedResult::Ok(())
     };
 
-    let subsys_top = async move |subsys: SubsystemHandle| {
+    let subsys_top = async move |subsys: &mut SubsystemHandle| {
         let nested = subsys.start(SubsystemBuilder::new("subsys_nested", subsys_nested));
         assert!(!nested.is_finished_shallow());
         assert!(!nested.is_finished());
@@ -1001,7 +1001,7 @@ async fn query_subsystem_alive() {
         BoxedResult::Ok(())
     };
 
-    Toplevel::new(async move |s| {
+    Toplevel::new(async move |s: &mut SubsystemHandle| {
         s.start(SubsystemBuilder::new("subsys_top", subsys_top));
     })
     .handle_shutdown_requests(Duration::from_millis(100))
@@ -1023,19 +1023,19 @@ async fn query_multidepth_subsystem_alive() {
     // We want to ensure that root_alive() only lasts for the duration of d1,
     // but recursive_alive() lasts for the entire duration of d2.
 
-    let subsys_nested_d2 = async move |_: SubsystemHandle| {
+    let subsys_nested_d2 = async move |_: &mut SubsystemHandle| {
         tokio::time::sleep(Duration::from_millis(2000)).await;
         BoxedResult::Ok(())
     };
 
-    let subsys_nested_d1 = async move |subsys: SubsystemHandle| {
+    let subsys_nested_d1 = async move |subsys: &mut SubsystemHandle| {
         let _nested = subsys.start(SubsystemBuilder::new("d2", subsys_nested_d2));
         tokio::time::sleep(Duration::from_millis(1000)).await;
 
         BoxedResult::Ok(())
     };
 
-    let subsys_top = async move |subsys: SubsystemHandle| {
+    let subsys_top = async move |subsys: &mut SubsystemHandle| {
         let nested = subsys.start(SubsystemBuilder::new("d1", subsys_nested_d1));
         assert!(!nested.is_finished_shallow());
         assert!(!nested.is_finished());
@@ -1051,7 +1051,7 @@ async fn query_multidepth_subsystem_alive() {
         BoxedResult::Ok(())
     };
 
-    Toplevel::new(async move |s| {
+    Toplevel::new(async move |s: &mut SubsystemHandle| {
         s.start(SubsystemBuilder::new("subsys_top", subsys_top));
     })
     .handle_shutdown_requests(Duration::from_millis(100))

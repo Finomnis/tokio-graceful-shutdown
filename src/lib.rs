@@ -16,7 +16,7 @@
 //!
 //! This example shows a minimal example of how to launch an asynchronous subsystem with the help of this crate.
 //!
-//! It contains a countdown subsystem that will end the program after 10 seconds.
+//! It contains a countdown subsystem that will end the program after 5 seconds.
 //! During the countdown, the program will react to Ctrl-C/SIGINT/SIGTERM and will cancel the countdown task accordingly.
 //!
 //! ```
@@ -31,7 +31,7 @@
 //!     }
 //! }
 //!
-//! async fn countdown_subsystem(subsys: SubsystemHandle) -> Result<()> {
+//! async fn countdown_subsystem(subsys: &mut SubsystemHandle) -> Result<()> {
 //!     tokio::select! {
 //!         _ = subsys.on_shutdown_requested() => {
 //!             tracing::info!("Countdown cancelled.");
@@ -52,7 +52,7 @@
 //!         .init();
 //!
 //!     // Setup and execute subsystem tree
-//!     Toplevel::new(async |s| {
+//!     Toplevel::new(async |s: &mut SubsystemHandle| {
 //!         s.start(SubsystemBuilder::new("Countdown", countdown_subsystem));
 //!     })
 //!     .catch_signals()
@@ -103,6 +103,27 @@ pub trait ErrTypeTraits:
 impl<T> ErrTypeTraits for T where
     T: std::fmt::Debug + std::fmt::Display + 'static + Send + Sync + Sized
 {
+}
+
+/// An async function that can be used as a subsystem.
+///
+/// Note: External users should not implement this trait directly.
+/// Prefer passing `async fn` or async closures; this trait exists to
+/// model those in the public API and may evolve.
+pub trait AsyncSubsysFn<A, O>: Send + FnOnce(A) -> Self::Fut {
+    /// The produced subsystem future
+    type Fut: Future<Output = O> + Send;
+}
+
+// This trick allows us to generate a “FnOnce”-like bound with only one lifetime parameter,
+// so that functions which capture the input argument’s lifetime in their output
+// (i.e., async functions) can meet the bound.
+impl<A, O, Out, F> AsyncSubsysFn<A, O> for F
+where
+    Out: Future<Output = O> + Send,
+    F: Send + FnOnce(A) -> Out,
+{
+    type Fut = Out;
 }
 
 pub mod errors;

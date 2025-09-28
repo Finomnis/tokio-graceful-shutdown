@@ -1,11 +1,11 @@
-use std::{future::Future, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use atomic::Atomic;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    BoxedError, ErrTypeTraits, ErrorAction, NestedSubsystem, SubsystemHandle,
+    AsyncSubsysFn, BoxedError, ErrTypeTraits, ErrorAction, NestedSubsystem, SubsystemHandle,
     errors::{GracefulShutdownError, SubsystemError, handle_dropped_error},
     signal_handling::wait_for_signal,
     subsystem::{self, ErrorActions},
@@ -23,14 +23,14 @@ use crate::{
 /// use tokio::time::Duration;
 /// use tokio_graceful_shutdown::{SubsystemBuilder, SubsystemHandle, Toplevel};
 ///
-/// async fn my_subsystem(subsys: SubsystemHandle) -> Result<()> {
+/// async fn my_subsystem(subsys: &mut SubsystemHandle) -> Result<()> {
 ///     subsys.request_shutdown();
 ///     Ok(())
 /// }
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<()> {
-///     Toplevel::new(async |s| {
+///     Toplevel::new(async |s: &mut SubsystemHandle| {
 ///         s.start(SubsystemBuilder::new("MySubsystem", my_subsystem));
 ///     })
 ///     .catch_signals()
@@ -57,10 +57,9 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// * `subsystem` - The subsystem that should be spawned as the root node.
     ///   Usually the job of this subsystem is to spawn further subsystems.
     #[track_caller]
-    pub fn new<Fut, Subsys>(subsystem: Subsys) -> Self
+    pub fn new<Subsys>(subsystem: Subsys) -> Self
     where
-        Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
-        Fut: 'static + Future<Output = ()> + Send,
+        Subsys: 'static + for<'a> AsyncSubsysFn<&'a mut SubsystemHandle<ErrType>, ()>,
     {
         Self::new_with_shutdown_token(subsystem, CancellationToken::new())
     }
@@ -78,13 +77,12 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     ///   Usually the job of this subsystem is to spawn further subsystems.
     /// * `shutdown_token` - A token that can be used to trigger a shutdown.
     #[track_caller]
-    pub fn new_with_shutdown_token<Fut, Subsys>(
+    pub fn new_with_shutdown_token<Subsys>(
         subsystem: Subsys,
         shutdown_token: CancellationToken,
     ) -> Self
     where
-        Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
-        Fut: 'static + Future<Output = ()> + Send,
+        Subsys: 'static + for<'a> AsyncSubsysFn<&'a mut SubsystemHandle<ErrType>, ()>,
     {
         let (error_sender, errors) = mpsc::unbounded_channel();
 
@@ -103,7 +101,7 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
 
         let toplevel_subsys = root_handle.start_with_abs_name(
             Arc::from("/"),
-            async |s| {
+            async move |s: &mut SubsystemHandle<ErrType>| {
                 subsystem(s).await;
                 Result::<(), ErrType>::Ok(())
             },

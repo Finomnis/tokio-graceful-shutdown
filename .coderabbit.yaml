@@ -1,0 +1,15 @@
+language: en-US
+reviews:
+  profile: assertive
+  high_level_summary: true
+  high_level_summary_in_walkthrough: true
+  poem: false
+  in_progress_fortune: false
+  auto_review:
+    enabled: true
+    drafts: false
+  path_filters:
+    - "!target/**"
+    - "!Cargo.lock"
+chat:
+  auto_reply: true
