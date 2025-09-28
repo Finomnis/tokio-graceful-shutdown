@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use crate::ErrorAction;
 
 /// Configures a subsystem before it gets spawned through
-/// [`SubsystemHandle::start`].
+/// [`SubsystemHandle::start`](crate::SubsystemHandle::start).
 pub struct SubsystemBuilder<'a, Subsys> {
     pub(crate) name: Cow<'a, str>,
     pub(crate) subsystem: Subsys,
