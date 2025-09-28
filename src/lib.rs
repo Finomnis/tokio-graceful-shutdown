@@ -105,6 +105,23 @@ impl<T> ErrTypeTraits for T where
 {
 }
 
+/// An async function that can be used as a subsystem.
+pub trait AsyncSubsysFn<A, O>: FnOnce(A) -> Self::Fut {
+    /// The produced subsystem future
+    type Fut: Future<Output = O> + Send;
+}
+
+// this tricks allows us to generate a "FnOnce"-like bound with only one lifetime parameter
+// so that functions which capture input argument lifetime in it's output
+// (read "async functions") can meet the bound
+impl<A, O, Out, F> AsyncSubsysFn<A, O> for F
+where
+    Out: Future<Output = O> + Send,
+    F: FnOnce(A) -> Out,
+{
+    type Fut = Out;
+}
+
 pub mod errors;
 
 mod error_action;

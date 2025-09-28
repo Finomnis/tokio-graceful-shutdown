@@ -1,11 +1,11 @@
-use std::{future::Future, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use atomic::Atomic;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    BoxedError, ErrTypeTraits, ErrorAction, NestedSubsystem, SubsystemHandle,
+    AsyncSubsysFn, BoxedError, ErrTypeTraits, ErrorAction, NestedSubsystem, SubsystemHandle,
     errors::{GracefulShutdownError, SubsystemError, handle_dropped_error},
     signal_handling::wait_for_signal,
     subsystem::{self, ErrorActions},
@@ -57,10 +57,9 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     /// * `subsystem` - The subsystem that should be spawned as the root node.
     ///   Usually the job of this subsystem is to spawn further subsystems.
     #[track_caller]
-    pub fn new<Fut, Subsys>(subsystem: Subsys) -> Self
+    pub fn new<Subsys>(subsystem: Subsys) -> Self
     where
-        Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
-        Fut: 'static + Future<Output = ()> + Send,
+        Subsys: 'static + Send + for<'a> AsyncSubsysFn<&'a mut SubsystemHandle<ErrType>, ()>,
     {
         Self::new_with_shutdown_token(subsystem, CancellationToken::new())
     }
@@ -78,13 +77,12 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     ///   Usually the job of this subsystem is to spawn further subsystems.
     /// * `shutdown_token` - A token that can be used to trigger a shutdown.
     #[track_caller]
-    pub fn new_with_shutdown_token<Fut, Subsys>(
+    pub fn new_with_shutdown_token<Subsys>(
         subsystem: Subsys,
         shutdown_token: CancellationToken,
     ) -> Self
     where
-        Subsys: 'static + FnOnce(SubsystemHandle<ErrType>) -> Fut + Send,
-        Fut: 'static + Future<Output = ()> + Send,
+        Subsys: 'static + for<'a> AsyncSubsysFn<&'a mut SubsystemHandle<ErrType>, ()> + Send,
     {
         let (error_sender, errors) = mpsc::unbounded_channel();
 
@@ -103,8 +101,8 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
 
         let toplevel_subsys = root_handle.start_with_abs_name(
             Arc::from("/"),
-            async |s| {
-                subsystem(s).await;
+            async |mut s| {
+                subsystem(&mut s).await;
                 Result::<(), ErrType>::Ok(())
             },
             ErrorActions {
