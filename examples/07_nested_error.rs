@@ -16,7 +16,7 @@ async fn subsys1(subsys: &mut SubsystemHandle) -> Result<()> {
     Ok(())
 }
 
-async fn subsys2(_subsys: &mut SubsystemHandle) -> Result<()> {
+async fn subsys2(_: &mut SubsystemHandle) -> Result<()> {
     tracing::info!("Subsystem2 started.");
     sleep(Duration::from_millis(500)).await;
 

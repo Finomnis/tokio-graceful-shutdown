@@ -38,6 +38,10 @@ async fn subsys1_keepalive(subsys: &mut SubsystemHandle) -> Result<()> {
             break;
         }
 
+        if subsys.is_shutdown_requested() {
+            break;
+        }
+
         tracing::info!("Restarting subsystem1 ...");
     }
 

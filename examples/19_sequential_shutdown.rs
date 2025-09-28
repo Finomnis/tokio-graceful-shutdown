@@ -92,13 +92,13 @@ async fn root(subsys: &mut SubsystemHandle) -> Result<()> {
     tracing::info!("Root started.");
 
     tracing::info!("Starting nested subsystems ...");
-    let nested1 = subsys.start(SubsystemBuilder::new("Nested1", nested1));
-    let nested1_finished = nested1.finished();
-    let nested2 = subsys.start(SubsystemBuilder::new(
+    let nested1_handle = subsys.start(SubsystemBuilder::new("Nested1", nested1));
+    let nested1_finished = nested1_handle.finished();
+    let nested2_handle = subsys.start(SubsystemBuilder::new(
         "Nested2",
         async |s: &mut SubsystemHandle| nested2(s, nested1_finished).await,
     ));
-    let nested2_finished = nested2.finished();
+    let nested2_finished = nested2_handle.finished();
     subsys.start(SubsystemBuilder::new(
         "Nested3",
         async |s: &mut SubsystemHandle| nested3(s, nested2_finished).await,

@@ -16,7 +16,7 @@
 //!
 //! This example shows a minimal example of how to launch an asynchronous subsystem with the help of this crate.
 //!
-//! It contains a countdown subsystem that will end the program after 10 seconds.
+//! It contains a countdown subsystem that will end the program after 5 seconds.
 //! During the countdown, the program will react to Ctrl-C/SIGINT/SIGTERM and will cancel the countdown task accordingly.
 //!
 //! ```
