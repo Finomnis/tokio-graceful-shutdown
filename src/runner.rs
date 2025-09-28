@@ -92,21 +92,13 @@ where
         };
 
         // Retrieve the handle that was passed into the subsystem.
-        // Originally it was intended to pass the handle as reference, but due
-        // to complications (https://stackoverflow.com/a/70592053/2902833 and
-        // https://github.com/tokio-rs/tokio/issues/3162) it was decided to
-        // pass ownership instead.
+        // Originally it was intended to pass the handle as reference, but
+        // references do not work well with tokio::spawn.
         //
         // It is still important that the handle does not leak out of the subsystem.
-        let subsystem_handle = match redirected_subsystem_handle.try_recv() {
-            Ok(s) => s,
-            Err(_) => {
-                tracing::error!(
-                    "The SubsystemHandle object must not be leaked out of the subsystem!"
-                );
-                panic!("The SubsystemHandle object must not be leaked out of the subsystem!");
-            }
-        };
+        let subsystem_handle = redirected_subsystem_handle.try_recv().expect(
+            "Internal error, please report at https://github.com/Finomnis/tokio-graceful-shutdown/issues!"
+        );
 
         // Raise potential errors
         let joiner_token = subsystem_handle.joiner_token;
