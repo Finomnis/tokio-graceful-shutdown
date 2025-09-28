@@ -21,13 +21,13 @@ impl<ErrType: ErrTypeTraits> NestedSubsystem<ErrType> {
     /// use tokio::time::{sleep, Duration};
     /// use tokio_graceful_shutdown::{ErrorAction, SubsystemBuilder, SubsystemHandle};
     ///
-    /// async fn nested_subsystem(subsys: SubsystemHandle) -> Result<()> {
+    /// async fn nested_subsystem(subsys: &mut SubsystemHandle) -> Result<()> {
     ///     // This subsystem does nothing but wait for the shutdown to happen
     ///     subsys.on_shutdown_requested().await;
     ///     Ok(())
     /// }
     ///
-    /// async fn subsystem(subsys: SubsystemHandle) -> Result<()> {
+    /// async fn subsystem(subsys: &mut SubsystemHandle) -> Result<()> {
     ///     // This subsystem waits for one second and then performs a partial shutdown
     ///
     ///     // Spawn nested subsystem.

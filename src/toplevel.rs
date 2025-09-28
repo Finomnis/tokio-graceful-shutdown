@@ -23,14 +23,14 @@ use crate::{
 /// use tokio::time::Duration;
 /// use tokio_graceful_shutdown::{SubsystemBuilder, SubsystemHandle, Toplevel};
 ///
-/// async fn my_subsystem(subsys: SubsystemHandle) -> Result<()> {
+/// async fn my_subsystem(subsys: &mut SubsystemHandle) -> Result<()> {
 ///     subsys.request_shutdown();
 ///     Ok(())
 /// }
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<()> {
-///     Toplevel::new(async |s| {
+///     Toplevel::new(async |s: &mut SubsystemHandle| {
 ///         s.start(SubsystemBuilder::new("MySubsystem", my_subsystem));
 ///     })
 ///     .catch_signals()

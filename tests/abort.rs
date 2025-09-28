@@ -12,7 +12,6 @@ use tokio_graceful_shutdown::{SubsystemBuilder, SubsystemHandle, Toplevel};
 use tracing_test::traced_test;
 
 #[tokio::test(start_paused = true)]
-#[traced_test]
 async fn abort_subsystem_works() {
     // Diagram:
     //
@@ -20,7 +19,7 @@ async fn abort_subsystem_works() {
     //   \
     //    nested (rcv's abort at 0.5s, panics after 1s)
 
-    let subsys_nested = move |_: SubsystemHandle| -> BoxFuture<BoxedResult> {
+    let subsys_nested = move |_: &mut SubsystemHandle| -> BoxFuture<BoxedResult> {
         async move {
             tokio::time::sleep(Duration::from_millis(1000)).await;
             panic!("Nested subsystem should not reach completion");
@@ -28,7 +27,7 @@ async fn abort_subsystem_works() {
         .boxed()
     };
 
-    let subsys_top = async move |subsys: SubsystemHandle| {
+    let subsys_top = async move |subsys: &mut SubsystemHandle| {
         let nested = subsys.start(SubsystemBuilder::new("subsys_nested", subsys_nested));
 
         tokio::time::sleep(Duration::from_millis(500)).await;
@@ -41,7 +40,7 @@ async fn abort_subsystem_works() {
         Ok::<_, Infallible>(())
     };
 
-    Toplevel::new(async move |s| {
+    Toplevel::new(async move |s: &mut SubsystemHandle| {
         s.start(SubsystemBuilder::new("subsys_top", subsys_top));
     })
     .handle_shutdown_requests(Duration::from_millis(100))
@@ -62,7 +61,7 @@ async fn nested_subsystem_is_aborted() {
     //
     // We want to ensure aborting d1 aborts d2.
 
-    let subsys_nested_d2 = move |_: SubsystemHandle| -> BoxFuture<BoxedResult> {
+    let subsys_nested_d2 = move |_: &mut SubsystemHandle| -> BoxFuture<BoxedResult> {
         async move {
             tokio::time::sleep(Duration::from_millis(1000)).await;
             panic!("Depth 2 subsystem should not reach completion");
@@ -70,12 +69,12 @@ async fn nested_subsystem_is_aborted() {
         .boxed()
     };
 
-    let subsys_nested_d1 = async move |subsys: SubsystemHandle| {
+    let subsys_nested_d1 = async move |subsys: &mut SubsystemHandle| {
         let _nested = subsys.start(SubsystemBuilder::new("d2", subsys_nested_d2));
         BoxedResult::Ok(())
     };
 
-    let subsys_top = async move |subsys: SubsystemHandle| {
+    let subsys_top = async move |subsys: &mut SubsystemHandle| {
         let nested = subsys.start(SubsystemBuilder::new("d1", subsys_nested_d1));
 
         tokio::time::sleep(Duration::from_millis(500)).await;
@@ -88,7 +87,7 @@ async fn nested_subsystem_is_aborted() {
         BoxedResult::Ok(())
     };
 
-    Toplevel::new(async move |s| {
+    Toplevel::new(async move |s: &mut SubsystemHandle| {
         s.start(SubsystemBuilder::new("subsys_top", subsys_top));
     })
     .handle_shutdown_requests(Duration::from_millis(100))
@@ -108,7 +107,7 @@ async fn multiple_abort_works() {
     // This is just making sure we can call .abort() multiple times without
     // problems happening.
 
-    let subsys_nested = move |_: SubsystemHandle| -> BoxFuture<BoxedResult> {
+    let subsys_nested = move |_: &mut SubsystemHandle| -> BoxFuture<BoxedResult> {
         async move {
             tokio::time::sleep(Duration::from_millis(1000)).await;
             panic!("Nested subsystem should not reach completion");
@@ -116,7 +115,7 @@ async fn multiple_abort_works() {
         .boxed()
     };
 
-    let subsys_top = async move |subsys: SubsystemHandle| {
+    let subsys_top = async move |subsys: &mut SubsystemHandle| {
         let nested = subsys.start(SubsystemBuilder::new("subsys_nested", subsys_nested));
 
         tokio::time::sleep(Duration::from_millis(500)).await;
@@ -130,7 +129,7 @@ async fn multiple_abort_works() {
         Ok::<_, Infallible>(())
     };
 
-    Toplevel::new(async move |s| {
+    Toplevel::new(async move |s: &mut SubsystemHandle| {
         s.start(SubsystemBuilder::new("subsys_top", subsys_top));
     })
     .handle_shutdown_requests(Duration::from_millis(100))
@@ -147,9 +146,10 @@ async fn abort_overrides_shutdown() {
     //   \
     //    nested (rcv's shutdown at 0.5s, rcv's abort at 0.6s, shuts down at 1s after shutdown requested)
 
-    let subsys_nested = move |s: SubsystemHandle| -> BoxFuture<BoxedResult> {
+    let subsys_nested = move |s: &mut SubsystemHandle| -> BoxFuture<BoxedResult> {
+        let cancellation_token = s.create_cancellation_token();
         async move {
-            s.on_shutdown_requested().await;
+            cancellation_token.cancelled().await;
             tracing::info!("received shutdown signal");
             tokio::time::sleep(Duration::from_millis(500)).await;
 
@@ -158,7 +158,7 @@ async fn abort_overrides_shutdown() {
         .boxed()
     };
 
-    let subsys_top = async move |subsys: SubsystemHandle| {
+    let subsys_top = async move |subsys: &mut SubsystemHandle| {
         let nested = subsys.start(SubsystemBuilder::new("subsys_nested", subsys_nested));
 
         tokio::time::sleep(Duration::from_millis(500)).await;
@@ -172,7 +172,7 @@ async fn abort_overrides_shutdown() {
         Ok::<_, Infallible>(())
     };
 
-    Toplevel::new(async move |s| {
+    Toplevel::new(async move |s: &mut SubsystemHandle| {
         s.start(SubsystemBuilder::new("subsys_top", subsys_top));
     })
     .handle_shutdown_requests(Duration::from_millis(100))
@@ -207,13 +207,13 @@ async fn abort_ensures_drop() {
         }
     }
 
-    let subsys_top = async move |subsys: SubsystemHandle| {
+    let subsys_top = async move |subsys: &mut SubsystemHandle| {
         let to_be_dropped = IHaveNoMouthYetIMustBeDropped::new();
         let flag = to_be_dropped.was_dropped.clone();
 
         let nested = subsys.start(SubsystemBuilder::new(
             "subsys_nested",
-            move |_s: SubsystemHandle| -> BoxFuture<BoxedResult> {
+            move |_s: &mut SubsystemHandle| -> BoxFuture<BoxedResult> {
                 async move {
                     let _owned_object = to_be_dropped; //take ownership of the drop object
                     loop {
@@ -236,7 +236,7 @@ async fn abort_ensures_drop() {
         Ok::<_, Infallible>(())
     };
 
-    Toplevel::new(async move |s| {
+    Toplevel::new(async move |s: &mut SubsystemHandle| {
         s.start(SubsystemBuilder::new("subsys_top", subsys_top));
     })
     .handle_shutdown_requests(Duration::from_millis(100))

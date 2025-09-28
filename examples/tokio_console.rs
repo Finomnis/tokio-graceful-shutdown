@@ -16,7 +16,7 @@ use tokio_graceful_shutdown::{FutureExt, SubsystemBuilder, SubsystemHandle, Topl
 use tracing::Level;
 use tracing_subscriber::{fmt::writer::MakeWriterExt, prelude::*};
 
-async fn child(subsys: SubsystemHandle) -> Result<()> {
+async fn child(subsys: &mut SubsystemHandle) -> Result<()> {
     sleep(Duration::from_millis(3000))
         .cancel_on_shutdown(&subsys)
         .await
@@ -24,7 +24,7 @@ async fn child(subsys: SubsystemHandle) -> Result<()> {
     Ok(())
 }
 
-async fn parent(subsys: SubsystemHandle) -> Result<()> {
+async fn parent(subsys: &mut SubsystemHandle) -> Result<()> {
     tracing::info!("Parent started.");
 
     let mut iteration = 0;
@@ -56,7 +56,7 @@ async fn main() -> Result<()> {
         .init();
 
     // Setup and execute subsystem tree
-    Toplevel::new(async |s| {
+    Toplevel::new(async |s: &mut SubsystemHandle| {
         s.start(SubsystemBuilder::new("parent", parent));
     })
     .catch_signals()

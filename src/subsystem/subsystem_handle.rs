@@ -58,12 +58,12 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     /// use miette::Result;
     /// use tokio_graceful_shutdown::{SubsystemBuilder, SubsystemHandle};
     ///
-    /// async fn nested_subsystem(subsys: SubsystemHandle) -> Result<()> {
+    /// async fn nested_subsystem(subsys: &mut SubsystemHandle) -> Result<()> {
     ///     subsys.on_shutdown_requested().await;
     ///     Ok(())
     /// }
     ///
-    /// async fn my_subsystem(subsys: SubsystemHandle) -> Result<()> {
+    /// async fn my_subsystem(subsys: &mut SubsystemHandle) -> Result<()> {
     ///     // start a nested subsystem
     ///     subsys.start(SubsystemBuilder::new("Nested", nested_subsystem));
     ///

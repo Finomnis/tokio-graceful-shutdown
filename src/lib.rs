@@ -31,7 +31,7 @@
 //!     }
 //! }
 //!
-//! async fn countdown_subsystem(subsys: SubsystemHandle) -> Result<()> {
+//! async fn countdown_subsystem(subsys: &mut SubsystemHandle) -> Result<()> {
 //!     tokio::select! {
 //!         _ = subsys.on_shutdown_requested() => {
 //!             tracing::info!("Countdown cancelled.");
@@ -52,7 +52,7 @@
 //!         .init();
 //!
 //!     // Setup and execute subsystem tree
-//!     Toplevel::new(async |s| {
+//!     Toplevel::new(async |s: &mut SubsystemHandle| {
 //!         s.start(SubsystemBuilder::new("Countdown", countdown_subsystem));
 //!     })
 //!     .catch_signals()
