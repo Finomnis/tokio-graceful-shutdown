@@ -14,7 +14,7 @@ struct Subsystem1 {
 }
 
 impl Subsystem1 {
-    async fn run(self, subsys: SubsystemHandle) -> Result<()> {
+    async fn run(self, subsys: &mut SubsystemHandle) -> Result<()> {
         tracing::info!("Subsystem1 started. Extra argument: {}", self.arg);
         subsys.on_shutdown_requested().await;
         tracing::info!("Shutting down Subsystem1 ...");
@@ -29,7 +29,7 @@ struct Subsystem2 {
 }
 
 impl IntoSubsystem<miette::Report> for Subsystem2 {
-    async fn run(self, subsys: SubsystemHandle) -> Result<()> {
+    async fn run(self, subsys: &mut SubsystemHandle) -> Result<()> {
         tracing::info!("Subsystem2 started. Extra argument: {}", self.arg);
         subsys.on_shutdown_requested().await;
         tracing::info!("Shutting down Subsystem2 ...");
@@ -50,8 +50,11 @@ async fn main() -> Result<()> {
     let subsys2 = Subsystem2 { arg: 69 };
 
     // Setup and execute subsystem tree
-    Toplevel::new(async |s| {
-        s.start(SubsystemBuilder::new("Subsys1", |a| subsys1.run(a)));
+    Toplevel::new(async |s: &mut SubsystemHandle| {
+        s.start(SubsystemBuilder::new(
+            "Subsys1",
+            async |a: &mut SubsystemHandle| subsys1.run(a).await,
+        ));
         s.start(SubsystemBuilder::new("Subsys2", subsys2.into_subsystem()));
     })
     .catch_signals()

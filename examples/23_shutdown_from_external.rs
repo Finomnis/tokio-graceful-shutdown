@@ -10,12 +10,12 @@ use tokio::{
 use tokio_graceful_shutdown::{FutureExt, SubsystemBuilder, SubsystemHandle, Toplevel};
 use tokio_util::sync::CancellationToken;
 
-async fn counter(subsys: SubsystemHandle) -> Result<()> {
+async fn counter(subsys: &mut SubsystemHandle) -> Result<()> {
     let mut i = 1;
     while !subsys.is_shutdown_requested() {
         tracing::info!("Counter: {}", i);
         sleep(Duration::from_millis(1000))
-            .cancel_on_shutdown(&subsys)
+            .cancel_on_shutdown(subsys)
             .await
             .ok();
 
@@ -31,7 +31,7 @@ fn tokio_thread(shutdown_token: CancellationToken) -> Result<()> {
     Runtime::new().unwrap().block_on(async {
         // Setup and execute subsystem tree
         Toplevel::new_with_shutdown_token(
-            async |s| {
+            async |s: &mut SubsystemHandle| {
                 s.start(SubsystemBuilder::new("Counter", counter));
             },
             shutdown_token,

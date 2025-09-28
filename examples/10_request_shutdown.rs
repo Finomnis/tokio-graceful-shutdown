@@ -20,8 +20,8 @@ impl CountdownSubsystem {
         }
     }
 
-    async fn run(self, subsys: SubsystemHandle) -> Result<()> {
-        match self.countdown().cancel_on_shutdown(&subsys).await {
+    async fn run(self, subsys: &mut SubsystemHandle) -> Result<()> {
+        match self.countdown().cancel_on_shutdown(subsys).await {
             Ok(()) => subsys.request_shutdown(),
             Err(CancelledByShutdown) => tracing::info!("Countdown cancelled."),
         }
@@ -38,10 +38,11 @@ async fn main() -> Result<()> {
         .init();
 
     // Setup and execute subsystem tree
-    Toplevel::new(async |s| {
-        s.start(SubsystemBuilder::new("Countdown", |h| {
-            CountdownSubsystem::new().run(h)
-        }));
+    Toplevel::new(async |s: &mut SubsystemHandle| {
+        s.start(SubsystemBuilder::new(
+            "Countdown",
+            async |h: &mut SubsystemHandle| CountdownSubsystem::new().run(h).await,
+        ));
     })
     .catch_signals()
     .handle_shutdown_requests(Duration::from_millis(1000))

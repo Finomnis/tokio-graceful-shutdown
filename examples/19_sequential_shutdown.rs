@@ -19,9 +19,9 @@ async fn counter(id: &str) {
     }
 }
 
-async fn nested1(subsys: SubsystemHandle) -> Result<()> {
+async fn nested1(subsys: &mut SubsystemHandle) -> Result<()> {
     tracing::info!("Nested1 started.");
-    if counter("Nested1").cancel_on_shutdown(&subsys).await.is_ok() {
+    if counter("Nested1").cancel_on_shutdown(subsys).await.is_ok() {
         tracing::info!("Nested1 counter finished.");
     } else {
         tracing::info!("Nested1 shutting down ...");
@@ -32,7 +32,10 @@ async fn nested1(subsys: SubsystemHandle) -> Result<()> {
     Ok(())
 }
 
-async fn nested2(subsys: SubsystemHandle, nested1_finished: SubsystemFinishedFuture) -> Result<()> {
+async fn nested2(
+    subsys: &mut SubsystemHandle,
+    nested1_finished: SubsystemFinishedFuture,
+) -> Result<()> {
     // Create a future that triggers once nested1 is finished **and** a shutdown is requested
     let shutdown = {
         let shutdown_requested = subsys.on_shutdown_requested();
@@ -56,7 +59,10 @@ async fn nested2(subsys: SubsystemHandle, nested1_finished: SubsystemFinishedFut
     Ok(())
 }
 
-async fn nested3(subsys: SubsystemHandle, nested2_finished: SubsystemFinishedFuture) -> Result<()> {
+async fn nested3(
+    subsys: &mut SubsystemHandle,
+    nested2_finished: SubsystemFinishedFuture,
+) -> Result<()> {
     // Create a future that triggers once nested2 is finished **and** a shutdown is requested
     let shutdown = {
         // This is an alternative to `on_shutdown_requested()` (as shown in nested2).
@@ -82,19 +88,21 @@ async fn nested3(subsys: SubsystemHandle, nested2_finished: SubsystemFinishedFut
     Ok(())
 }
 
-async fn root(subsys: SubsystemHandle) -> Result<()> {
+async fn root(subsys: &mut SubsystemHandle) -> Result<()> {
     tracing::info!("Root started.");
 
     tracing::info!("Starting nested subsystems ...");
     let nested1 = subsys.start(SubsystemBuilder::new("Nested1", nested1));
     let nested1_finished = nested1.finished();
-    let nested2 = subsys.start(SubsystemBuilder::new("Nested2", |s| {
-        nested2(s, nested1_finished)
-    }));
+    let nested2 = subsys.start(SubsystemBuilder::new(
+        "Nested2",
+        async |s: &mut SubsystemHandle| nested2(s, nested1_finished).await,
+    ));
     let nested2_finished = nested2.finished();
-    subsys.start(SubsystemBuilder::new("Nested3", |s| {
-        nested3(s, nested2_finished)
-    }));
+    subsys.start(SubsystemBuilder::new(
+        "Nested3",
+        async |s: &mut SubsystemHandle| nested3(s, nested2_finished).await,
+    ));
     tracing::info!("Nested subsystems started.");
 
     // Wait for all children to finish shutting down.
@@ -115,7 +123,7 @@ async fn main() -> Result<()> {
         .init();
 
     // Setup and execute subsystem tree
-    Toplevel::new(async |s| {
+    Toplevel::new(async |s: &mut SubsystemHandle| {
         s.start(SubsystemBuilder::new("Root", root));
     })
     .catch_signals()

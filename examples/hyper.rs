@@ -33,12 +33,12 @@ async fn hello(_: Request<hyper::body::Incoming>) -> Result<Response<Full<Bytes>
 }
 
 async fn connection_handler(
-    subsys: SubsystemHandle,
+    subsys: &mut SubsystemHandle,
     listener: TcpListener,
     connection_tracker: TaskTracker,
 ) -> Result<()> {
     loop {
-        let connection = match listener.accept().cancel_on_shutdown(&subsys).await {
+        let connection = match listener.accept().cancel_on_shutdown(subsys).await {
             Ok(connection) => connection,
             Err(CancelledByShutdown) => break,
         };
@@ -80,7 +80,7 @@ async fn connection_handler(
     Ok(())
 }
 
-async fn hyper_subsystem(subsys: SubsystemHandle) -> Result<()> {
+async fn hyper_subsystem(subsys: &mut SubsystemHandle) -> Result<()> {
     let addr: SocketAddr = ([127, 0, 0, 1], 12345).into();
 
     // Bind to the port and listen for incoming TCP connections
@@ -96,7 +96,9 @@ async fn hyper_subsystem(subsys: SubsystemHandle) -> Result<()> {
 
     let listener = subsys.start(SubsystemBuilder::new("Hyper Listener", {
         let connection_tracker = connection_tracker.clone();
-        move |subsys| connection_handler(subsys, listener, connection_tracker)
+        async move |subsys: &mut SubsystemHandle| {
+            connection_handler(subsys, listener, connection_tracker).await
+        }
     }));
 
     // Make sure no more tasks can be spawned before we close the tracker
@@ -117,7 +119,7 @@ async fn main() -> Result<()> {
         .init();
 
     // Setup and execute subsystem tree
-    Toplevel::new(async |s| {
+    Toplevel::new(async |s: &mut SubsystemHandle| {
         s.start(SubsystemBuilder::new("Hyper", hyper_subsystem));
     })
     .catch_signals()

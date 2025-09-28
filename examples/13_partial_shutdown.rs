@@ -7,14 +7,14 @@ use miette::Result;
 use tokio::time::{Duration, sleep};
 use tokio_graceful_shutdown::{ErrorAction, SubsystemBuilder, SubsystemHandle, Toplevel};
 
-async fn subsys3(subsys: SubsystemHandle) -> Result<()> {
+async fn subsys3(subsys: &mut SubsystemHandle) -> Result<()> {
     tracing::info!("Subsys3 started.");
     subsys.on_shutdown_requested().await;
     tracing::info!("Subsys3 stopped.");
     Ok(())
 }
 
-async fn subsys2(subsys: SubsystemHandle) -> Result<()> {
+async fn subsys2(subsys: &mut SubsystemHandle) -> Result<()> {
     tracing::info!("Subsys2 started.");
     subsys.start(SubsystemBuilder::new("Subsys3", subsys3));
     subsys.on_shutdown_requested().await;
@@ -22,7 +22,7 @@ async fn subsys2(subsys: SubsystemHandle) -> Result<()> {
     Ok(())
 }
 
-async fn subsys1(subsys: SubsystemHandle) -> Result<()> {
+async fn subsys1(subsys: &mut SubsystemHandle) -> Result<()> {
     // This subsystem shuts down the nested subsystem after 5 seconds.
     tracing::info!("Subsys1 started.");
 
@@ -58,7 +58,7 @@ async fn main() -> Result<()> {
         .init();
 
     // Setup and execute subsystem tree
-    Toplevel::new(async |s| {
+    Toplevel::new(async |s: &mut SubsystemHandle| {
         s.start(SubsystemBuilder::new("Subsys1", subsys1));
     })
     .catch_signals()

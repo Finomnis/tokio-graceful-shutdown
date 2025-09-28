@@ -72,10 +72,7 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     /// }
     /// ```
     #[track_caller]
-    pub fn start<Err, Subsys>(
-        &self,
-        builder: SubsystemBuilder<ErrType, Err, Subsys>,
-    ) -> NestedSubsystem<ErrType>
+    pub fn start<Err, Subsys>(&self, builder: SubsystemBuilder<Subsys>) -> NestedSubsystem<ErrType>
     where
         Subsys: 'static + for<'a> AsyncSubsysFn<&'a mut SubsystemHandle<ErrType>, Result<(), Err>>,
         Err: Into<ErrType>,

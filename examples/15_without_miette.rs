@@ -16,7 +16,7 @@ impl fmt::Display for MyError {
 
 impl Error for MyError {}
 
-async fn subsys1(_subsys: SubsystemHandle) -> Result<(), MyError> {
+async fn subsys1(_subsys: &mut SubsystemHandle) -> Result<(), MyError> {
     tracing::info!("Subsystem1 started.");
     sleep(Duration::from_millis(500)).await;
     tracing::info!("Subsystem1 stopped.");
@@ -33,7 +33,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .init();
 
     // Setup and execute subsystem tree
-    Toplevel::new(async |s| {
+    Toplevel::new(async |s: &mut SubsystemHandle| {
         s.start(SubsystemBuilder::new("Subsys1", subsys1));
     })
     .catch_signals()
