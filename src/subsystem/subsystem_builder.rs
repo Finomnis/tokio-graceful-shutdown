@@ -4,6 +4,7 @@ use crate::ErrorAction;
 
 /// Configures a subsystem before it gets spawned through
 /// [`SubsystemHandle::start`](crate::SubsystemHandle::start).
+#[must_use]
 pub struct SubsystemBuilder<'a, Subsys> {
     pub(crate) name: Cow<'a, str>,
     pub(crate) subsystem: Subsys,
