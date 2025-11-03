@@ -73,7 +73,7 @@ tower = ">= 0.4.1"         # Required to fix minimal-versions
 gcc = ">= 0.3.4" # Required to fix minimal-versions
 
 # tokio-console
-console-subscriber = "0.4.1"
+console-subscriber = "0.5.0"
 
 # For testing unix signals
 [target.'cfg(unix)'.dev-dependencies]
