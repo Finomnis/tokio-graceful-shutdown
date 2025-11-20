@@ -57,7 +57,7 @@ tracing-subscriber = "0.3.17"
 tracing-test = { version = "0.2.4", features = ["no-env-filter"] }
 
 # Tokio
-tokio = { version = "1.32.0", features = ["full", "test-util"] }
+tokio = { version = "1.38.2", features = ["full", "test-util"] }
 
 # Hyper example
 hyper = { version = "1.0.1", features = ["server", "http1"] }
@@ -67,10 +67,6 @@ bytes = "1.5.0"
 http-body-util = "0.1.0"
 
 futures = "0.3.31"
-futures-util = ">= 0.3.16" # Required to fix minimal-versions
-tower = ">= 0.4.1"         # Required to fix minimal-versions
-
-gcc = ">= 0.3.4" # Required to fix minimal-versions
 
 # tokio-console
 console-subscriber = "0.5.0"
