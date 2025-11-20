@@ -36,6 +36,8 @@ async fn wait_for_signal_impl() -> io::Result<()> {
         _ = signal_close.recv() => tracing::debug!("Received CTRL_CLOSE."),
         _ = signal_shutdown.recv() => tracing::debug!("Received CTRL_SHUTDOWN."),
     };
+
+    Ok(())
 }
 
 /// Registers signal handlers and waits for a signal that
