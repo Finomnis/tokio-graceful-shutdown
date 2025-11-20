@@ -1,6 +1,6 @@
 use std::io;
 
-/// Waits for a signal that requests a graceful shutdown, like SIGTERM or SIGINT.
+/// Creates a future that waits for a signal that requests a graceful shutdown, like SIGTERM or SIGINT.
 #[cfg(unix)]
 fn register_signals_impl() -> io::Result<impl Future<Output = ()>> {
     use tokio::signal::unix::{SignalKind, signal};
@@ -18,7 +18,7 @@ fn register_signals_impl() -> io::Result<impl Future<Output = ()>> {
     })
 }
 
-/// Waits for a signal that requests a graceful shutdown, Ctrl-C (SIGINT).
+/// Creates a future that waits for a signal that requests a graceful shutdown, like Ctrl-C (SIGINT).
 #[cfg(windows)]
 fn register_signals_impl() -> io::Result<impl Future<Output = ()>> {
     use tokio::signal::windows;
@@ -40,8 +40,8 @@ fn register_signals_impl() -> io::Result<impl Future<Output = ()>> {
     })
 }
 
-/// Registers signal handlers and waits for a signal that
-/// indicates a shutdown request.
+/// Registers signal handlers and returns a future that indicates a shutdown request
+/// upon completion.
 pub(crate) fn register_signals() -> io::Result<impl Future<Output = ()>> {
     register_signals_impl()
 }
