@@ -70,8 +70,6 @@ futures = "0.3.31"
 futures-util = ">= 0.3.16" # Required to fix minimal-versions
 tower = ">= 0.4.1"         # Required to fix minimal-versions
 
-gcc = ">= 0.3.4" # Required to fix minimal-versions
-
 # tokio-console
 console-subscriber = "0.5.0"
 
