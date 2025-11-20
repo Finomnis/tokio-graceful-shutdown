@@ -146,8 +146,10 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
 
         crate::tokio_task::spawn(
             async move {
-                wait_for_signal().await;
-                shutdown_token.cancel();
+                match wait_for_signal().await {
+                    Ok(()) => shutdown_token.cancel(),
+                    Err(e) => tracing::warn!("Cannot react to signals: {e}"),
+                }
             },
             "catch_signals",
         );
