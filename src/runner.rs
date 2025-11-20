@@ -86,7 +86,9 @@ where
             Err(e) => {
                 // We can assume that this is a panic, because a cancellation
                 // can never happen as long as we still hold `guard`.
-                assert!(e.is_panic());
+                if !e.is_panic() {
+                    tracing::warn!("Subsystem task for '{name}' was cancelled unexpectedly: {e}");
+                }
                 Some(SubsystemError::Panicked(name))
             }
         };

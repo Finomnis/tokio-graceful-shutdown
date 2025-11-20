@@ -173,6 +173,10 @@ impl<ErrType: ErrTypeTraits> SubsystemHandle<ErrType> {
     }
 
     /// Waits until all the children of this subsystem are finished.
+    ///
+    /// Be aware that this does not prevent further children from being
+    /// spawned afterwards, this only waits until there are no children
+    /// any more right now.
     pub async fn wait_for_children(&self) {
         self.inner.joiner_token.join_children().await
     }

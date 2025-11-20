@@ -7,7 +7,7 @@ use tokio_util::sync::CancellationToken;
 use crate::{
     AsyncSubsysFn, BoxedError, ErrTypeTraits, ErrorAction, NestedSubsystem, SubsystemHandle,
     errors::{GracefulShutdownError, SubsystemError, handle_dropped_error},
-    signal_handling::wait_for_signal,
+    signal_handling::register_signals,
     subsystem::{self, ErrorActions},
 };
 
@@ -144,13 +144,23 @@ impl<ErrType: ErrTypeTraits> Toplevel<ErrType> {
     pub fn catch_signals(self) -> Self {
         let shutdown_token = self.root_handle.get_cancellation_token().clone();
 
-        crate::tokio_task::spawn(
-            async move {
-                wait_for_signal().await;
-                shutdown_token.cancel();
-            },
-            "catch_signals",
-        );
+        match register_signals() {
+            Ok(signals) => {
+                crate::tokio_task::spawn(
+                    async move {
+                        signals.await;
+                        shutdown_token.cancel();
+                    },
+                    "catch_signals",
+                );
+            }
+            Err(e) => {
+                tracing::error!("Failed to register OS signal handlers: {e}");
+                tracing::error!(
+                    "Be aware that this means OS signals like SIGINT will kill the program instead of triggering a graceful shutdown."
+                );
+            }
+        };
 
         self
     }
