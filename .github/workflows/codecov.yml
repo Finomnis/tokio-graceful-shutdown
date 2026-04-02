@@ -32,7 +32,7 @@ jobs:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
           files: codecov.json
-          fail_ci_if_error: true
+          fail_ci_if_error: false
       - name: Archive code coverage results
         uses: actions/upload-artifact@v4
         with:
