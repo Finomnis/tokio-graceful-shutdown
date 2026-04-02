@@ -41,7 +41,7 @@ This subsystem can now be executed like this:
 #[tokio::main]
 async fn main() -> Result<()> {
     Toplevel::new(async |s: &mut SubsystemHandle| {
-        s.start(SubsystemBuilder::new("Subsys1", subsys1))
+        s.start(SubsystemBuilder::new("Subsys1", subsys1));
     })
     .catch_signals()
     .handle_shutdown_requests(Duration::from_millis(1000))
