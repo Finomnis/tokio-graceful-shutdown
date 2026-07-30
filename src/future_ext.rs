@@ -1,4 +1,4 @@
-use crate::{SubsystemHandle, errors::CancelledByShutdown};
+use crate::{ErrTypeTraits, SubsystemHandle, errors::CancelledByShutdown};
 
 use pin_project_lite::pin_project;
 
@@ -79,16 +79,19 @@ pub trait FutureExt {
     ///     Ok(())
     /// }
     /// ```
-    fn cancel_on_shutdown(
+    fn cancel_on_shutdown<ErrType: ErrTypeTraits>(
         self,
-        subsys: &SubsystemHandle,
+        subsys: &SubsystemHandle<ErrType>,
     ) -> CancelOnShutdownFuture<'_, Self::Future>;
 }
 
 impl<T: std::future::Future> FutureExt for T {
     type Future = T;
 
-    fn cancel_on_shutdown(self, subsys: &SubsystemHandle) -> CancelOnShutdownFuture<'_, T> {
+    fn cancel_on_shutdown<ErrType: ErrTypeTraits>(
+        self,
+        subsys: &SubsystemHandle<ErrType>,
+    ) -> CancelOnShutdownFuture<'_, T> {
         let cancellation = subsys.get_cancellation_token().cancelled();
 
         CancelOnShutdownFuture {
